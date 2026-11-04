@@ -91,8 +91,9 @@ Or run the repo's host helper directly from Linux/macOS:
 
 ```sh
 git clone https://github.com/ALeXXBody/mib-cluster-map-tiguan.git
-cd mib-cluster-map-tiguan && ./the upstream release zip (mib-cluster-map_v1.1.0.zip)
-# OR use tools/find_profile.py to add your train, then build.
+# Download the upstream release zip directly:
+#   https://github.com/MacsInSpace/mib-cluster-map/releases/tag/v1.1.0
+# It already contains the car-tested Tiguan / VWG13 binaries; no build needed.
 ```
 
 …then copy the generated `libgal_hook.so`, `stream-player`, `libdmdt_flush.so` into `mod/cluster_map_aa_greenmenu/binaries/` on the SD card.
