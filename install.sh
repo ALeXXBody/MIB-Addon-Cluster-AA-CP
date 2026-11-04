@@ -21,6 +21,10 @@
 #      M.I.B.'s option 7 (CarPlay & Android Auto activation) first.
 #
 set -eu
+
+# resolve this repo's folder even when the user runs this from elsewhere
+REPODIR="`cd "\`dirname "$0"\`" && pwd`"
+
 [ -d "${1:-}" ] || { echo "usage: $0 <M.I.B.-SD-card-mount-point>" >&2; exit 2; }
 SDROOT=$1
 
@@ -33,12 +37,12 @@ echo "M.I.B. SD card verified at $SDROOT."
 # 2. copy the mod payload
 echo "Copying mod/cluster_map_aa_greenmenu/ ..."
 mkdir -p "$SDROOT/mod/cluster_map_aa_greenmenu"
-cp -r -- mod/cluster_map_aa_greenmenu/. "$SDROOT/mod/cluster_map_aa_greenmenu/"
+cp -r -- "$REPODIR/mod/cluster_map_aa_greenmenu/." "$SDROOT/mod/cluster_map_aa_greenmenu/"
 
 # 3. copy the GEM wrappers
 for s in cm_aa_status.sh cm_aa_install.sh cm_aa_uninstall.sh cm_aa_collect.sh; do
-    if [ -f "esd/scripts/$s" ]; then
-        echo "Copying esd/scripts/$s ..."; cp -p "esd/scripts/$s" "$SDROOT/esd/scripts/"
+    if [ -f "$REPODIR/esd/scripts/$s" ]; then
+        echo "Copying esd/scripts/$s ..."; cp -p "$REPODIR/esd/scripts/$s" "$SDROOT/esd/scripts/"
     fi
 done
 
@@ -47,9 +51,9 @@ L="$SDROOT/Launcher-sda0.esd"
 if grep -q "cluster_map_aa" "$L" 2>/dev/null; then
     echo "Launcher already has the Cluster Map screens: not doubled."
 else
-    if [ -f "esd/Launcher-sda0.esd.append.md" ]; then
+    if [ -f "$REPODIR/esd/Launcher-sda0.esd.append.md" ]; then
         echo "Splicing the GEM screen block..."
-        cat esd/Launcher-sda0.esd.append.md >> "$L"
+        cat "$REPODIR/esd/Launcher-sda0.esd.append.md" >> "$L"
         sync
         echo "Launcher-sda0.esd updated: 4 Cluster AA/CP screens added."
     fi
