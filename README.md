@@ -65,6 +65,14 @@ The three `.so` / `stream-player` binaries are **per-unit builds**: the fork com
 
 ## Install (concrete, from start to finish)
 
+**Note:** no build needed by the owner. Copy the release from
+[MacsInSpace/mib-cluster-map v1.1.0](https://github.com/MacsInSpace/mib-cluster-map/releases/tag/v1.1.0)
+directly into this repo's `mod/cluster_map_aa_greenmenu/` (the Tiguan's
+`libgal_hook.so`, `stream-player`, `libdmdt_flush.so` are already there, uploaded
+from upstream v1.1.0 for convenience, since this mod specifically targets
+Tiguan AD1 / AID10 / MIB2.5 High).  If you want to build your own,
+`build_local.sh` in the upstream tree does it; but it's not needed.
+
 **Step 1 — make the M.I.B. SD card.** Format a 2–32 GB card FAT32 and copy the full M.I.B. tree to it (your `Launcher-sda0.esd`, `esd/*`, `mod/*`, `apps/`, `patches/`, `metainfo2.txt`). Run M.I.B.'s own launcher to trigger the main M.I.B. install (`Launcher-sda0.esd` → *PATCH NOW*), follow M.I.B.'s own instructions for your unit.
 
 **Step 2 — copy this mod's payload to that same SD card.** Download the zip of a tagged release on your fork and copy:
@@ -83,7 +91,7 @@ Or run the repo's host helper directly from Linux/macOS:
 
 ```sh
 git clone https://github.com/ALeXXBody/mib-cluster-map-tiguan.git
-cd mib-cluster-map-tiguan && ./build_local.sh
+cd mib-cluster-map-tiguan && ./the upstream release zip (mib-cluster-map_v1.1.0.zip)
 # OR use tools/find_profile.py to add your train, then build.
 ```
 
