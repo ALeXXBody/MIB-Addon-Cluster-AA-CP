@@ -20,24 +20,24 @@ echo ""
 
 SD=""
 for v in /net/mmx/fs/sda0 /net/mmx/fs/sdb0 /fs/sda0 /fs/sdb0; do
-	if [ -f "$v/mod/cluster_map_aa_greenmenu/scripts/collect_logs.sh" ]; then
+	if [ -f "$v/mod/cluster_map_aa_greenmenu/collect_logs.sh" ]; then
 		SD=$v; break
 	fi
 done
 if [ -z "$SD" ]; then
-	echo "FAIL: mod/cluster_map_aa_greenmenu/scripts/collect_logs.sh was not found on SD media."
+	echo "FAIL: mod/cluster_map_aa_greenmenu/collect_logs.sh was not found on SD media."
 	trap 2; exit 1
 fi
 
-FORK_SCRIPTS=$SD/mod/cluster_map_aa_greenmenu/scripts
-cd "$FORK_SCRIPTS" || { echo "Failed to cd"; trap 2; exit 1; }
+PAYLOAD=$SD/mod/cluster_map_aa_greenmenu
+cd "$PAYLOAD" || { echo "Failed to cd"; trap 2; exit 1; }
 
 GEM=
 LD_PRELOAD=
 export GEM LD_PRELOAD
 
 echo "Collecting fork logs into the SD card..."
-sh "$FORK_SCRIPTS/collect_logs.sh" 2>&1
+sh "$PAYLOAD/collect_logs.sh" 2>&1
 RESULT=$?
 echo ""
 if [ "$RESULT" = 0 ]; then

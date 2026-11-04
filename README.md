@@ -45,14 +45,15 @@ This is the correct order — one re-used M.I.B. install, one mod on top, no par
    ├── esd/scripts/cm_aa_*.sh                   ← THIS REPO's 4 GEM add-on scripts
    ├── mod/
    │   ├── carplay_maps_vc/                    ← M.I.B.'s bundled CarPlay Maps VC (OWN)
-   │   └── cluster_map_aa_greenmenu/           ← this Addon's AA→VC payload
-   │       ├── scripts/enable_hook.sh  disable_hook.sh  hook_status.sh
-   │       ├── scripts/lib_*.sh  lsd_jar.sh  window_fix.sh  turn_by_turn.sh
-   │       ├── config/profiles.conf   config/framework.json
-   │       ├── libgal_hook.so  stream-player  lib/libdmdt_flush.so
-   │       ├── profile_check  binaries/dmdtgo.c  binaries/rundmdt
-   │       ├── thirdparty/NavActiveIgnore.jar  VCAndroidAuto.jar
-   │       └── to-uninstall/  to-check/  sha256sums
+   │       └── cluster_map_aa_greenmenu/           ← this Addon's AA→VC payload
+   │           ├── enable_hook.sh  disable_hook.sh  collect_logs.sh
+   │           ├── scripts/hook_status.sh  scripts/lib_*.sh  scripts/window_fix.sh
+   │           ├── lsd_jar.sh  turn_by_turn.sh
+   │           ├── profiles.conf  gal_dualscreen.conf
+   │           ├── libgal_hook.so  stream-player  lib/libdmdt_flush.so
+   │           ├── profile_check
+   │           ├── thirdparty/NavActiveIgnore.jar  thirdparty/VCAndroidAuto.jar
+   │           └── SHA256SUMS.txt
    ├── patches/ (if M.I.B. has it)
    ```
 3. **Splice the 4 GEM screens into M.I.B.'s existing Launcher-sda0.esd.** Take the block from `esd/Launcher-sda0.esd.append.md` at the bottom of this repo and paste it into your M.I.B. SD card's `Launcher-sda0.esd` file (or use a text editor on Windows — file is UTF-8 without BOM; the end of the file is the correct place, and that's not a fork-specific convention, just a text edit).

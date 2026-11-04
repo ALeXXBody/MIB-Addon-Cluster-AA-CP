@@ -38,39 +38,37 @@ echo ""
 
 SD=""
 for v in /net/mmx/fs/sda0 /net/mmx/fs/sdb0 /fs/sda0 /fs/sdb0; do
-	if [ -f "$v/mod/cluster_map_aa_greenmenu/scripts/enable_hook.sh" ]; then
+	if [ -f "$v/mod/cluster_map_aa_greenmenu/enable_hook.sh" ]; then
 		SD=$v; break
 	fi
 done
 if [ -z "$SD" ]; then
-	echo "FAIL: mod/cluster_map_aa_greenmenu/scripts/enable_hook.sh was not found on SD media."
+	echo "FAIL: mod/cluster_map_aa_greenmenu/enable_hook.sh was not found on SD media."
 	trap 2; exit 1
 fi
 
 PAYLOAD=$SD/mod/cluster_map_aa_greenmenu
-FORK_SCRIPTS=$PAYLOAD/scripts
 
-if [ ! -r "$FORK_SCRIPTS/enable_hook.sh" ]; then
-	echo "FAIL: enable_hook.sh missing in $FORK_SCRIPTS"
+if [ ! -r "$PAYLOAD/enable_hook.sh" ]; then
+	echo "FAIL: enable_hook.sh missing in $PAYLOAD"
 	trap 2; exit 1
 fi
 
 echo "Head unit: MIB-HIGH Harman (MHI2 family for the cluster map hook)"
-echo "Running the fork's installer from $FORK_SCRIPTS ..."
+echo "Running the fork's installer from $PAYLOAD ..."
 echo ""
 
-# The fork's script resolves paths relative to its own location, so copy it
-# to a writable scratch dir on the SD and run from there with a Heredoc that
-# doesn't have M.I.B.'s own `unset LD_PRELOAD` (our hook *wants* LD_PRELOAD).
-# Copying: the payload is already on the SD card, so running in place is fine.
-cd "$FORK_SCRIPTS" || { echo "Failed to cd"; trap 2; exit 1; }
+# enable_hook.sh resolves CARD_ROOT from its own location and expects the
+# payload layout it ships with (thirdparty/, lsd_jar.sh, gal_dualscreen.conf
+# beside it), so it must be run in place, from the payload root.
+cd "$PAYLOAD" || { echo "Failed to cd"; trap 2; exit 1; }
 
 # M.I.B. exports $GEM=1 which upsets some of the fork's scripts - clear it.
 GEM=
 LD_PRELOAD=
 export GEM LD_PRELOAD
 
-sh "$FORK_SCRIPTS/enable_hook.sh" 2>&1
+sh "$PAYLOAD/enable_hook.sh" 2>&1
 RESULT=$?
 echo ""
 if [ "$RESULT" = 0 ]; then

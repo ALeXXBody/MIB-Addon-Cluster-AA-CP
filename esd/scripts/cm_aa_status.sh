@@ -18,7 +18,7 @@ echo ""
 
 SD=""
 for v in /net/mmx/fs/sda0 /net/mmx/fs/sdb0 /fs/sda0 /fs/sdb0; do
-	if [ -f "$v/mod/cluster_map_aa_greenmenu/scripts/enable_hook.sh" ]; then
+	if [ -f "$v/mod/cluster_map_aa_greenmenu/enable_hook.sh" ]; then
 		SD=$v; break
 	fi
 done

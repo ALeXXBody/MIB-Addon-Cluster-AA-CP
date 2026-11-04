@@ -1,3 +1,0 @@
-While a file whose name starts with UNINSTALL is in the ClusterMap folder,
-running the update from this card REMOVES the cluster map and restores the
-original state. Move this file back here (or delete it) to install again.

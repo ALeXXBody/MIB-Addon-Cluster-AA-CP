@@ -20,15 +20,14 @@ then add:
 <M.I.B.-SD-card>/
 └── mod/
     ├── carplay_maps_vc/          ← already in M.I.B., left untouched
-    └── cluster_map_aa_greenmenu/ ← THIS Addon's payload (copy from this repo/ mod/…)
-        ├── scripts/{enable_hook.sh, disable_hook.sh, hook_status.sh, …}
-        ├── config/{profiles.conf, framework.json}
-        ├── binaries/{dmdtgo.c, dmdtgo, rundmdt}      (optional zoom helper)
+    └── cluster_map_aa_greenmenu/ ← THIS Addon's payload (copy from this repo/mod/…)
+        ├── enable_hook.sh  disable_hook.sh  collect_logs.sh
+        ├── scripts/hook_status.sh  scripts/lib_*.sh  scripts/window_fix.sh
         ├── libgal_hook.so  stream-player  lib/libdmdt_flush.so  profile_check
-        ├── thirdparty/NavActiveIgnore.jar  VCAndroidAuto.jar
-        ├── lsd_jar.sh  turn_by_turn.sh  window_fix.sh
-        ├── to-uninstall/  to-check/  sha256sums
-        └── gal_dualscreen.conf
+        ├── thirdparty/NavActiveIgnore.jar  thirdparty/VCAndroidAuto.jar
+        ├── lsd_jar.sh  turn_by_turn.sh
+        ├── profiles.conf  gal_dualscreen.conf
+        └── SHA256SUMS.txt  LICENSE
 ```
 
 ## How to add the screens to M.I.B.'s own launcher
@@ -59,7 +58,7 @@ and restores the stock `smartphone_integrator.json` + M.I.B.'s own routes.
 * `FAIL: mod/cluster_map_aa_greenmenu was not found on SD media.` — the payload
   folder wasn't copied to the SD card, or it's on the wrong drive.
 * `PROFILE_MISMATCH_*` — your unit's `gal`/`libautoreceiver.so` fingerprints
-  differ from the table in the fork's `config/profiles.conf`. Use the fork's
+  differ from the table in the fork's `profiles.conf`. Use the fork's
   own `tools/find_profile.py` to add a new row, or run the fork's
   `collect_logs.sh` and post the output on
   [MacsInSpace/mib-cluster-map](https://github.com/MacsInSpace/mib-cluster-map).
