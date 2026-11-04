@@ -1,0 +1,8 @@
+FileName = "finalScript.sh"
+FileSize = "1840"
+CheckSum = "4f6cab20f6d692907185ae446951f15ad363db31"
+
+FileName = "update_run.sh"
+FileSize = "3733"
+CheckSum = "b628f438129f5369e9e0bcdbf3fe2f416f21dc8e"
+

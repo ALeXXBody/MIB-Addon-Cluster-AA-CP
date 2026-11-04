@@ -1,7 +1,7 @@
 #!/bin/sh
 # Copies the files needed to port this project to another firmware onto the
 # SD card. Read-only on the unit; works on any firmware, installed or not.
-. "`dirname "$0"`/common.sh"
+. /fs/sda0/ClusterMap/GEM/common.sh 2>/dev/null || . `dirname "$0"`/common.sh
 echo "Phone map on the digital cluster: collect files for porting"
 echo "Firmware train: $TRAIN"
 NAME=`echo "$TRAIN" | sed 's/[^A-Za-z0-9_.-]/_/g'`
@@ -10,10 +10,6 @@ OUT="$PKG/porting_$NAME"
 mkdir -p "$OUT" || { echo "Cannot write to the SD card."; exit 0; }
 INFO="$OUT/info.txt"
 echo "train=$TRAIN" > "$INFO"
-# What a port needs first, and works on any unit.
-unit_tools
-unit_gal_check "$PKG"
-{ echo "tools missing:$UNIT_MISSING"; echo "tools absent:$UNIT_ABSENT"; echo "$PROBE_OUT"; } >> "$INFO" 2>&1
 
 say() { echo "$1"; echo "$1" >> "$INFO"; }
 take()   # take <source file> : copy one file and record its size
@@ -31,53 +27,7 @@ take()   # take <source file> : copy one file and record its size
 
 # The Android Auto program and its receiver library: what the hook attaches to.
 take /mnt/app/eso/bin/apps/gal
-
-# A library this project attaches to, under whatever name this unit carries.
-# The known names come first (lib_path in common.sh); if none of them is
-# there, look for anything matching the glob and COPY what turns up rather
-# than only reporting it. On the VWG11 generation the name itself was the
-# discovery (issue #28), and a file on the card is worth more than a line in
-# a log. One copy per distinct filename, since the tested units carry the
-# same library at two paths. The glob deliberately has no .so suffix, so it
-# matches libautoreceiver_qnx.so.1 as well. /net is left out on purpose: it
-# is the other QNX node over QNET and walking it is slow.
-#
-# Returns 1 when nothing was found, so the caller can explain its own case.
-take_lib()   # take_lib <label> <glob> <known name>...
-{
-    what=$1; glob=$2; shift 2
-    found=`lib_path "$@"`
-    if [ -n "$found" ]; then take "$found"; return 0; fi
-    names=
-    for f in `find $LIB_DIRS /mnt/app /mnt/system /eso /lib /usr/lib \
-                   -name "$glob" 2>/dev/null`; do
-        b=`echo "$f" | sed 's|.*/||'`
-        case " $names " in *" $b "*) continue ;; esac
-        names="$names $b"
-        take "$f"
-    done
-    if [ -n "$names" ]; then
-        say "$what found under another name:$names"
-        return 0
-    fi
-    return 1
-}
-if ! take_lib 'the Android Auto receiver' 'libautoreceive*' $RECEIVER_NAMES; then
-    say "missing the Android Auto receiver: looked for $RECEIVER_NAMES in the usual folders"
-    # Say what the Android Auto program itself asks for, so a unit that names
-    # the library differently can still be ported. Joined with the shell, not
-    # with tr: some units have no tr binary (issue #28).
-    needs=
-    for n in `grep -a -o 'lib[A-Za-z0-9_-]*\.so[.0-9]*' /mnt/app/eso/bin/apps/gal 2>/dev/null`; do
-        case " $needs " in *" $n "*) ;; *) needs="$needs $n" ;; esac
-    done
-    [ -n "$needs" ] && say "gal asks for:$needs"
-fi
-# The CarPlay library, for a CarPlay port. Its absence is not a problem for
-# the Android Auto map, so it is only noted.
-if ! take_lib 'the CarPlay library' 'libairplay*' $AIRPLAY_NAMES; then
-    say "missing libairplay.so (CarPlay library): CarPlay cannot be ported from this collection"
-fi
+take /mnt/app/eso/lib/libautoreceiver.so
 # Configuration the installer edits or reads.
 take /mnt/system/etc/eso/production/smartphone_integrator.json
 take /mnt/system/etc/eso/production/gal.json

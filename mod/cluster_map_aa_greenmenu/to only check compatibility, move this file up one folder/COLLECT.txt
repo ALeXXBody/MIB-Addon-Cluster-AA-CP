@@ -1,0 +1,4 @@
+While a file whose name starts with COLLECT is in the ClusterMap folder,
+running the update from this card INSTALLS NOTHING. It writes a compatibility
+check to update_result.txt and copies the files a port needs to porting_<train>/.
+Only the menu screen file is copied to the unit. Move this file back here to install.

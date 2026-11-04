@@ -1,12 +1,10 @@
+# Built binaries — do NOT redistribute them; upstream MacsInSpace's own release
+# page already has the car-tested per-MU builds and SHA256SUMS.txt sidecar.
 *.log
 *.bin
 *.img
-*.so
-stream-player
-libgal_hook.so
-libcarplay_cluster.so
-libdmdt_flush.so
 *.fec
 *.vmdk
 *.imgfs
+*.iso
 .venv/

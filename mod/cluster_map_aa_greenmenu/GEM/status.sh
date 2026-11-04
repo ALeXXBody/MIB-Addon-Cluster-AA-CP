@@ -1,5 +1,5 @@
 #!/bin/sh
-. "`dirname "$0"`/common.sh"
+. /fs/sda0/ClusterMap/GEM/common.sh 2>/dev/null || . `dirname "$0"`/common.sh
 CONFIG=/mnt/system/etc/eso/production/smartphone_integrator.json
 LSD=/mnt/app/eso/hmi/lsd/lsd.sh
 echo "Phone map on the digital cluster: status"
@@ -24,7 +24,7 @@ echo "Java patch lines:"
 grep -n 'Xbootclasspath/p' "$LSD" 2>/dev/null | sed 's|.*/p:||; s|\$BASE_DIR/lsd/jars/||g; s|"$||; s|^|  |'
 if [ -r /tmp/gal_dualscreen.log ]; then
     echo "Last hook events:"
-    grep -E "event=(init |firmware.verify|secondary.register|focus.state|player.spawn|focus.loss)" /tmp/gal_dualscreen.log | tail -6 | sed -e 's/^gal_dualscreen //' -e 's/^\(.\{110\}\).*/\1/'
+    grep -E "event=(init |firmware.verify|secondary.register|focus.state|player.spawn|focus.loss)" /tmp/gal_dualscreen.log | tail -6 | sed 's/^gal_dualscreen //' | cut -c1-110
 else
     echo "No hook log yet (connect a phone after rebooting)."
 fi
