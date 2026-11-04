@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# esd cluster_map_aa_install.sh v0.1.0 (2026-11-04 by mib-cluster-map-tiguan)
+# esd cluster_map_aa_install.sh v0.1.0 (2026-11-04 by mib-cluster-map)
 # Fork: install the Android Auto → Virtual Cockpit hook (mib-cluster-map fork)
 # from an M.I.B. GEM screen. This does NOT touch persistence bit coding; M.I.B.
 # already runs 7 (apps/carp -a) to activate AA/CarPlay/MirrorLink coding.
@@ -20,7 +20,7 @@ trap '' 2
 export GEM=1
 echo -ne "M.I.B. - More Incredible Bash - "
 cat /net/mmx/fs/sda0/VERSION 2>/dev/null
-echo "Android Auto Map on the digital cluster (mib-cluster-map-tiguan fork)"
+echo "Android Auto Map on the digital cluster (mib-cluster-map fork)"
 echo ""
 echo " NOTE: NEVER interrupt the process with -Back- button or removing"
 echo "       SD Card!!! Ensure a stable external power supply."

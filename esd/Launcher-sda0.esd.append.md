@@ -1,9 +1,9 @@
-# M.I.B. integration block — mib-cluster-map-tiguan AA→VC screens
+# M.I.B. integration block — mib-cluster-map AA→VC screens
 #
 # HOW TO USE: copy the block below to the END of your SD card's
 # `Launcher-sda0.esd` file (or insert it, as a screen, into an existing
 # screen). The screens appear under a new top-level GEM section
-# "Cluster Map (Tiguan fork)" and drive the fork's own scripts
+# "Cluster Map — mib-cluster-map" and drive the fork's own scripts
 # (enable_hook.sh / disable_hook.sh / hook_status.sh / collect_logs.sh)
 # inside `mod/cluster_map_aa_greenmenu/` on the same SD card.
 #
@@ -27,7 +27,7 @@
 #
 # ---------------------------------------------------------------
 #
-#     Main → Cluster Map (Tiguan fork) — Android Auto on VC
+#     Main → Cluster Map — mib-cluster-map — Android Auto on VC
 #
 # ---------------------------------------------------------------
 
@@ -35,7 +35,7 @@ screen cluster_map_aa greenmenu
 
 keyValue
     value   String sys 0x00000000 0
-    label   "Cluster Map — Tiguan fork (mib-cluster-map)"
+    label   "Cluster map — AA → Virtual Cockpit (mib-cluster-map)"
     label   "Android Auto → Virtual Cockpit  (Gal hook)"
     poll    0
 

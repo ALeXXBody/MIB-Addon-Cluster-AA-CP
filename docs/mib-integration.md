@@ -1,6 +1,6 @@
-# M.I.B. integration matrix — mib-cluster-map-tiguan
+# M.I.B. integration matrix — mib-cluster-map (M.I.B. Addon edit)
 
-| Feature | M.I.B. alone | mib-cluster-map-tiguan | Combined |
+| Feature | M.I.B. alone | mib-cluster-map (fork) | Combined |
 |---|---|---|---|
 | **AA map in VC** | ❌ M.I.B. has no AA→VC engine | ✅ (this mod, via `libgal_hook.so` + `stream-player` from chopinwong01's hook via mib-cluster-map upstream) | ✅ M.I.B. is base toolbox; our mod adds only the AA→VC path |
 | **CarPlay map in VC** | ✅ (bundled `carplay_maps_vc/omonob` payload for CarPlay **only**) | ✅ | ⚠️ install **only one of the two** on any unit |

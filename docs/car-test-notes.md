@@ -1,4 +1,8 @@
-# Tiguan AD1 (AID10 virtual cockpit): using this fork
+# Car test notes — the Tiguan AD1 unit this Addon was verified on
+
+(MHI2_ER_VWG13, 9.2-inch AID10 virtual cockpit. This file is a record of the
+one car where the full chain is verified to date; every other supported train
+is untested and profile-driven.)
 
 **What the Tiguan AD1 is**, hardware-wise for this project:
 

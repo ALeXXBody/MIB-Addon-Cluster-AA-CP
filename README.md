@@ -1,6 +1,8 @@
 # M.I.B. Addon — Cluster AA/CP
 
-**Android Auto map on the Virtual Cockpit** on VW Tiguan AD1 / Passat B8 / Golf 7.5 / AID10 & AID12.3 with the Harman MHI2 (MIB2.5 High) head unit — packaged as an **M.I.B. mod** that runs inside M.I.B.'s own GEM screens.
+**Android Auto map on the Virtual Cockpit** on Volkswagen MQB-platform cars with a digital instrument cluster (AID 10" / AID 12.3") and the Harman MHI2 (MIB2.5 High) head unit — packaged as an **M.I.B. mod** that runs inside M.I.B.'s own GEM screens.
+
+The engine supports every train upstream mib-cluster-map has a profile for (`MHI2_ER_*` / `MHI2_US_*`); the full chain is car-verified so far on the Tiguan AD1 (`MHI2_ER_VWG13_P4521`, AID10), and other trains install profile-driven with the same screens.
 
 **This is an add-on for [M.I.B. — More Incredible Bash](https://github.com/Mr-MIBonk/M.I.B._More-Incredible-Bash).** M.I.B. is the base toolbox (installed by you, on the car, via metainfo2/Updater); this repository piggy-backs on M.I.B.'s own GEM to install one extra feature: **Google Maps / Waze on the instrument cluster, driven by an Android phone running Android Auto**.
 
@@ -9,7 +11,7 @@ The mod *doesn't* add its own installer screens, duplicate M.I.B.'s GEM, or writ
 ## The screen inside M.I.B.'s GEM
 
 ```
-Main → Cluster AA/CP — Tiguan fork (mib-cluster-map)
+Main → Cluster Map — mib-cluster-map (AA → Virtual Cockpit)
         1. status        — is the hook there? is the phone connected?
         2. install       — runs the fork's enable_hook.sh
         3. uninstall     — restores the stock gal
@@ -81,7 +83,7 @@ Same as M.I.B. and the fork: GPL-3.0. See `LICENSE`.
 ## Sources / credits
 
 - Base toolbox: [Mr-MIBonk / M.I.B. — More Incredible Bash](https://github.com/Mr-MIBonk/M.I.B._More-Incredible-Bash)
-- Fork engine: [chopinwong01 / mhi2-android-auto-video-vc](https://github.com/chopinwong01/mhi2-android-auto-video-vc); packaged by [MacsInSpace / mib-cluster-map](https://github.com/MacsInSpace/mib-cluster-map); maintained in this Tiguan fork at [ALeXXBody / mib-cluster-map-tiguan](https://github.com/ALeXXBody/mib-cluster-map-tiguan)
+- Fork engine: [chopinwong01 / mhi2-android-auto-video-vc](https://github.com/chopinwong01/mhi2-android-auto-video-vc); packaged by [MacsInSpace / mib-cluster-map](https://github.com/MacsInSpace/mib-cluster-map); with fork fixes and the AA mod packaging by [ALeXXBody](https://github.com/ALeXXBody/mib-cluster-map-tiguan)
 - Cluster render path: [andrewleech / VcMOSTRenderMqb](https://github.com/andrewleech/VcMOSTRenderMqb) + MIB SDK
 - CarPlay: [harman-f / mhi2_altscreen_carplay](https://github.com/harman-f/mhi2_altscreen_carplay), [aberbic / Audi-MHI2-…-Altscreen](https://github.com/aberbic/Audi-MHI2-Virtual-Cockpit-Altscreen-CarPlay-AndroidAuto)
 - Turn arrows: [adi961 / mib2-android-auto-vc](https://github.com/adi961/mib2-android-auto-vc); message parsing from [kkrvch / mib-std2-kombibridge](https://github.com/kkrvch/mib-std2-kombibridge)

@@ -6,7 +6,7 @@ your M.I.B. installation walkthrough, via metainfo2 updater on the car).
 ## What you need
 
 - M.I.B. installed and running in GEM (V3.8.0+ recommended).
-- Car: Tiguan AD1 AID10-compatible, or Golf 7.5 / Passat B8 family with AID.
+- Car: a VW MQB AID car on an upstream-supported MHI2 train — profile-verified example: Tiguan AD1 with the 9.2" AID10. Start with the **Status** screen: it reports which profile your unit matches.
 - Cluster NOT patched with M.I.B.'s `CarPlay Maps VC` omonob payload — this
   Addon is Android Auto in VC only. Do NOT stack both.
 
@@ -41,7 +41,7 @@ launcher straight from the SD card on every boot.
 ## Running in the car
 
 Insert the SD card in **SD slot 1** and enter M.I.B.'s GEM (hold MENU →
-Testmode). Navigate to **Cluster AA/CP — Tiguan fork**; the Addon's 4 screens
+Testmode). Open **Cluster Map — mib-cluster-map**; the Addon's 4 screens
 drive the fork's own `enable_hook.sh` / `disable_hook.sh` / `hook_status.sh` /
 `collect_logs.sh` from the fork's `mod/cluster_map_aa_greenmenu/` payload
 folder.

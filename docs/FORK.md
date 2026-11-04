@@ -1,4 +1,4 @@
-# This fork: "MHI2 Cluster Map — Tiguan Edition"
+# This fork: mib-cluster-map — MHI2 AA→VC (M.I.B. Addon edition)
 
 **Upstream:** [MacsInSpace/mib-cluster-map](https://github.com/MacsInSpace/mib-cluster-map)
 (GPL-3.0, by MacsInSpace, built on [chopinwong01/mhi2-android-auto-video-vc](https://github.com/chopinwong01/mhi2-android-auto-video-vc),
@@ -14,7 +14,7 @@ strip the upstream credits from the README when you publish.
 
 | | |
 |---|---|
-| Purpose | Tiguan AD1 (MQB) use of phone maps on the Virtual Cockpit, plus a few robustness features useful to every supported car |
+| Purpose | Phone (Android Auto) maps on the Virtual Cockpit of MHI2 trains where upstream has a profile match; plus robustness features useful to every supported car. Car-verified to date on Tiguan AD1 (MQB). |
 | Target tested base | `MHI2_ER_VWG13_P4521[_1]` / `K4525`, Tiguan AD1 with the 10.x‑inch AID (`3G0920790E` family) |
 | License | GPL‑3.0, identical to upstream (upstream carries the GPL‑3.0-only file) |
 | Changes | see `CHANGELOG-fork.md` |
@@ -39,9 +39,9 @@ strip the upstream credits from the README when you publish.
    a settings issue without pulling the SD card.
 4. **Keep-map and verify wired into the green menu** screen
    (`ClusterMap`), consistent with the existing sharper‑map switch.
-5. **Tiguan documentation** (`docs/Tiguan.md`): what to measure on the car,
+5. **Car test notes** (`docs/car-test-notes.md`): what to measure on the car,
    what the profile rows mean, and how the verified P4521 family fits the
-   Tiguan AD1 AID10.
+   the verified Tiguan AD1 AID10 test car.
 
 ## What the fork deliberately does not change
 
