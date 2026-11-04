@@ -1,0 +1,12 @@
+*.log
+*.bin
+*.img
+*.so
+stream-player
+libgal_hook.so
+libcarplay_cluster.so
+libdmdt_flush.so
+*.fec
+*.vmdk
+*.imgfs
+.venv/
