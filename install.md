@@ -7,7 +7,7 @@
 
 ## SD-card staging
 1. Format a card FAT32, copy your existing M.I.B. root to it (keep ALL of M.I.B.: `Launcher-sda0.esd`, `esd/*`, `mod/*`, `apps/`, `patches/`, `metainfo2.txt`).
-2. Copy the **fork's per-unit binaries** to `mod/cluster_map_aa_greenmenu/binaries/`: `libgal_hook.so`, `stream-player`, optional `libdmdt_flush.so` and `dmdtgo` — they are built once for each unit's own `gal` (see upstream build docs or the fork's `build_local.sh`).
+2. Copy the **fork's per-unit binaries** to `mod/cluster_map_aa_greenmenu/binaries/`: `libgal_hook.so`, `stream-player`, optional `libdmdt_flush.so` and `dmdtgo` — the upstream MacsInSpace v1.1.0 release already carries these ready to copy into the SD card's `mod/…/binaries/`.
 3. Copy `esd/scripts/cm_aa_*.sh` to your existing `esd/scripts/` folder already present on the M.I.B. card.
 4. Open `Launcher-sda0.esd` on the SD card and paste the screen block from `esd/Launcher-sda0.esd.append.md` at the end of the file.
 
