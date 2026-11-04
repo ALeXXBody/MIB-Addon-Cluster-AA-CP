@@ -1,47 +1,78 @@
-# Install this M.I.B. mod
+# Install this M.I.B. Addon
 
-## Pre-req
-- M.I.B. installed and GEM running (V3.8.0+ recommended).
-- Car: Tiguan AD1 AID10-compatible, or Golf / Passat B8 family with AID.
-- Cluster firmware NOT patched with M.I.B.'s `CarPlay Maps VC` omonob payload — this mod is Android Auto only; do NOT stack both.
+M.I.B. is the base toolbox — install it first (as noted in its own README and
+your M.I.B. installation walkthrough, via metainfo2 updater on the car).
 
-## What the mod ships (car-tested upstream mib-cluster-map v1.1.0 for the Tiguan / VWG13 family)
+## What you need
 
-Included in **this mod's mod/cluster_map_aa_greenmenu/**, ready to copy onto an
-M.I.B. SD card:
+- M.I.B. installed and running in GEM (V3.8.0+ recommended).
+- Car: Tiguan AD1 AID10-compatible, or Golf 7.5 / Passat B8 family with AID.
+- Cluster NOT patched with M.I.B.'s `CarPlay Maps VC` omonob payload — this
+  Addon is Android Auto in VC only. Do NOT stack both.
 
-| File | Purpose |
-|---|---|
-| `libgal_hook.so` | The fork's AA → VC hook itself (injects the second screen into the unit's own `gal`) |
-| `stream-player` | The player that decodes the phone's cluster stream and draws it through the display manager |
-| `lib/libdmdt_flush.so` | Interposer for `dmdt`, so the fork can read the Kombi map size |
-| **`profile_check`** | ARM ELF — *this is what the installer uses to fingerprint your unit's `gal` before it decides whether the profile matches*; upstream v1.1.0 does NOT ship this (only `tools/profile_check.c`) and the install silently skips the gal check without it |
-| `NavActiveIgnore.jar`, `VCAndroidAuto.jar` | Java patches, from jilleb / adi961 (MIT) |
-| `config/profiles.conf` | Per-train profile table (P4521 / K4525 / P4174 / P3662 / AU37x / SKG13 / SEG11 / VWG11 / P3301) |
-| `config/framework.json` | The IFS `framework.json` the fork's arbiter matches on |
-| `enable_hook.sh` / `disable_hook.sh` / `scripts/hook_status.sh` / `collect_logs.sh` | The fork's own install / uninstall / status / log scripts |
-| `scripts/lib_*.sh`, `scripts/lsd_jar.sh`, `scripts/full_frame.sh`, `scripts/window_fix.sh`, `scripts/turn_by_turn.sh`, `scripts/experiments/zoom_test.sh` | Helpers |
-| `GEM/*.sh`, `GEM/cluster-map.esd` | The fork's own GEM screens — *optional on M.I.B.'s setup; use M.I.B.'s own launcher instead* |
-| `LICENSE`, `docs/{README.md,Install.md}` | Fork GPL-3.0, matching the package contents |
+## What goes on the SD card (statging)
 
-## SD-card staging
-1. Format a card FAT32, copy your existing M.I.B. root to it (keep ALL of M.I.B.: `Launcher-sda0.esd`, `esd/*`, `mod/*`, `apps/`, `patches/`, `metainfo2.txt`).
-2. Copy **this mod's** `mod/cluster_map_aa_greenmenu/` to the SD card (same folder layout).
-3. Copy the 4 M.I.B. screen wrappers (`esd/scripts/cm_aa_*.sh`) into the M.I.B. SD card's `esd/scripts/`.
-4. Open the existing `Launcher-sda0.esd` and paste the screen block from `esd/Launcher-sda0.esd.append.md` at the bottom of the file.
+Format a card FAT32, copy the **full M.I.B. tree** to it
+(`Launcher-sda0.esd`, `esd/*`, `mod/*`, `apps/`, `patches/`, `metainfo2.txt`),
+then add:
 
-## Run from M.I.B.'s GEM
-Put the card into **SD slot 1**, enter M.I.B. GEM (hold MENU > Testmode), then use the new screens:
-1. `Cluster Map AA/CP — Tiguan fork`: **Status** (uses the fork's `hook_status.sh` + `profiles.conf` probe)
-2. **Install** (uses `enable_hook.sh`): needs M.I.B.'s own flashing image not to be installed at the same time.
-3. **Uninstall** (reverse).
-4. **Save fork logs to SD**.
+```
+<M.I.B.-SD-card>/
+└── mod/
+    ├── carplay_maps_vc/          ← already in M.I.B., left untouched
+    └── cluster_map_aa_greenmenu/ ← THIS Addon's payload (copy from this repo/ mod/…)
+        ├── scripts/{enable_hook.sh, disable_hook.sh, hook_status.sh, …}
+        ├── config/{profiles.conf, framework.json}
+        ├── binaries/{dmdtgo.c, dmdtgo, rundmdt}      (optional zoom helper)
+        ├── libgal_hook.so  stream-player  lib/libdmdt_flush.so  profile_check
+        ├── thirdparty/NavActiveIgnore.jar  VCAndroidAuto.jar
+        ├── lsd_jar.sh  turn_by_turn.sh  window_fix.sh
+        ├── to-uninstall/  to-check/  sha256sums
+        └── gal_dualscreen.conf
+```
 
-All four run the fork's own scripts from the unit's SD card mount at
-`/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/…`; the fork's ownership and
-profiles stay in the fork's own `profiles.conf`.
+## How to add the screens to M.I.B.'s own launcher
+
+Take `esd/Launcher-sda0.esd.append.md` from this repository, and paste the
+screen block at the end of your M.I.B. SD card's `Launcher-sda0.esd` file
+(UTF-8 without BOM, file line endings as M.I.B. ships them; the end of the
+launcher file is where M.I.B.'s own GEM blocks stop). M.I.B. reads the
+launcher straight from the SD card on every boot.
+
+## Running in the car
+
+Insert the SD card in **SD slot 1** and enter M.I.B.'s GEM (hold MENU →
+Testmode). Navigate to **Cluster AA/CP — Tiguan fork**; the Addon's 4 screens
+drive the fork's own `enable_hook.sh` / `disable_hook.sh` / `hook_status.sh` /
+`collect_logs.sh` from the fork's `mod/cluster_map_aa_greenmenu/` payload
+folder.
+
+Connect the phone to USB, run a map, and switch the cluster to map view.
+
+## Uninstalling
+
+Run the `Uninstall` screen. It reverses the fork's own install (`disable_hook.sh`)
+and restores the stock `smartphone_integrator.json` + M.I.B.'s own routes.
 
 ## Troubleshooting
-- `FAIL: MMX_FILESYSTEM_NOT_FOUND` — the script could not find `/net/mmx/ifs/lsd.jxe`; the unit must be MHI2 (MIB2 High, Harman), not MIB2 Stard (`MST2_*`) or MIB1.
-- `PROFILE_MISMATCH_*` — this unit's `gal` is *not* in `config/profiles.conf`. Use the upstream fork's `tools/find_profile.py` to add your train, or drop the fork's `collect_logs.sh` + `update_result.txt` and open an issue on the upstream `MacsInSpace/mib-cluster-map`.
-- `PROFILE_MATCH_OK` — the unit is in the fork's tested set. Continue with `Install`.
+
+* `FAIL: mod/cluster_map_aa_greenmenu was not found on SD media.` — the payload
+  folder wasn't copied to the SD card, or it's on the wrong drive.
+* `PROFILE_MISMATCH_*` — your unit's `gal`/`libautoreceiver.so` fingerprints
+  differ from the table in the fork's `config/profiles.conf`. Use the fork's
+  own `tools/find_profile.py` to add a new row, or run the fork's
+  `collect_logs.sh` and post the output on
+  [MacsInSpace/mib-cluster-map](https://github.com/MacsInSpace/mib-cluster-map).
+* `CLUSTERMAP_UPDATE_FIRMWARE_FIRST` — this train needs M.I.B.'s own extended
+  binary first; M.I.B.'s own AIO patch handles that.
+
+## Files the mod actually writes on the unit
+
+Same as the fork's own installer — M.I.B. 's own screen is what invokes it,
+not a separate launcher:
+
+- `/mnt/app/eso/lib/gal_dualscreen/libgal_hook.so` (+ `gal_dualscreen.conf`)
+- `/mnt/app/eso/lib/gal_dualscreen/libdmdt_flush.so`
+- `/mnt/app/navigation/stream-player`
+- `/mnt/system/etc/eso/production/smartphone_integrator.json` (preload entry only)
+- `/mnt/app/eso/hmi/lsd/lsd.sh` (preload of `NavActiveIgnore.jar` listings)
