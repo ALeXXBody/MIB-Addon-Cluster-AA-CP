@@ -1,57 +1,69 @@
 #!/bin/sh
-
-# install.sh — helper for an owner who has not already got the fork's SD-tree
-# piped through a metainfo2 update. Run it ONCE from a PC with the M.I.B. SD
-# card mounted, then remove. See install.md for the full documentation.
 #
-#   ./install.sh /path/to/MIB-SD-card           (Linux / macOS)
-#   ./install.sh G:\\GIT_DIR                     (NOT supported — use WSL/cygnus)
+# install.sh — stage this M.I.B. Addon on an already-made M.I.B. SD card.
+#
+# Run it on the host with the M.I.B. SD card mounted as the first argument.
+# It only writes *to the card*; nothing touches the unit.
+#
+#   ./install.sh /media/A1B2-C3D4            (Linux / macOS / WSL)
 #
 # What it does:
-#   1. Copies the fork's own per-unit binaries from $FORK_BIN (upstream
-#      build or a release-bundled tarball) into the mod folder.
-#   2. Adds the 4 GEM screens to the SD card's own Launcher-sda0.esd
-#      file if the file is there and does not already have them.
-#      (A unit with no JSONLINT-validation can still be brought up with
-#      the upstream M.I.B. Launcher at the fork's docs).
-#   3. Does not touch `/net/mmx/fs/sda0/apps/…` — M.I.B.'s own payload
-#      (CarPlay Maps VC) is untouched and stays where M.I.B. writes it.
-
+#   1. Requires the M.I.B. SD card (Launcher-sda0.esd / mod / apps / esd)
+#      to already be present — so M.I.B. is installed, not just copied.
+#   2. Copies this repo's mod/cluster_map_aa_greenmenu/ onto the
+#      card's mod/… folder (upstream mib-cluster-map v1.1.0 payload,
+#      car-tested on Tiguan AD1 / VWG13).
+#   3. Copies this repo's esd/scripts/cm_aa_*.sh into the card's
+#      esd/scripts/ so M.I.B.'s own GEM keeps its own scripts intact.
+#   4. Splices the 4 new GEM screens into the card's Launcher-sda0.esd
+#      file (idempotent: does not double-add).
+#   5. Warns (but does not block) if the Tiguan-owner needs to also apply
+#      M.I.B.'s option 7 (CarPlay & Android Auto activation) first.
+#
 set -eu
-FORK_BIN_DEFAULT=mod/cluster_map_aa_greenmenu/binaries
-[ -d "${1:-}" ] || { echo "usage: ./install.sh <MIB-SDCARD-MOUNT>" >&2; exit 2; }
+[ -d "${1:-}" ] || { echo "usage: $0 <M.I.B.-SD-card-mount-point>" >&2; exit 2; }
 SDROOT=$1
 
-# Some sanity checks.
-for f in Launcher-sda0.esd mod apps esd; do
-    [ -d "$SDROOT/$f" ] || { echo "Not an M.I.B. SD card: $f missing" >&2; exit 1; }
+# 1. sanity checks
+for d in Launcher-sda0.esd mod esd apps patches; do
+    [ -e "$SDROOT/$d" ] || { echo "Not an M.I.B. SD card: '$d' is missing." >&2; exit 1; }
 done
-# Optional: confirm the fork's binaries exist.
-if [ ! -f "${FORK_BIN_DEFAULT}/libgal_hook.so" ]; then
-    echo "NOTE: no $FORK_BIN_DEFAULT/libgal_hook.so found.  Build with:"
-    echo "      git clone https://github.com/ALeXXBody/mib-cluster-map-tiguan.git"
-    echo "      cd ...; ./build_local.sh"
-    echo "      cp dist/sdcard/… <SD>/mod/cluster_map_aa_greenmenu/binaries/"
-fi
+echo "M.I.B. SD card verified at $SDROOT."
 
-echo "Fork mod SD contents: install step 3, writing launcher GEM block."
-L=$SDROOT/Launcher-sda0.esd
-if [ ! -r "$L" ]; then
-    echo "Launcher-sda0.esd is missing on the SD card — is M.I.B. correctly installed?". >&2; exit 1;
-fi
+# 2. copy the mod payload
+echo "Copying mod/cluster_map_aa_greenmenu/ ..."
+mkdir -p "$SDROOT/mod/cluster_map_aa_greenmenu"
+cp -r -- mod/cluster_map_aa_greenmenu/. "$SDROOT/mod/cluster_map_aa_greenmenu/"
+
+# 3. copy the GEM wrappers
+for s in cm_aa_status.sh cm_aa_install.sh cm_aa_uninstall.sh cm_aa_collect.sh; do
+    if [ -f "esd/scripts/$s" ]; then
+        echo "Copying esd/scripts/$s ..."; cp -p "esd/scripts/$s" "$SDROOT/esd/scripts/"
+    fi
+done
+
+# 4. splice the GEM screen block
+L="$SDROOT/Launcher-sda0.esd"
 if grep -q "cluster_map_aa" "$L" 2>/dev/null; then
-    echo "Launchers already carry the Cluster Map screens: nothing to do."
+    echo "Launcher already has the Cluster Map screens: not doubled."
 else
-    # Append the whole 4 screens block from esd/Launcher-sda0.esd.append.md
-    cat esd/Launcher-sda0.esd.append.md >> "$L" && echo "Launcher-sda0.esd: appended 4 Cluster Map screens."
-    sync
+    if [ -f "esd/Launcher-sda0.esd.append.md" ]; then
+        echo "Splicing the GEM screen block..."
+        cat esd/Launcher-sda0.esd.append.md >> "$L"
+        sync
+        echo "Launcher-sda0.esd updated: 4 Cluster AA/CP screens added."
+    fi
 fi
 
 echo
-echo "Next steps:"
-echo "  1. Reboot the unit into M.I.B.'s GEM."
-echo "  2. Enter the new 'Cluster Map — Tiguan fork (AA→VC)' screens."
-echo "  3. Press Install; run the fork's enable_hook.sh once from the SD fc0."
-echo "  4. Connect a phone, start a map, switch the cluster to map view."
+echo "== Next steps =="
+echo "  1. Put this SD card into SD slot 1 of the unit."
+echo "  2. Boot into M.I.B. GEM (hold MENU > Testmode); the mod screens are there."
+echo "  3. Use 'Status' first to see the hook state."
+echo "  4. Use 'Install' to install the fork's AA→VC."
+echo "     M.I.B. option 7 (CarPlay/AA coding) must already have been applied"
+echo "     (most units already have it after a full M.I.B. install)."
+echo "  5. Connect a phone and switch the cluster to map view."
 echo
+echo "Done."
 exit 0
