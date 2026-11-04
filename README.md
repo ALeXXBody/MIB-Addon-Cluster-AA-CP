@@ -56,7 +56,7 @@ This is the *fork's own per-unit payload*, packaged as an M.I.B. "mod" so it can
 | `config/framework.json` | the `dmdt` probe target layout the arbiter reads | ✅ (stock unit copy) |
 | `thirdparty/NavActiveIgnore.jar`, `thirdparty/VCAndroidAuto.jar` | the forge's Java patches | ✅ (MIT per upstream) |
 | `greenmenu/*.sh`, `greenmenu/cluster-map.esd` | the fork's own GEM screens (optional alternative to M.I.B.'s; not installed here) | ✅ |
-| **`binaries/libgal_hook.so`** | **REQUIRED** — the AA hook; already included in this mod tree (upstream v1.1.0, car-tested on the VWG13 Tiguan family). | ✅ included (upstream v1.1.0, pre-built for VWG13/VWG11/SKG13/SEG11/AUG22/AU37x/US-VWG13) |
+| **`binaries/libgal_hook.so`** | **REQUIRED** — the gal fingerprint detector (`profile_check`) — already added, the caller uses it through `lib_unit.sh`; already included in this mod tree (upstream v1.1.0, car-tested on the VWG13 Tiguan family). | ✅ included (upstream v1.1.0, pre-built for VWG13/VWG11/SKG13/SEG11/AUG22/AU37x/US-VWG13) |
 | **`binaries/stream-player`** | **REQUIRED** — the AA→cluster player; already included in this mod tree (upstream v1.1.0). | ✅ included (upstream v1.1.0, pre-built for VWG13/VWG11/SKG13/SEG11/AUG22/AU37x/US-VWG13) |
 | `binaries/libdmdt_flush.so` | optional probe helper | ❌ |
 | `binaries/dmdtgo.c`, `binaries/rundmdt` | AA map zoom helper (source + QNX wrapper) | ✅ source |
