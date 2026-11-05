@@ -50,6 +50,18 @@ script
     label   "Verify installed files (fork)"
 
 script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/zoom.sh off"
+    label   "Zoom 1.0 (off; standard map view)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/zoom.sh 1.15"
+    label   "Zoom 1.15 (crop-and-enlarge; live)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/zoom.sh 1.35"
+    label   "Zoom 1.35 (crop-and-enlarge; live)"
+
+script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/uninstall.sh"
     label   "Uninstall and restore original state"
 

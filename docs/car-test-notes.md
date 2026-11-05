@@ -83,8 +83,11 @@ arrive with the next release for every Tiguan owner.
   cluster when the car's own map switches back in. Useful for the
   CarPlay switch-back upstream still tracks (#19/#43) and for any stock-HMI
   race during route recalculations.
-- **Zoom** — `GAL_PLAYER_ZOOM_E4=13500` (1.35×) in the settings, or live via
-  `/tmp/stream-player.zoom` (one float on a line, e.g. `1.35`). Handy when
+- **Zoom** — now shipped live in the ClusterMap screen (Zoom 1.0 / 1.15 / 1.35):
+  `GAL_PLAYER_ZOOM_E4` in the settings plus `/tmp/stream-player.zoom` (one
+  float, e.g. `1.35`) applied without a session restart. Requires the
+  fork-built `stream-player` (zoomed in this card's payload); against the
+  upstream release player the switch refuses with a clear message. Handy when
   the map's labels feel small on the 10.25″ AID10's 800×480 window.
 - **`Verify installed files`** — if the map won't start, this tells you
   first whether the installed files still match the installer's manifest

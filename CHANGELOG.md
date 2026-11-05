@@ -7,6 +7,23 @@
 - Ships fork's sh-helpers + per-train profiles.conf + Nav / turn-arrows jars from upstream for review; per-unit binaries are built separately.
 - Full fontious README, install.md, car-test-notes.md and FORK.md (linked from upstream).
 
+### Fork player build shipped (v0.4.0)
+- `stream-player` in the payload is now **fork-built from
+  mib-cluster-map-generic** (`v1.1.1-beta18-16-g4b43ddf`, built with the
+  luka-dev QNX 6.5 ARMv7 toolchain GCC 8.5, ffmpeg 6.1.5 mini). It carries the
+  two fork features the upstream v1.1.0 release player does not have:
+  **Zoom** (GAL_PLAYER_ZOOM_E4 + /tmp/stream-player.zoom) and the **Keep map**
+  cockpit arbiter (GAL_KEEP_MAP).
+- ClusterMap screen gained **Zoom 1.0 / 1.15 / 1.35** items (live effect, no
+  reboot needed) and a **Reboot the unit** item (M.I.B.'s own reboot script).
+- The zoom and keep-map switches now work against this player; they keep
+  refusing with a clear message when an upstream-release player is installed.
+- Source provenance: the hook, `profile_check` and `libdmdt_flush.so` remain
+  the upstream v1.1.0 release bits (unchanged SHAs for the hook);
+  `stream-player` was produced locally and its SHA recorded in
+  `CHANGELOG-fork.md`.
+- Payload SHA256SUMS regenerated (38 files, sorted).
+
 ### Verified on the car (v0.3.1)
 - Full chain confirmed working on the Tiguan AD1 test car: copy-paste
   install, one click in M.I.B.'s GEM, ClusterMap screen, Android Auto
