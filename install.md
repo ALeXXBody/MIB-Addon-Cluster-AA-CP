@@ -50,6 +50,12 @@ Then: phone on USB → Google Maps or Waze → cluster switched to map view.
 
 GEM → **ClusterMap → 8. Uninstall**: it restores the stock hook config and removes the menu screen. The card's `mod/` folder can then simply be deleted from the card at home.
 
+## If the console says “NOT INSTALLED: the SD card is READ-ONLY to the unit”
+
+1. SD adapter **LOCK slider** → unlock, re-insert, run the screen again.
+2. Card must be **FAT32** (exFAT/NTFS mounts read-only on the unit).
+3. Otherwise run **`chkdsk /f`** on the card from a PC — the dirty-volume bit makes the unit mount it read-only.
+
 ## Trains & profiles
 
 The install is gated by the upstream profile table (`profiles.conf` + `profile_check`): a unit that does not match refuses with a clear `NOT SUPPORTED` message (and collects a porting bundle instead). Do not try to bypass it.

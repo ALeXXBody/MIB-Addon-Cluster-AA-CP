@@ -81,13 +81,23 @@ echo ""
 
 # 3. Run the mod's own installer (status checks, gal profile check, hook +
 #    player install — the same script the new screen's 'Install' entry runs).
-sh "$SD/mod/cluster_map_aa_greenmenu/greenmenu/install.sh"
+#    Output is captured so the tail message can reflect the real result.
+OUT=/tmp/cm_custom.log
+sh "$SD/mod/cluster_map_aa_greenmenu/greenmenu/install.sh" > $OUT 2>&1
 RESULT=$?
+cat $OUT
 
 echo ""
-echo "Reboot the unit (hold the power button for 10 seconds), then open the"
-echo "Green Engineering Menu again: the new 'ClusterMap' screen is at the top"
-echo "level of the menu."
+if grep -q -e "CLUSTERMAP_INSTALL_OK" -e "CLUSTERMAP_TURN_BY_TURN_OK" $OUT; then
+	echo "Install finished. Reboot the unit (hold the power button for 10"
+	echo "seconds), then open the Green Engineering Menu again: the new"
+	echo "'ClusterMap' screen is at the top level of the menu."
+else
+	echo "Install did NOT finish (see the messages above — most often"
+	echo "'NOT INSTALLED: the SD card is READ-ONLY to the unit': unlock the"
+	echo "card's LOCK slider / reformat FAT32 / run chkdsk /f on the card)."
+	echo "Fix it, push the card back in, and run this screen again."
+fi
 echo ""
 
 trap 2

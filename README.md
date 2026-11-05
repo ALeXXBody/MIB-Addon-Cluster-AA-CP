@@ -47,6 +47,16 @@ M.I.B. SD card root/
 - `mod/custom.sh` is M.I.B.'s documented user hook. If you also use another mod that ships `mod/custom.sh`, append its commands at the “ADDON CODE” marker of this file instead of overwriting it.
 - Engine support follows the upstream profile table (`MHI2_ER_*` / `MHI2_US_*`); the complete chain is car-verified on a **Tiguan AD1, `MHI2_ER_VWG13_P4521`, AID10** — see `docs/car-test-notes.md`.
 
+## Troubleshooting — “Read-only file system” / `CLUSTERMAP_INSTALL_FAILED`
+
+The installer keeps `backups/` and `logs/` on the SD card, so the card must be writable to the unit. The three usual causes, in order:
+
+1. **The LOCK slider on the SD adapter is on.** MicroSD→SD adapters are shipped with it slid down (locked). Move it to the up/unlocked position, re-insert, run the screen again.
+2. **The card is not FAT32.** exFAT/NTFS cards normally mount read-only on the unit. Reformat FAT32 and re-copy M.I.B. + this repo's `mod/`.
+3. **The card has the volume-dirty flag set** (typically after it was pulled while the unit was writing). The unit then mounts it read-only until the flag is cleared: run `chkdsk /f X:` (Windows) on the card from a PC, re-insert, run again.
+
+The Green Engineering Menu console now says explicitly when the card is read-only, with these same three steps.
+
 ## Licence
 
 Same upstream licence: GPL-3.0. See `LICENSE` and the per-file licence notes (`thirdparty/*.LICENSE`).

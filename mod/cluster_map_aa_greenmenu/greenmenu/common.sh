@@ -21,6 +21,22 @@ if [ -z "$PKG" ]; then
     exit 0
 fi
 mount -uw "$VOLUME" 2>/dev/null
+# The remount above is silent by design upstream; on a card the unit keeps
+# read-only (write-protect slider on, volume-dirty FAT bit, exFAT/NTFS) the
+# failure only surfaced far later as a bare "mkdir: Read-only file system".
+# Probe it here instead, and say what to do about it (non-fatal: Status and
+# other read-only entries still work fine).
+if ! mkdir "$VOLUME/.clustermap_rw_probe" 2>/dev/null; then
+    echo ""
+    echo "PROBLEM: the SD card is READ-ONLY to the unit ($VOLUME)."
+    echo "  1. The LOCK slider on the SD adapter must be in the unlocked"
+    echo "     (up) position."
+    echo "  2. The card must be formatted FAT32, not exFAT/NTFS."
+    echo "  3. If both are fine, run chkdsk /f on the card in a PC: a dirty"
+    echo "     volume flag makes the unit mount the card read-only."
+    echo ""
+fi
+rmdir "$VOLUME/.clustermap_rw_probe" 2>/dev/null
 # A failed "." ends the shell, and with it the whole install, so check first.
 if [ ! -r "$PKG/scripts/lib_unit.sh" ] || [ ! -r "$PKG/profiles.conf" ]; then
     echo "This ClusterMap folder is incomplete: unpack the release zip again."
