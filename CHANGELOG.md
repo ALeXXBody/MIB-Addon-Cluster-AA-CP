@@ -7,6 +7,17 @@
 - Ships fork's sh-helpers + per-train profiles.conf + Nav / turn-arrows jars from upstream for review; per-unit binaries are built separately.
 - Full fontious README, install.md, car-test-notes.md and FORK.md (linked from upstream).
 
+### Ecosystem research note (v0.4.2)
+- docs/related-projects.md: nine sibling/cloned repositories analysed
+  (MHI2-altScreen, MHI2Q-CarPlay-AltScreen, mib2-carplay-rgi*, harman-f,
+  chefranov, aberbic, 1mikew/mst2, edzenis). Header finding of the sweep:
+  the upstream "wheel zoom not possible" conclusion is refuted on this
+  Harman MHI2 family — two projects prove DSI-tracer-based wheel reading
+  car-side, and the same tracer infrastructure is present in the VW image
+  this Addon targets (verified in /eso/hmi/lsd/traceConfig.properties and
+  the DSI jars). Proposed as opt-in CLUSTERMAP_WHEEL_ZOOM (not yet
+  implemented — needs a car round on the current fork-player build).
+
 ### Release pipeline + build docs (v0.4.1)
 - `tools/build_release.sh` + `.github/workflows/release.yml`: pushing a `v*`
   tag now builds `MIB-Addon-Cluster-AA-CP-mod-<tag>.zip` (card payload +

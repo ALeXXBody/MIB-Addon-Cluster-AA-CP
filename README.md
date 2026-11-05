@@ -75,6 +75,14 @@ The installer keeps `backups/` and `logs/` on the SD card, so the card must be w
 
 The Green Engineering Menu console now says explicitly when the card is read-only, with these same three steps.
 
+## Related projects
+
+The broader research around this engine is surveyed in
+[`docs/related-projects.md`](docs/related-projects.md) — including the
+car-proven finding that steering-wheel zoom IS possible on this Harman MHI2
+family via the HMI's DSI tracer (proposed here as an opt-in
+`CLUSTERMAP_WHEEL_ZOOM`).
+
 ## Licence
 
 Same upstream licence: GPL-3.0. See `LICENSE` and the per-file licence notes (`thirdparty/*.LICENSE`).
