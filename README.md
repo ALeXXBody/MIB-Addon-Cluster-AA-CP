@@ -75,6 +75,13 @@ The installer keeps `backups/` and `logs/` on the SD card, so the card must be w
 
 The Green Engineering Menu console now says explicitly when the card is read-only, with these same three steps.
 
+## Android Auto capabilities research
+
+What the AA protocol can and cannot do for the cluster — with the official
+knobs our engine rides on — is documented in
+[`docs/android-auto-research.md`](docs/android-auto-research.md), including
+the ranked next-feature list.
+
 ## Related projects
 
 The broader research around this engine is surveyed in

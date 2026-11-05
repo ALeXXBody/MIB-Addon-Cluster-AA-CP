@@ -145,6 +145,37 @@
   three-entry GEM trim, MHI2Q/HUD RGI route guidance (separate project family), Album
   art/touchpad (Audi-specific buses).
 
+### Android Auto research (2026-11-05) — see docs/android-auto-research.md
+
+The AA protocol's real knob list — verified against the official DHU guide
+(Google's own emulator) and the aasdk .proto mirror — confirms and hardens
+our design:
+- our Sharper-map/full-frame IS the official `pixelaspectratio` +
+  per-edge-margins behaviour (not a hack);
+- a video-capable cluster display is officially emulated (`[display:cluster]`
+  in DHU configs) — the shape our two-display rewritten discovery response
+  matches;
+- there is a second, officially-defined NON-interactive cluster surface
+  (nav/call status tiles) — status only, no video, no Maps card;
+- official video config also carries `contentinsets`/`stablecontentinsets`
+  fields our hook does NOT yet emit — this is candidate #1 for moving the
+  green nav card out of the route rather than hiding it;
+- the AA ButtonCode enum has NO zoom code (vs CarPlay's
+  `changeMapZoomLevel`), so phone-side zoom stays impossible — the kept path
+  is player-crop (+ tracer-driven steps, §7).
+
+New ranked implementable list (see research doc §6):
+1. contentinsets/stablecontentinsets in the cluster video config — card
+   relocation experiment (needs one reverse of a video-config field offset
+   with tools/armre.py; one car round),
+2. road-name + ETA text in the AID lower bar via the already-parsed nav
+   messages (uses the fork's nav-translate output + dmdt writer),
+3. dial-layout-aware margins via the DSI tracer (bundle with proposed
+   CLUSTERMAP_WHEEL_ZOOM),
+4. document `GAL_CLUSTER_KEYCODES` (fork supports the knob; docs don't yet),
+5. focus/day-night GEM switches,
+6. soft DHU sandbox for unit-like video config on laptop between car rounds.
+
 ## 8. Waitlist — what the OWNER still owes the project
 
 1. Car-verify the v0.4.0 fork player: Zoom 1.15/1.35 mid-drive, Keep-map ON
