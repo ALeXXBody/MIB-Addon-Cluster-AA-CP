@@ -17,6 +17,24 @@ Your train is one of the **tested trains** — the installer picks the existing
 `MHI2_ER_VWG13_P4521` profile because the `gal` binary build matches, and the
 `train` row lists `map navignore arrows` for it. You do not need a port.
 
+## Verified working end-to-end
+
+The complete chain was exercised on this unit and works:
+
+    SD1 card -> M.I.B. -> Advanced Settings -> "Run /mod/custom.sh"
+    -> ClusterMap screen on the unit -> Install
+    -> libgal_hook.so preload + stream-player
+    -> Android Auto phone map on the cluster (Google Maps / Waze).
+
+One integration obstacle was found and fixed during the verification:
+on this unit, the GEM console runs on a core without a local card
+reader (the card is a QNET mount of the mmx node's device:
+"/net/mmx.mibhigh.net/dev/sda0t12 on /fs/sda0"), so the installer's
+card remount must be issued on that node/device. The green-menu code
+now runs a remount ladder (local path, QNET device, on -f <full node
+name>, /bin/mount on mmx) with a real write-probe, and only then
+installs.
+
 ## What to measure on your car (Your first install)
 
 Only two things are Tiguan-specific and unset upstream today, because no

@@ -7,6 +7,18 @@
 - Ships fork's sh-helpers + per-train profiles.conf + Nav / turn-arrows jars from upstream for review; per-unit binaries are built separately.
 - Full fontious README, install.md, car-test-notes.md and FORK.md (linked from upstream).
 
+### Verified on the car (v0.3.1)
+- Full chain confirmed working on the Tiguan AD1 test car: copy-paste
+  install, one click in M.I.B.'s GEM, ClusterMap screen, Android Auto
+  map on the cluster with M.I.B.'s payload untouched and no manual file
+  edits anywhere.
+- The on-car debugging surfaced the real cause of the early
+  "Read-only file system" failures: this unit's GEM console runs on the
+  core that has no local card reader (the card is a QNET mount of the
+  mmx node's device), so the remount ladder now contains
+  `on -f <full node name> mount -uw /fs/sda0` and friends. Recorded in
+  `docs/car-test-notes.md`.
+
 ### Reworked — install with zero file edits (v0.3.0)
 - New install model based on M.I.B.'s own documented mod hook: the repo ships a
   `mod/custom.sh`, which M.I.B.'s GEM runs from **M.I.B. -> Advanced Settings ->
