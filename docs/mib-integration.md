@@ -24,7 +24,7 @@ Same list the fork's enable_hook.sh touches (see upstream docs):
 - `/mnt/app/eso/lib/gal_dualscreen/gal_dualscreen.conf`
 - `/mnt/app/navigation/stream-player`
 - `/mnt/system/etc/eso/production/smartphone_integrator.json` (preload entry only)
-- `/mnt/app/eso/hmi/engdefs/` (green-menu screen if the owner wants the fork's GEM UI)
+- `/net/mmx/mnt/app/eso/hmi/engdefs/cluster-map.esd` — the ClusterMap GEM screen, installed by `mod/custom.sh` (M.I.B.'s built-in "Run /mod/custom.sh" hook); removed again by the screen's own Uninstall
 - `/mnt/app/eso/hmi/lsd/lsd.sh` (`NavActiveIgnore.jar` + turn-arrows jar lines)
 - `/mnt/system/etc/pf*.conf` (CarPlay port open — fork-independent)
 
