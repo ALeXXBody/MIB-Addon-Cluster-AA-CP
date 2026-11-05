@@ -7,6 +7,33 @@
 - Ships fork's sh-helpers + per-train profiles.conf + Nav / turn-arrows jars from upstream for review; per-unit binaries are built separately.
 - Full fontious README, install.md, car-test-notes.md and FORK.md (linked from upstream).
 
+### Turn-card clear + turn-info strip (v0.4.3)
+Two new GEM switches, both from docs/android-auto-research.md's findings:
+
+- **"Turn-card clear"** (top strip / sides / middle band / OFF): presets that
+  write the *official* `UiConfig.content_insets` block into the cluster's
+  video configuration via `GAL_SECONDARY_UI_CONFIG_HEX`. Confirmed this fork's
+  hook already writes the exact payload structure (field 11 = 0x5a tag, one
+  insets field) from `build_insets_payload()` in `src/video_sink_hook.c`
+  (the mossyhub-safe wire: field 1 margins, field 2 content insets, field 3
+  stable, field 4 theme). No engine change; takes effect on the next
+  phone connection or unit reboot. OFF restores the standard layout.
+- **"Turn info strip"** (ON / OFF): the fork player gained a text strip at
+  the bottom of the cluster map, showing what the hook decoded from the AA
+  navigation channel (road name | ETA | distance) — the standard AA
+  "non-video instrument cluster" content Google's own DHU emulates, drawn
+  in the fork player because the unit's dmdt has no text surface.
+  Implementation: hook writes `/tmp/gal_nav_info` (bounded ASCII line, 
+  atomic) when `GAL_NAV_INFO_FILE=1`; player `turnstrip.h` adds a 5×7-font
+  strip into the rendered Y plane (luma-only, no GL state) reading
+  `/tmp/gal_nav_info` + the live switch file `/tmp/stream-player.navstrip`
+  ("1"/"0"; polled every second). Both switches live: ON/OFF without
+  restarting or re-installing. Defaults are 1 (strip on), so an install
+  shows the feature; turning it off is one GEM click.
+- Rebuilt libgal_hook.so + stream-player (`features-card-20261105`
+  hook, same toolchain as v0.4.0). Payload SHA256SUMS regenerated
+  (40 files). README/LEDGER updated below.
+
 ### Ecosystem research note (v0.4.2)
 - docs/related-projects.md: nine sibling/cloned repositories analysed
   (MHI2-altScreen, MHI2Q-CarPlay-AltScreen, mib2-carplay-rgi*, harman-f,

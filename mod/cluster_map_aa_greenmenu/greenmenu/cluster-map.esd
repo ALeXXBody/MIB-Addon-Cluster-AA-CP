@@ -62,6 +62,30 @@ script
     label   "Zoom 1.35 (crop-and-enlarge; live)"
 
 script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/card_clear.sh top"
+    label   "Turn-card clear: TOP strip (next connect)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/card_clear.sh sides"
+    label   "Turn-card clear: SIDES free (next connect)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/card_clear.sh band"
+    label   "Turn-card clear: middle BAND (next connect)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/card_clear.sh off"
+    label   "Turn-card clear: OFF (standard layout)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/navstrip.sh on"
+    label   "Turn info strip: ON (road | ETA | distance)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/navstrip.sh off"
+    label   "Turn info strip: OFF"
+
+script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/uninstall.sh"
     label   "Uninstall and restore original state"
 
