@@ -83,7 +83,7 @@ Same as M.I.B. and the fork: GPL-3.0. See `LICENSE`.
 ## Sources / credits
 
 - Base toolbox: [Mr-MIBonk / M.I.B. — More Incredible Bash](https://github.com/Mr-MIBonk/M.I.B._More-Incredible-Bash)
-- Fork engine: [chopinwong01 / mhi2-android-auto-video-vc](https://github.com/chopinwong01/mhi2-android-auto-video-vc); packaged by [MacsInSpace / mib-cluster-map](https://github.com/MacsInSpace/mib-cluster-map); with fork fixes and the AA mod packaging by [ALeXXBody](https://github.com/ALeXXBody/mib-cluster-map-tiguan)
+- Fork engine: [chopinwong01 / mhi2-android-auto-video-vc](https://github.com/chopinwong01/mhi2-android-auto-video-vc); packaged by [MacsInSpace / mib-cluster-map](https://github.com/MacsInSpace/mib-cluster-map); with fork fixes and the AA mod packaging by [ALeXXBody / mib-cluster-map-generic](https://github.com/ALeXXBody/mib-cluster-map-generic)
 - Cluster render path: [andrewleech / VcMOSTRenderMqb](https://github.com/andrewleech/VcMOSTRenderMqb) + MIB SDK
 - CarPlay: [harman-f / mhi2_altscreen_carplay](https://github.com/harman-f/mhi2_altscreen_carplay), [aberbic / Audi-MHI2-…-Altscreen](https://github.com/aberbic/Audi-MHI2-Virtual-Cockpit-Altscreen-CarPlay-AndroidAuto)
 - Turn arrows: [adi961 / mib2-android-auto-vc](https://github.com/adi961/mib2-android-auto-vc); message parsing from [kkrvch / mib-std2-kombibridge](https://github.com/kkrvch/mib-std2-kombibridge)
