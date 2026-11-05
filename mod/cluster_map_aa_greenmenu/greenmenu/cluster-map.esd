@@ -68,3 +68,7 @@ script
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/collect_for_porting_full.sh"
     label   "Collect for porting, with Java image (55 MB, slow)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/esd/scripts/reboot.sh"
+    label   "Reboot the unit (M.I.B.'s own reboot, 10 s countdown)"

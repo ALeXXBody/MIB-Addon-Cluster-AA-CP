@@ -23,6 +23,17 @@ if [ ! -r "$CONF" ]; then
     echo "The cluster map is not installed: install it first."
     exit 1
 fi
+# The arbiter is a fork-source feature: it needs a player that knows
+# GAL_KEEP_MAP. The upstream v1.1.0 Tiguan release binaries do not have it, so
+# with those the switch must refuse instead of writing a line the player will
+# ignore. (A fork-built payload passes this check silently.)
+PLAYER="$APP_MOUNT/navigation/stream-player"
+if [ ! -r "$PLAYER" ] || ! grep -q "GAL_KEEP_MAP" "$PLAYER" 2>/dev/null; then
+    echo "This switch does nothing on this unit: the installed stream-player has"
+    echo "no cockpit source arbiter (upstream release player). The installed map"
+    echo "behaves as upstream designed; nothing changed."
+    exit 3
+fi
 # POSIX-safe rewrite through a new file and rename, like lib_cluster_frame.sh.
 mount -uw "$APP_MOUNT" 2>/dev/null || { echo "Cannot remount $APP_MOUNT read-write. Nothing changed."; exit 1; }
 APP_WRITABLE=1

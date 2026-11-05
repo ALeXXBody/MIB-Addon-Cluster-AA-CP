@@ -1,0 +1,62 @@
+#!/bin/sh
+# CI + local check: the green-menu screen file(s) must parse. Checks:
+#   1. every `screen <name> <parent>` line has exactly two name fields
+#   2. a screen's parent is either a known top-level parent (=>M.I.B.<=,
+#      main, Main) or declared in this same file
+#   3. every `script` value with a payload path /net/mmx/fs/sda0/mod/<the
+#      mod folder>/... actually exists in this repository
+#
+#   tools/check_gem_esd.sh [file ...]        (from the repository root)
+set -eu
+cd "$(dirname "$0")/.."
+
+if [ $# -gt 0 ]; then
+    FILES="$*"
+else
+    FILES=$(find mod docs -name '*.esd' 2>/dev/null || true)
+fi
+if [ -z "${FILES-}" ]; then
+    echo "check_gem_esd: no .esd files found (skipping)"
+    exit 0
+fi
+
+fail=0
+for f in $FILES; do
+    if ! grep -q '^screen' "$f"; then
+        echo "check_gem_esd: $f declares no screens (skipping)"
+        continue
+    fi
+    # 1. screen lines: 'screen <name> <parent>'
+    if [ "$(grep '^screen' "$f" | awk 'NF!=3' | wc -l)" != 0 ]; then
+        echo "check_gem_esd: $f: screen lines must be 'screen <name> <parent>'"
+        grep '^screen' "$f" | awk 'NF!=3' | sed 's/^/  /'
+        fail=1
+    fi
+    # 2. parents
+    for p in $(grep '^screen' "$f" | awk '{print $3}' | sort -u); do
+        case "$p" in
+            "= >M.I.B.<=") ;;
+            "=>M.I.B.<="|main|Main) continue ;;
+        esac
+        if ! grep -q "^screen $p" "$f"; then
+            echo "check_gem_esd: $f: parent '$p' is not declared in this file"
+            fail=1
+        fi
+    done
+    # 3. script payload paths that exist in this repo (a value may carry an
+    #    argument inside the quotes: "…/keep_map.sh on" — strip it)
+    for v in $(grep -o '"/net/mmx/fs/sda0/mod/[^"]*"' "$f" | tr -d '"' | sed 's/ .*//' | sort -u); do
+        rel=${v#/net/mmx/fs/sda0/}
+        if [ ! -f "$rel" ]; then
+            echo "check_gem_esd: $f references missing file: $v"
+            fail=1
+        fi
+    done
+done
+
+if [ "$fail" = 0 ]; then
+    echo "check_gem_esd: OK"
+else
+    echo "check_gem_esd: FAILED"
+fi
+exit $fail

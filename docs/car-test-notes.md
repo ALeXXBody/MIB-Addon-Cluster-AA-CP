@@ -35,6 +35,22 @@ now runs a remount ladder (local path, QNET device, on -f <full node
 name>, /bin/mount on mmx) with a real write-probe, and only then
 installs.
 
+## Measured on the unit (owner to fill from the Status screen)
+
+Fill this card from the ClusterMap -> Status output on the actual car
+(paste the whole screen and keep the raw lines too). These become the
+MHI2_ER_VWG13 reference values:
+
+| Value | Value on this unit |
+|---|---|
+| Cluster map window (`GAL_PLAYER_WINDOW`, from the install live read) | WxH ______ |
+| `GAL_SECONDARY_DPI` the installer picked | ______ |
+| `GAL_SECONDARY_INSETS` applied | ______ |
+| `GAL_VC_CONTEXT` | ______ |
+| Profile row used | `MHI2_ER_VWG13_P4521` (gal fingerprint match) |
+| Sharper map applicable for this window | (window wider than 5:3? yes/no) |
+| Turns/zoom behaviour noted | — |
+
 ## What to measure on your car (Your first install)
 
 Only two things are Tiguan-specific and unset upstream today, because no

@@ -1,0 +1,26 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: sh -n every shell script
+        run: |
+          fail=0
+          find . -name '*.sh' -print0 | while IFS= read -r -d '' f; do
+            if ! sh -n "$f"; then
+              echo "SYNTAX FAIL: $f"
+              fail=1
+            fi
+          done
+          exit $(( fail ))
+
+      - name: payload manifest matches shipped files
+        run: tools/check_manifest.sh
+
+      - name: green-menu screen files parse
+        run: tools/check_gem_esd.sh

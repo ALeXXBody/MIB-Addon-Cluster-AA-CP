@@ -39,6 +39,20 @@ M.I.B. SD card root/
         └── thirdparty/{NavActiveIgnore.jar, VCAndroidAuto.jar} + SHA256SUMS
 ```
 
+## What it looks like
+
+> Drop your own driving screenshots into `docs/photos/` (names used below), then
+> this section shows them on GitHub; see `docs/photos/README.md` for the list.
+
+| Full-map view | Classic dials view |
+|---|---|
+| `![map](docs/photos/cluster-map-full-frame.jpg)` | `![dials](docs/photos/cluster-map-classic-view.jpg)` |
+
+Google Maps draws its navigation card *inside* the phone's video, so the green
+turn card you see in the map is Google-side (not the unit's): it cannot be
+moved or shrunk from the unit. See the card chapter below for what actually
+changes it.
+
 ## Notes & conflicts
 
 - **MHI2Q (Qualcomm) and MIB2 Standard are not supported** — the profile table (`profiles.conf`) gates any install and refuses trains it does not know, so a wrong unit cannot be bricked by this mod.
