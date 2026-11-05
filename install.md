@@ -56,6 +56,15 @@ GEM → **ClusterMap → 8. Uninstall**: it restores the stock hook config and r
 2. Card must be **FAT32** (exFAT/NTFS mounts read-only on the unit).
 3. Otherwise run **`chkdsk /f`** on the card from a PC — the dirty-volume bit makes the unit mount it read-only.
 
+## Where the in-car switches live (and when they reset)
+
+The switches (Sharper map, Keep map, Zoom) change the **installed settings on the unit**, not the card:
+
+- they survive reboots and are read by every new phone session;
+- the **Zoom 1.x** items additionally write the live file (`/tmp/stream-player.zoom`), so a running map picks the change up within seconds, no reboot;
+- **a fresh Install from the card resets them**: a re-install from the card applies the card's own shipped settings file, which does not carry your in-car toggles. After any card re-install, simply re-click the switch you want (one click each) — or, if you keep a personal line set, save it on the card copy of `gal_dualscreen.conf` and it will win every time;
+- `Uninstall` returns everything to the stock behaviour and forgets them.
+
 ## Trains & profiles
 
 The install is gated by the upstream profile table (`profiles.conf` + `profile_check`): a unit that does not match refuses with a clear `NOT SUPPORTED` message (and collects a porting bundle instead). Do not try to bypass it.

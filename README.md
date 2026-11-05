@@ -61,6 +61,10 @@ changes it.
 - `mod/custom.sh` is M.I.B.'s documented user hook. If you also use another mod that ships `mod/custom.sh`, append its commands at the “ADDON CODE” marker of this file instead of overwriting it.
 - Engine support follows the upstream profile table (`MHI2_ER_*` / `MHI2_US_*`); the complete chain is car-verified on a **Tiguan AD1, `MHI2_ER_VWG13_P4521`, AID10** — see `docs/car-test-notes.md`.
 
+## Switches and persistence
+
+Sharper map, Keep map and Zoom change the **unit's installed settings**, not your card. They survive reboots (Zoom's live file applies within seconds of clicking). A fresh **Install from the card resets them** — after a re-install re-click your preferred value; see `install.md` for the details.
+
 ## Troubleshooting — “Read-only file system” / `CLUSTERMAP_INSTALL_FAILED`
 
 The installer keeps `backups/` and `logs/` on the SD card, so the card must be writable to the unit. The three usual causes, in order:

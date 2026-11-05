@@ -48,7 +48,7 @@ MHI2_ER_VWG13 reference values:
 | `GAL_SECONDARY_INSETS` applied | ______ |
 | `GAL_VC_CONTEXT` | ______ |
 | Profile row used | `MHI2_ER_VWG13_P4521` (gal fingerprint match) |
-| Sharper map applicable for this window | (window wider than 5:3? yes/no) |
+| Sharper map applicable for this window | (window wider than 5:3? yes/no; note Zoom 1.15/1.35 results) |
 | Turns/zoom behaviour noted | — |
 
 ## What to measure on your car (Your first install)

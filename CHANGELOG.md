@@ -7,6 +7,20 @@
 - Ships fork's sh-helpers + per-train profiles.conf + Nav / turn-arrows jars from upstream for review; per-unit binaries are built separately.
 - Full fontious README, install.md, car-test-notes.md and FORK.md (linked from upstream).
 
+### Release pipeline + build docs (v0.4.1)
+- `tools/build_release.sh` + `.github/workflows/release.yml`: pushing a `v*`
+  tag now builds `MIB-Addon-Cluster-AA-CP-mod-<tag>.zip` (card payload +
+  README/install/docs, screenshots excluded) with a `.sha256` sidecar and
+  publishes it to a GitHub release; verified locally at 862 KB for the
+  current payload.
+- The fork tree documents the container-less (native) toolchain build that
+  produced the real player: `BUILD_LOCALLY.md` (unpack, the /opt/qnx650
+  baked-prefix symlink, the broken g++ symlink fix, smoke test, and the
+  exact native player build commands); pointer added to `build_local.sh`.
+- Documented switch persistence: unit-side switches survive reboots, a card
+  re-install resets them (one click each to restore), Uninstall forgets
+  them; Zoom's live file applies mid-session. install.md + README.
+
 ### Fork player build shipped (v0.4.0)
 - `stream-player` in the payload is now **fork-built from
   mib-cluster-map-generic** (`v1.1.1-beta18-16-g4b43ddf`, built with the
