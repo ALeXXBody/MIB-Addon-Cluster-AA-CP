@@ -20,23 +20,23 @@ if [ -z "$PKG" ]; then
     echo "ClusterMap folder not found on the SD card or USB stick."
     exit 0
 fi
-mount -uw "$VOLUME" 2>/dev/null
-# The GEM can run these scripts on either QNX core of the unit; mount(2)
-# cannot always be forwarded through QNET. Try the remount in every form
-# the two M.I.B. code bases use until the card is actually writable:
-#   mount -uw /net/mmx/fs/sda0                  (M.I.B. sshd mod) 
-#   mount -uw /fs/sda0                          (same node, local path)
-#   on -f mmx mount -uw /fs/sda0                (M.I.B. omonob pattern)
-CARD_LOCAL=`case "$VOLUME" in /net/mmx/*) echo "${VOLUME#/net/mmx}" ;; *) echo "$VOLUME" ;; esac`
-if [ -e /proc/boot/on ] || [ -x /bin/on ]; then
-    on -f mmx mount -uw "$CARD_LOCAL" 2>/dev/null
+# The GEM console can run on a core whose view of the SD card is a QNET
+# mount of another core's device (MIB2.5 High shows this card as
+# /net/<node>/dev/sda0t12 on /fs/sda0). A remount may then have to reach
+# the device/node in a specific form; try each one and SHOW the real
+# error for every attempt, so the diagnosis is measured, not guessed.
+CARD_LINE=`mount 2>/dev/null | grep " on /fs/sda0 " | head -1`
+CARD_DEV=`echo "$CARD_LINE" | sed -n "s|^\([^ ]*\) on .*|\1|p"`
+CARD_NODE=`echo "$CARD_LINE" | sed -n "s|^/net/\([^/]*\)/dev/.* on .*|\1|p"`
+[ -n "$CARD_LINE" ] && echo "Card mounted as: $CARD_LINE"
+mount -uw /fs/sda0 2>&1 | head -1 || true
+if [ -n "$CARD_NODE" ]; then
+	mount -uw "$CARD_DEV" /fs/sda0 2>&1 | head -1 || true
+	on -f "$CARD_NODE" mount -uw /fs/sda0 2>&1 | head -1 || true
+	on -f mmx /bin/mount -uw /fs/sda0 2>&1 | head -1 || true
 fi
-mount -uw "$CARD_LOCAL" 2>/dev/null
-# The remount above is silent by design upstream; on a card the unit keeps
-# read-only (write-protect slider on, volume-dirty FAT bit, exFAT/NTFS) the
-# failure only surfaced far later as a bare "mkdir: Read-only file system".
-# Probe it here instead, and say what to do about it (non-fatal: Status and
-# other read-only entries still work fine).
+mount -uw "$VOLUME" 2>&1 | head -1 || true
+# Probe it (non-fatal: Status and other read-only entries still work fine).
 if ! mkdir "$VOLUME/.clustermap_rw_probe" 2>/dev/null; then
     echo ""
     echo "PROBLEM: the SD card is READ-ONLY to the unit ($VOLUME)."
@@ -48,7 +48,7 @@ if ! mkdir "$VOLUME/.clustermap_rw_probe" 2>/dev/null; then
     echo ""
     echo "For diagnosis, the unit's mount state:"
     echo "MOUNT_TABLE_START"
-    mount 2>/dev/null | grep -i -e sd0 -e sda0 -e sdb0 -e "$CARD_LOCAL" || echo "(no sda0/sdb0 line found)"
+    mount 2>/dev/null | grep -i -e sd0 -e sda0 -e sdb0 || echo "(no sda0/sdb0 line found)"
     echo "MOUNT_TABLE_END"
     echo ""
 fi
