@@ -83,6 +83,12 @@ car-proven finding that steering-wheel zoom IS possible on this Harman MHI2
 family via the HMI's DSI tracer (proposed here as an opt-in
 `CLUSTERMAP_WHEEL_ZOOM`).
 
+## Project ledger
+
+Everything we know for certain — engine facts, debugging signatures, engine
+decisions, waits — lives in the project [`LEDGER.md`](LEDGER.md). Read it
+before touching anything; update it when you learn something new.
+
 ## Licence
 
 Same upstream licence: GPL-3.0. See `LICENSE` and the per-file licence notes (`thirdparty/*.LICENSE`).
