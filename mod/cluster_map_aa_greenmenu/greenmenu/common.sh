@@ -21,6 +21,17 @@ if [ -z "$PKG" ]; then
     exit 0
 fi
 mount -uw "$VOLUME" 2>/dev/null
+# The GEM can run these scripts on either QNX core of the unit; mount(2)
+# cannot always be forwarded through QNET. Try the remount in every form
+# the two M.I.B. code bases use until the card is actually writable:
+#   mount -uw /net/mmx/fs/sda0                  (M.I.B. sshd mod) 
+#   mount -uw /fs/sda0                          (same node, local path)
+#   on -f mmx mount -uw /fs/sda0                (M.I.B. omonob pattern)
+CARD_LOCAL=`case "$VOLUME" in /net/mmx/*) echo "${VOLUME#/net/mmx}" ;; *) echo "$VOLUME" ;; esac`
+if [ -e /proc/boot/on ] || [ -x /bin/on ]; then
+    on -f mmx mount -uw "$CARD_LOCAL" 2>/dev/null
+fi
+mount -uw "$CARD_LOCAL" 2>/dev/null
 # The remount above is silent by design upstream; on a card the unit keeps
 # read-only (write-protect slider on, volume-dirty FAT bit, exFAT/NTFS) the
 # failure only surfaced far later as a bare "mkdir: Read-only file system".
@@ -34,6 +45,11 @@ if ! mkdir "$VOLUME/.clustermap_rw_probe" 2>/dev/null; then
     echo "  2. The card must be formatted FAT32, not exFAT/NTFS."
     echo "  3. If both are fine, run chkdsk /f on the card in a PC: a dirty"
     echo "     volume flag makes the unit mount the card read-only."
+    echo ""
+    echo "For diagnosis, the unit's mount state:"
+    echo "MOUNT_TABLE_START"
+    mount 2>/dev/null | grep -i -e sd0 -e sda0 -e sdb0 -e "$CARD_LOCAL" || echo "(no sda0/sdb0 line found)"
+    echo "MOUNT_TABLE_END"
     echo ""
 fi
 rmdir "$VOLUME/.clustermap_rw_probe" 2>/dev/null
