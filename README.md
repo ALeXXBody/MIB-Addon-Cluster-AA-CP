@@ -28,7 +28,7 @@ Each screen calls the fork's own scripts (`enable_hook.sh`, `disable_hook.sh`, `
 | **CarPlay map in the instrument cluster** | ✅ (M.I.B.'s bundled `carplay_maps_vc/omonob` payload) | ❌ |
 | IFS-ROOT stage-2 patch / CP / FEC / EL | ✅ (M.I.B. does it) | ❌ |
 | Persistence bit for AA / CarPlay coding | ✅ | ✅ (same bit address `0xC0020054`) |
-| GEM screens | M.I.B.'s own | one extra section, via `esd/Launcher-sda0.esd.append.md` |
+| GEM screens | M.I.B.'s own | one extra screen, via `esd/cm_aa_screens.esd` (append it to the launcher) |
 | NavActiveIgnore | ✅ shipped by M.I.B.'s own toolbox | ✅ (same jar) |
 | VIM / sport display / ambient | ✅ M.I.B.-only | ❌ |
 | MHI2Q (Qualcomm) | ✅ M.I.B. supports it | ❌ use [kamgurgul/mib2q-carplay](https://github.com/kamgurgul/mib2q-carplay) |
@@ -58,7 +58,20 @@ This is the correct order — one re-used M.I.B. install, one mod on top, no par
    │           └── SHA256SUMS.txt
    ├── patches/ (if M.I.B. has it)
    ```
-3. **Splice the 4 GEM screens into M.I.B.'s existing Launcher-sda0.esd.** Take the block from `esd/Launcher-sda0.esd.append.md` at the bottom of this repo and paste it into your M.I.B. SD card's `Launcher-sda0.esd` file (or use a text editor on Windows — file is UTF-8 without BOM; the end of the file is the correct place, and that's not a fork-specific convention, just a text edit).
+3. **Append the Cluster-Map screen to M.I.B.'s existing `Launcher-sda0.esd`.** Do NOT edit by hand — the repo ships a ready-made, byte-exact block: append `esd/cm_aa_screens.esd` to the end of your SD card's `Launcher-sda0.esd`:
+
+   ```sh
+   # Linux / macOS / WSL
+   cat esd/cm_aa_screens.esd >> /media/<Your-SD>/Launcher-sda0.esd
+   ```
+
+   ```bat
+   REM Windows Command Prompt
+   type esd\cm_aa_screens.esd >> X:\Launcher-sda0.esd
+   ```
+
+   Details (incl. Notepad++ fallback) in `esd/Launcher-sda0.esd.append.md`.
+   Afterward search `Launcher-sda0.esd` for `cm_aa` — exactly one hit block = the screens will be live at the next boot.
 4. **Boot the car into M.I.B.'s Green Engineering Menu** (hold MENU → Testmode → M.I.B.). The new screens are live because M.I.B.'s launcher reads `Launcher-sda0.esd` from the SD card on every boot.
 5. **Use the Fork's GEM screens.** M.I.B. stays the base toolbox; the Addon's 4 screens drive the fork's own payload and route the phone's AA map onto the instrument cluster via the fork's `stream-player` / `libgal_hook.so` engine.
 

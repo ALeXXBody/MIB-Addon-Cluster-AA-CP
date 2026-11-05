@@ -1,0 +1,52 @@
+###########################################################################################
+#
+# Main -> M.I.B. -> Cluster Map (AA to Virtual Cockpit)
+#
+# >>> M.I.B. Addon Cluster AA/CP screens >>>
+#
+###########################################################################################
+
+screen cluster_map_aa =>M.I.B.<=
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "Cluster map - Android Auto -> Virtual Cockpit"
+    poll    0
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "mib-cluster-map fork. Requires M.I.B. option 7 (AA coding)!"
+    poll    0
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/esd/scripts/cm_aa_status.sh"
+    label   "1. Status (is the hook loaded? which profile matches?)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/esd/scripts/cm_aa_install.sh"
+    label   "2. Install AA->VC hook (writes the fork's hook + player)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/esd/scripts/cm_aa_uninstall.sh"
+    label   "3. Uninstall AA->VC hook (restores stock gal + integrator)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/esd/scripts/cm_aa_collect.sh"
+    label   "4. Save fork logs to the SD card"
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "Uninstall restores stock gal + smartphone_integrator.json."
+    poll    0
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "These screens do NOT write persistence bits: M.I.B. option 7 does."
+    poll    0
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "______________________________________________________"
+    poll    0
+
+# <<< M.I.B. Addon Cluster AA/CP screens <<<

@@ -32,11 +32,25 @@ then add:
 
 ## How to add the screens to M.I.B.'s own launcher
 
-Take `esd/Launcher-sda0.esd.append.md` from this repository, and paste the
-screen block at the end of your M.I.B. SD card's `Launcher-sda0.esd` file
-(UTF-8 without BOM, file line endings as M.I.B. ships them; the end of the
-launcher file is where M.I.B.'s own GEM blocks stop). M.I.B. reads the
-launcher straight from the SD card on every boot.
+Append the ready-made block `esd/cm_aa_screens.esd` from this repository to
+the end of your M.I.B. SD card's `Launcher-sda0.esd` file. It is already in
+M.I.B.'s exact launcher format (ASCII, CRLF line endings, screen declared as
+a `=>M.I.B.<=` child) — do not retype or re-save it in an editor:
+
+```sh
+# Linux / macOS / WSL
+cat esd/cm_aa_screens.esd >> /media/<Your-SD>/Launcher-sda0.esd
+```
+
+```bat
+REM Windows Command Prompt
+type esd\cm_aa_screens.esd >> X:\Launcher-sda0.esd
+```
+
+Then check: search `Launcher-sda0.esd` for `cm_aa`. Exactly one block = done.
+(If you must edit by hand, see `esd/Launcher-sda0.esd.append.md` for the
+Notepad++ instructions — M.I.B.'s launcher is CRLF and a plain-text save with
+different line endings will make the screens silently fail to appear.)
 
 ## Running in the car
 
