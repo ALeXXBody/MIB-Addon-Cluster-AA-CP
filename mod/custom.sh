@@ -34,7 +34,7 @@ export PATH=.:/proc/boot:/bin:/usr/bin:/usr/sbin:/sbin:/mnt/app/media/grancenote
 export LD_LIBRARY_PATH=/lib:/mnt/app/root/lib-target:/eso/lib:/mnt/app/usr/lib:/mnt/app/armle/lib:/mnt/app/armle/lib/dll:/mnt/app/armle/usr/lib
 unset LD_PRELOAD
 
-echo -ne "M.I.B. - More Incredible Bash - "
+printf "M.I.B. - More Incredible Bash - "
 cat /net/mmx/fs/sda0/VERSION 2>/dev/null
 echo "Cluster Map — Android Auto to Virtual Cockpit (mib-cluster-map mod)"
 echo ""
