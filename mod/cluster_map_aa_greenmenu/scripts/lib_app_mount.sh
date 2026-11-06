@@ -12,11 +12,63 @@
 # resync or clean, silently deleting an unrelated subdirectory placed
 # inside it. /eso/lib is vendor framework code, not managed content, and
 # is not going to be swept by anything that isn't a full firmware update.
+# M.I.B. GEM scripts can run on a node whose /mnt/app is NOT the node that
+# owns the app partition (or where plain `mount -uw /mnt/app` is not
+# honoured). The ladder of view-forms is what M.I.B.'s own toolbox uses:
+#   mount -uw /net/mmx/mnt/app         (network view - apps/launcher uses it)
+#   on -f mmx mount -uw /mnt/app       (remount on the owning node)
+#   on -f rcc mount -uw /mnt/app
+#   mount -uw /mnt/app                 (last, plain)
+# app_mount_rw() probes each form and selects an ALIAS whose mount actually
+# went read-write. Every later write must go through the SAME alias, and
+# remount-ro happens on it too. $APP_MOUNT keeps /mnt/app for compatibility;
+# $APP_RW is the alias that works (defaults to $APP_MOUNT).
 APP_MOUNT=/mnt/app
 PRELOAD_WRITE_DIR="$APP_MOUNT/eso/lib/gal_dualscreen"
 PRELOAD_SO_ALIAS=/eso/lib/gal_dualscreen/libgal_hook.so
 PRELOAD_SO_REAL="$PRELOAD_WRITE_DIR/libgal_hook.so"
 APP_WRITABLE=0
+APP_RW="$APP_MOUNT"
+
+app_mount_rw()
+{
+    _rw_probe="'"'"'.clustermap_app_rw_probe'"'"'"
+    for _f in /mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+        [ -d "$_f" ] || continue
+        if mount -uw "$_f" 2>/dev/null; then
+            if mkdir "$_f/.clustermap_rw_probe" 2>/dev/null; then
+                rmdir "$_f/.clustermap_rw_probe" 2>/dev/null || true
+                APP_RW="$_f"; APP_WRITABLE=1; return 0
+            fi
+        fi
+    done
+    if [ -x /proc/boot/on ] || [ -x /bin/on ]; then
+        for _n in mmx rcc; do
+            if on -f "$_n" mount -uw /mnt/app 2>/dev/null; then
+                if mkdir /mnt/app/.clustermap_rw_probe 2>/dev/null; then
+                    rmdir /mnt/app/.clustermap_rw_probe 2>/dev/null || true
+                    APP_RW="/net/$_n/mnt/app"
+                    [ -d "$APP_RW" ] || APP_RW="/mnt/app"
+                    APP_WRITABLE=1; return 0
+                fi
+            fi
+        done
+    fi
+    return 1
+}
+
+app_mount_finish()
+{
+    if [ "$APP_WRITABLE" -eq 1 ]; then
+        if mount -ur "$APP_RW" 2>/dev/null; then
+            APP_WRITABLE=0
+        else
+            echo "WARNING: could not remount $APP_RW read-only." >&2
+            echo "         It is still writable. Run:  mount -ur $APP_RW" >&2
+            echo "         before switching the car off." >&2
+        fi
+    fi
+}
 
 # Callers should call this from their own finish()/trap handler, after
 # handling whatever else that script's finish() is responsible for (e.g.
