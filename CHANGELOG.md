@@ -1,5 +1,32 @@
 # Changelog
 
+### v0.4.15: the unit's partition views are single-spelled now, everywhere (2026-11-06)
+
+Owner evidence: the card is NOT read-only; the unit shows mounts only as
+`/net/mmx.mibhigh.net/…`. That pins the last hard-blame class: write and
+check paths hardcoding one spelling of the app/system partitions.
+
+- `mod/custom.sh`: the GEM screen registration probes every app view
+  spelling (FQDN /net/mmx.mibhigh.net/mnt/app, shorthand /net/mmx/mnt/app,
+  /net/rcc/mnt/app, local /mnt/app) and writes the screen through one that
+  is reachable AND writable through the same spelling — printing which won.
+- `lib_app_mount.sh`: `APP_VIEWS` ladder gains the FQDN form; the write
+  probe runs through the same spelling writes will use
+  (`app_probe_view()`); `APP_LADDER_FORM` names the winning form on the
+  console; `app_pick_view()` serves read-only files.
+- `enable_hook.sh`: jsonlint + validator library paths resolved via the
+  picked view BEFORE the first validation; app + system ladder verdicts
+  printed; system ladder re-points TARGET_CONFIG + backups to the view
+  that passed the write probe.
+- `disable_hook.sh`: restore ladder view-probed; jsonlint view-resolved.
+- `greenmenu/{install,uninstall,status,verify}.sh`: view-aware reads and
+  engdefs/screen cleanup (helpers `_unitapp`/`_unitsys`; verify retries
+  manifest paths across spellings).
+- `mod/custom.sh` self-check loops all four app views (ok-count, focused
+  diagnosis, no bare MISSING lists).
+- LEDGER fact added: a false "card READ-ONLY" report on a writable card
+  means a view probe failed — never the card — and installs must not stop.
+
 ### v0.4.14: the drift check was lying + never-block-on-RO-card + M.I.B.'s tools contract (2026-11-06)
 
 - **`tools/payload_sync.sh` rewritten (both false-OK bugs fixed):**

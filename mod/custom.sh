@@ -76,8 +76,31 @@ echo ""
 #    file into the unit's engdefs/ folder (exactly what M.I.B.'s apps/launcher
 #    does for its own menu file, and what the sshd mod does). It survives
 #    reboots; the fork's uninstall removes it again.
-ENGDEFS=/net/mmx/mnt/app/eso/hmi/engdefs
-mount -uw /net/mmx/mnt/app 2>/dev/null
+#
+# WHICH VIEW the unit's engdefs lives under, per console node: MHI2 mounts
+# print as /net/mmx.mibhigh.net/dev/... — a console node may address the app
+# partition ONLY through that FQDN spelling; the /net/mmx/... shorthand and
+# the local /mnt/app alias are not guaranteed to exist where this script
+# runs. So: try every spelling, and choose only the one that is REACHABLE
+# and WRITABLE (probed through the same spelling). Always print which one
+# won — the console photo then answers view questions on its own.
+ENGDEFS=""
+for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
+	[ -d "$_v/eso/hmi/engdefs" ] || continue
+	mount -uw "$_v" 2>/dev/null
+	if mkdir "$_v/eso/hmi/.clustermap_probe" 2>/dev/null; then
+		rmdir "$_v/eso/hmi/.clustermap_probe" 2>/dev/null
+		ENGDEFS=$_v/eso/hmi/engdefs
+		echo "engdefs: writable via '$_v'"
+		break
+	fi
+done
+if [ -z "$ENGDEFS" ]; then
+	ENGDEFS=/net/mmx.mibhigh.net/mnt/app/eso/hmi/engdefs
+	echo "engdefs: NO view accepted writes (tried the FQDN, shorthand, rcc and"
+	echo "local spellings of the app partition); the screen step will report"
+	echo "exactly what failed below."
+fi
 # Generate the screen file FROM FIND_CARD'S RESULT: every GEM item's script
 # path must name the card view this console actually sees — hardcoding
 # /net/mmx/fs/sda0/... made the buttons break whenever the card's view
@@ -149,17 +172,18 @@ cat $OUT
 echo ""
 echo "--- install self-check (unit files) --------------------------------"
 okcount=0
-for u in /mnt/app/eso/lib/gal_dualscreen/profiles.conf \
-         /mnt/app/eso/lib/gal_dualscreen/libgal_hook.so \
-         /mnt/app/eso/lib/gal_dualscreen/gal_dualscreen.conf \
-         /mnt/app/navigation/stream-player \
-         /net/mmx/mnt/app/eso/lib/gal_dualscreen/profiles.conf \
-         /net/mmx/mnt/app/eso/lib/gal_dualscreen/libgal_hook.so \
-         /net/mmx/mnt/app/navigation/stream-player; do
-	if [ -r "$u" ]; then
-		echo "  ok: $u"
-		okcount=$((okcount+1))
-	fi
+# The same files under every app-partition view the unit can expose:
+# local /mnt/app, the QNET FQDN spelling, the shorthand, and the rcc core.
+for _view in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+	for u in "$_view/eso/lib/gal_dualscreen/profiles.conf" \
+	         "$_view/eso/lib/gal_dualscreen/libgal_hook.so" \
+	         "$_view/eso/lib/gal_dualscreen/gal_dualscreen.conf" \
+	         "$_view/navigation/stream-player"; do
+		if [ -r "$u" ]; then
+			echo "  ok: $u"
+			okcount=$((okcount+1))
+		fi
+	done
 done
 if [ "$okcount" -ge 4 ]; then
 	echo "  self-check: the unit files are in place (seen through one or"

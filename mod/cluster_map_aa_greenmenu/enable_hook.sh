@@ -113,6 +113,16 @@ else
     exit 1
 fi
 
+# Read-only access to the app partition needs no remount, but it DOES need
+# the view spelling this console node can address. jsonlint is the unit's
+# config validator; resolve it (not its /mnt/app-hardcoded default) before
+# the first validation call, and note which view won for later writes.
+_JV=`app_pick_view || echo $APP_MOUNT`
+echo "app partition: readable view '$_JV'"
+if [ -x "$_JV/eso/bin/jsonlint" ]; then
+    JSONLINT="$_JV/eso/bin/jsonlint"
+fi
+
 if [ ! -r "$CARD_ROOT/scripts/lib_unit.sh" ] || [ ! -r "$PROFILES" ] || \
    [ ! -r "$CARD_ROOT/scripts/lib_cluster_frame.sh" ]; then
     echo "ERROR: scripts/lib_unit.sh, lib_cluster_frame.sh or profiles.conf not found in $CARD_ROOT" >&2
@@ -344,9 +354,12 @@ rm -f "$WRITE_PROBE"
 # power loss mid-write) can never leave that live, already-relied-upon
 # file half-written. A direct cp onto the live path could.
 app_mount_rw || {
-    echo "Cannot remount the app partition read-write (tried /mnt/app, /net/mmx/mnt/app, on -f mmx/rcc)" >&2
+    echo "Cannot remount the app partition read-write." >&2
+    echo "Forms tried: mount -uw on each of $APP_VIEWS, then" >&2
+    echo "on -f mmx/rcc mount -uw /mnt/app (probed through every view spelling)." >&2
     exit 1
 }
+echo "app partition: read-write via '$APP_LADDER_FORM'"
 # Writes go through the alias that the ladder verified (the plain /mnt/app
 # view may not be the one that went read-write on this node): re-point the
 # write dir and the hook's file targets at it once, right after the ladder.
@@ -354,6 +367,13 @@ APP_WRITABLE=1
 APP_WR="$APP_RW"                       # the read-write alias for app writes
 PRELOAD_WRITE_DIR="$APP_WR/eso/lib/gal_dualscreen"
 PRELOAD_SO_REAL="$PRELOAD_WRITE_DIR/libgal_hook.so"
+# jsonlint is already view-resolved (read-only step, done at the top).
+# Extend the validator's library path with the SAME view spelling so the
+# validator's libraries resolve even when /mnt/app is not the view this
+# console node speaks (both spellings carried, harmless when redundant).
+if [ "$_JV" != "$APP_MOUNT" ]; then
+    VALIDATOR_LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH:$_JV/root/lib-target:$_JV/usr/lib:$_JV/armle/lib:$_JV/usr/lib:$_JV/eso/lib"
+fi
 mkdir -p "$PRELOAD_WRITE_DIR" || {
     echo "Cannot create $PRELOAD_WRITE_DIR" >&2
     exit 1
@@ -1073,28 +1093,30 @@ LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$TEMP" || {
     exit 1
 }
 
-mount -uw "$SYSTEM_MOUNT" 2>/dev/null || { rm -f "$TEMP"; echo "NOTE: /mnt/system not mountable from this node; trying /net views" >&2; SYSTEM_RW_TRY=1; }
-if [ "${SYSTEM_RW_TRY:-0}" = 1 ]; then
-    SYSTEM_RW_OK=0
-    for _f in /net/mmx/mnt/system /net/rcc/mnt/system; do
-        [ -d "$_f" ] || continue
-        mount -uw "$_f" 2>/dev/null || continue
-        if mkdir "$_f/.clustermap_probe" 2>/dev/null; then
-            rmdir "$_f/.clustermap_probe" 2>/dev/null || true
-            SYSTEM_RW="$_f"; SYSTEM_RW_OK=1; break
-        fi
-    done
-    if [ "$SYSTEM_RW_OK" = 0 ]; then
-        rm -f "$TEMP"
-        echo "Cannot remount /mnt/system read-write (also tried /net views)" >&2
-        exit 1
+SYSTEM_RW=""
+SYSTEM_RW_OK=0
+for _f in /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
+    [ -d "$_f" ] || continue
+    mount -uw "$_f" 2>/dev/null || continue
+    if mkdir "$_f/.clustermap_probe" 2>/dev/null; then
+        rmdir "$_f/.clustermap_probe" 2>/dev/null || true
+        SYSTEM_RW="$_f"; SYSTEM_RW_OK=1
+        echo "system partition: read-write via '$_f'"
+        break
     fi
-    # Re-point the system paths at the alias that worked (the smartphone
-    # config and its backups live there on the owning node).
-    SYSTEM_MOUNT="$SYSTEM_RW"
-    TARGET_CONFIG="$SYSTEM_RW/etc/eso/production/smartphone_integrator.json"
-    PERSISTENT_BACKUP="$TARGET_CONFIG.gal-dualscreen.original"
+done
+if [ "$SYSTEM_RW_OK" = 0 ]; then
+    rm -f "$TEMP"
+    echo "Cannot remount the system partition read-write." >&2
+    echo "Forms tried: /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system," >&2
+    echo "each with a real write probe." >&2
+    exit 1
 fi
+# Re-point the system paths at the alias that worked (the smartphone
+# config and its backups live there on the owning node).
+SYSTEM_MOUNT="$SYSTEM_RW"
+TARGET_CONFIG="$SYSTEM_RW/etc/eso/production/smartphone_integrator.json"
+PERSISTENT_BACKUP="$TARGET_CONFIG.gal-dualscreen.original"
 SYSTEM_WRITABLE=1
 cp "$TARGET_CONFIG" "$BACKUP_DIR/smartphone_integrator.json.before_enable.$$"
 if [ ! -r "$PERSISTENT_BACKUP" ]; then

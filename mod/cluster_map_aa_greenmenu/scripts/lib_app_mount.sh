@@ -23,34 +23,64 @@
 # went read-write. Every later write must go through the SAME alias, and
 # remount-ro happens on it too. $APP_MOUNT keeps /mnt/app for compatibility;
 # $APP_RW is the alias that works (defaults to $APP_MOUNT).
+#
+# View spellings, best-first. MHI2 shows the QNET FQDN form
+# (/net/mmx.mibhigh.net/dev/... in `mount`), and a console node may resolve
+# ONLY that form for file paths; the /net/mmx/... shorthand and the local
+# /mnt/app alias are not guaranteed to exist where the script runs. The
+# ladder tries every spelling, and -- critical -- probes writability
+# THROUGH THE SAME SPELLING it plans to write through.
 APP_MOUNT=/mnt/app
+APP_VIEWS="/mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app"
 PRELOAD_WRITE_DIR="$APP_MOUNT/eso/lib/gal_dualscreen"
 PRELOAD_SO_ALIAS=/eso/lib/gal_dualscreen/libgal_hook.so
 PRELOAD_SO_REAL="$PRELOAD_WRITE_DIR/libgal_hook.so"
 APP_WRITABLE=0
 APP_RW="$APP_MOUNT"
+APP_LADDER_FORM=
+
+# The first app view that EXISTS on this node (for read-only needs like
+# finding jsonlint). Unlike app_mount_rw() this does not remount anything.
+app_pick_view()
+{
+    for _v in $APP_VIEWS; do
+        [ -d "$_v" ] && { echo "$_v"; return 0; }
+    done
+    return 1
+}
+
+# Writability probe, run THROUGH one specific view spelling.
+app_probe_view()
+{
+    mkdir "$1/.clustermap_rw_probe" 2>/dev/null && {
+        rmdir "$1/.clustermap_rw_probe" 2>/dev/null || true
+        return 0
+    }
+    return 1
+}
 
 app_mount_rw()
 {
-    _rw_probe="'"'"'.clustermap_app_rw_probe'"'"'"
-    for _f in /mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+    for _f in $APP_VIEWS; do
         [ -d "$_f" ] || continue
-        if mount -uw "$_f" 2>/dev/null; then
-            if mkdir "$_f/.clustermap_rw_probe" 2>/dev/null; then
-                rmdir "$_f/.clustermap_rw_probe" 2>/dev/null || true
-                APP_RW="$_f"; APP_WRITABLE=1; return 0
-            fi
+        if mount -uw "$_f" 2>/dev/null && app_probe_view "$_f"; then
+            APP_RW="$_f"; APP_LADDER_FORM="mount -uw $_f"
+            APP_WRITABLE=1; return 0
         fi
     done
-    if [ -x /proc/boot/on ] || [ -x /bin/on ]; then
+    if command -v on >/dev/null 2>&1; then
         for _n in mmx rcc; do
             if on -f "$_n" mount -uw /mnt/app 2>/dev/null; then
-                if mkdir /mnt/app/.clustermap_rw_probe 2>/dev/null; then
-                    rmdir /mnt/app/.clustermap_rw_probe 2>/dev/null || true
-                    APP_RW="/net/$_n/mnt/app"
-                    [ -d "$APP_RW" ] || APP_RW="/mnt/app"
-                    APP_WRITABLE=1; return 0
-                fi
+                for _pf in /net/$_n.mibhigh.net/mnt/app /net/$_n/mnt/app /mnt/app; do
+                    # The remount succeeded on the owning node; the probe
+                    # must go through a view THIS node can actually address
+                    # (the local /mnt/app spelling may be absent here even
+                    # when the owning node's mount just went rw).
+                    if [ -d "$_pf" ] && app_probe_view "$_pf"; then
+                        APP_RW="$_pf"; APP_LADDER_FORM="on -f $_n mount -uw /mnt/app (write view: $_pf)"
+                        APP_WRITABLE=1; return 0
+                    fi
+                done
             fi
         done
     fi

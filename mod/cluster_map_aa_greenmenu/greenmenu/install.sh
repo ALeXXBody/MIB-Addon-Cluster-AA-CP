@@ -8,10 +8,20 @@ echo "Phone map on the digital cluster: install"
 # The menu screen of v1.0.0 was called aa-cluster-map.esd and runs scripts from
 # an AAClusterMap folder that newer cards do not have. Once this version's
 # screen is on the unit, the old one only leads nowhere, so it goes.
-ENGDEFS=/mnt/app/eso/hmi/engdefs
-if [ -f $ENGDEFS/aa-cluster-map.esd ] && [ -f $ENGDEFS/cluster-map.esd ]; then
-    mount -uw /mnt/app 2>/dev/null && rm -f $ENGDEFS/aa-cluster-map.esd && echo "Removed the old AAClusterMap menu screen."; mount -ur /mnt/app 2>/dev/null
-fi
+# Legacy-screen cleanup is view-aware: MHI2's app partition may only be
+# addressable through the FQDN QNET spelling from this console node.
+_ENGV_CLEANED=
+for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
+    if [ -f "$_v/eso/hmi/engdefs/aa-cluster-map.esd" ] && [ -f "$_v/eso/hmi/engdefs/cluster-map.esd" ]; then
+        mount -uw "$_v" 2>/dev/null \
+            && rm -f "$_v/eso/hmi/engdefs/aa-cluster-map.esd" \
+            && echo "Removed the old AAClusterMap menu screen (view: $_v)." \
+            && _ENGV_CLEANED=1
+        mount -ur "$_v" 2>/dev/null
+        break
+    fi
+done
+[ -n "$_ENGV_CLEANED" ] || true
 echo "Head unit: $FAMILY"
 echo "Firmware train: $TRAIN"
 # Before anything changes: a unit without a command the scripts need stops

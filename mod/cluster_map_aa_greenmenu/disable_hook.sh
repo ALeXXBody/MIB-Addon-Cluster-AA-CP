@@ -54,6 +54,25 @@ else
     exit 1
 fi
 
+# View-aware restore: the system paths above assume the local /mnt/system
+# spelling; pick whichever spelling this console node can actually address
+# (MHI2 mounts may resolve ONLY through the QNET FQDN view), and resolve
+# jsonlint through the app view that exists here.
+for _f in /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
+    if [ -d "$_f" ] && [ -d "$_f/etc/eso/production" ]; then
+        SYSTEM_MOUNT="$_f"
+        TARGET_CONFIG="$_f/etc/eso/production/smartphone_integrator.json"
+        PERSISTENT_BACKUP="$TARGET_CONFIG.gal-dualscreen.original"
+        break
+    fi
+done
+_JV=`app_pick_view || echo /mnt/app`
+echo "app partition: readable view '$_JV'; system view '$SYSTEM_MOUNT'"
+if [ -x "$_JV/eso/bin/jsonlint" ]; then
+    JSONLINT="$_JV/eso/bin/jsonlint"
+    VALIDATOR_LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH:$_JV/root/lib-target:$_JV/usr/lib:$_JV/armle/lib:$_JV/eso/lib"
+fi
+
 finish()
 {
     if [ "$SYSTEM_WRITABLE" -eq 1 ]; then
@@ -90,10 +109,26 @@ LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$RESTORE_SOURCE
     echo "Recovery copy failed jsonlint: $RESTORE_SOURCE" >&2
     exit 1
 }
-mount -uw "$SYSTEM_MOUNT" 2>/dev/null || {
-    echo "Cannot remount $SYSTEM_MOUNT read-write" >&2
+SYSTEM_WRITABLE=0
+SYSTEM_OK=
+for _f in "$SYSTEM_MOUNT" /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
+    [ -d "$_f" ] || continue
+    mount -uw "$_f" 2>/dev/null || continue
+    if mkdir "$_f/.clustermap_restore_probe" 2>/dev/null; then
+        rmdir "$_f/.clustermap_restore_probe" 2>/dev/null || true
+        SYSTEM_MOUNT="$_f"
+        TARGET_CONFIG="$_f/etc/eso/production/smartphone_integrator.json"
+        SYSTEM_OK=1
+        echo "system partition: read-write via '$_f'"
+        break
+    fi
+done
+if [ -z "$SYSTEM_OK" ]; then
+    echo "Cannot remount the system partition read-write." >&2
+    echo "Forms tried: /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system," >&2
+    echo "each with a real write probe." >&2
     exit 1
-}
+fi
 SYSTEM_WRITABLE=1
 SYSTEM_TEMP="$TARGET_CONFIG.gal-dualscreen-restore"
 cp "$RESTORE_SOURCE" "$SYSTEM_TEMP" || {

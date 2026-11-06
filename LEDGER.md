@@ -290,8 +290,39 @@ What was done to make the split real and stable:
 | engdefs/ screen file (not launcher edit) | M.I.B.'s own registration pattern; symlink into engdefs happens at M.I.B. install anyway |
 | Sibling-fork repo (this fork repo) | License independence + upstream parity: fork keeps the AA oncology; upstream keeps broad compatibility |
 
-### 2026-11-06 round — "fix it once and for good" (v0.4.14)
+### 2026-11-06 round 2 — the owner's QNET complaint was right: view-spelling unification (v0.4.15)
 
+The owner reported the card mounts as `/net/mmx.mibhigh.net/…` while our
+scripts still spoke `/net/mmx/…`, and that the card is NOT read-only.
+Combined with the earlier console trace, that pins the remaining class:
+**the WRITE-side and CHECK-side paths of the app/system partitions were
+still single-spelling.** Fixed everywhere, one way:
+
+- `mod/custom.sh` (the GEM screen registration — the step whose silent
+  failure made screens "not find files"): engdefs is picked through a
+  reachable-AND-writable view probe (/net/mmx.mibhigh.net/mnt/app,
+  /net/mmx/mnt/app, /net/rcc/mnt/app, /mnt/app) and always prints which
+  spelling won.
+- `lib_app_mount.sh`: `APP_VIEWS` ladder incl. the FQDN form;
+  `app_probe_view()` guarantees the probe runs through the SAME spelling
+  later writes use; `APP_LADDER_FORM` printed by the console;
+  `app_pick_view()` for read-only needs.
+- `enable_hook.sh`: jsonlint + validator library path resolved via the
+  picked view BEFORE the first validation call; app ladder verdict and
+  system ladder verdicts printed; system ladder candidates gained /mnt/system
+  + FQDN and always re-point TARGET_CONFIG/PERSISTENT_BACKUP to the view
+  that accepted the write probe.
+- `disable_hook.sh`: same view probing for the restore ladder; jsonlint
+  view-resolved.
+- `greenmenu/install.sh`, `uninstall.sh`, `status.sh`, `verify.sh`:
+  engdefs cleanup, restore manifests, status banners, and the verify
+  manifest/path reads are view-aware (`_unitapp`/`_unitsys` helpers;
+  verify retries manifest paths across spellings).
+- `mod/custom.sh` self-check loops the four app views.
+- LEDGER note: a false "card READ-ONLY" report on a writable card means a
+  view probe failed, not the card; install no longer stops on it either way.
+
+### 2026-11-06 round — "fix it once and for good" (v0.4.14)
 The owner's screenshot disproved two assumptions at once: the card lives
 under the QNET view `/net/mmx.mibhigh.net/…` (not only `/net/mmx/…`), and
 the payload mirror had been drifting while the drift check printed OK.
