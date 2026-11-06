@@ -47,12 +47,21 @@ fi
 # --------------------------- ADDON CODE ------------------------------------
 
 # 1. Find the mod payload on the card (slot 1 or slot 2).
+# Same discovery philosophy as the mod's greenmenu/common.sh find_card():
+# the card can appear under any local or network view, and the payload in
+# any of the known layouts. The mount table is tried first.
 SD=""
-for v in /net/mmx/fs/sda0 /net/mmx/fs/sdb0 /fs/sda0 /fs/sdb0; do
-	if [ -f "$v/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.esd" ]; then
-		SD=$v
-		break
-	fi
+SDCANDS=`mount 2>/dev/null | sed -n "s|^.* on \(/[^ ]*\) .*|\1|p"`
+SDCANDS="$SDCANDS /net/mmx/fs/sda0 /net/mmx/fs/sdb0 /fs/sda0 /fs/sdb0"
+for v in $SDCANDS; do
+	if [ -d "$v" ] || [ -f "$v" ]; then :; else continue; fi
+	for rel in mod/cluster_map_aa_greenmenu ClusterMap cluster_map_aa_greenmenu mod/ClusterMap; do
+		if [ -f "$v/$rel/greenmenu/cluster-map.esd" ]; then
+			SD=$v
+			break
+		fi
+	done
+	[ -n "$SD" ] && break
 done
 if [ -z "$SD" ]; then
 	echo "FAIL: mod/cluster_map_aa_greenmenu/ was not found on the SD card."

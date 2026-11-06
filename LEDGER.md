@@ -206,6 +206,32 @@ The GEM screenshots from the car showed two failures with one root:
    and prints a clear instruction ("copy the repo's mod/ folder again") when
    the card lacks one.
 
+### 2026-11-06 (2): ONE canonical card locator — the user's requested "find card" function
+
+The miss: the first fix was still string-path patching. The owner's actual
+request — a function whose result everything uses — is now implemented:
+
+- `greenmenu/common.sh`'s **`find_card()`**: derives candidate views from
+  THIS node's mount table (every mount point: `/fs/...`, `/net/<node>/fs/...`,
+  anything else mounted), then the fixed fallback list; finds the payload in
+  ANY of the four layouts (`mod/cluster_map_aa_greenmenu`, `ClusterMap`,
+  loose `cluster_map_aa_greenmenu`, `mod/ClusterMap`); sets `VOLUME` (the
+  card root, a real mount point) and `PKG`. The remount ladder + write-probe
+  then run on the real card root.
+- Test: `tools/find_card_test.sh` (in CI now): a fake `mount` child runner
+  (tools/find_card_child.sh) + sandbox staging; PASSes all six cases:
+  mod layout on a local card, on a QNET view, standalone on USB, loose copy,
+  `mod/ClusterMap`, and the "card present but empty" case (empty result =
+  correctly not-found).
+- `mod/custom.sh` uses the same discovery approach (mount table first) for
+  its own payload search — it cannot source common.sh before the payload
+  exists, so it mirrors the loop.
+- Fork repo: the same common.sh is mirrored (fork payload copy), so the
+  standalone SWDL card shares this locator.
+
+The card can now live on ANY slot/stick/view name and the scripts still
+find it.
+
 ## 9. Hard-won debugging signatures (do not rediscover)
 
 - "Screens not visible in GEM" → wrong parent (`screen x greenmenu` — no such screen), or

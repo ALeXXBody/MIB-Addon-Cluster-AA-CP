@@ -24,3 +24,6 @@ jobs:
 
       - name: green-menu screen files parse
         run: tools/check_gem_esd.sh
+
+      - name: find_card locator (all card view/layout combinations)
+        run: tools/find_card_test.sh

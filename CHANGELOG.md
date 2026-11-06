@@ -7,6 +7,20 @@
 - Ships fork's sh-helpers + per-train profiles.conf + Nav / turn-arrows jars from upstream for review; per-unit binaries are built separately.
 - Full fontious README, install.md, car-test-notes.md and FORK.md (linked from upstream).
 
+### find_card: the one card/payload locator (v0.4.5)
+- `greenmenu/common.sh` now carries the single `find_card()` function the
+  whole code base uses: candidate views come from the running node's mount
+  table (any mount point, /fs/... and /net/<node>/fs/...) plus a fixed
+  fallback list; the payload must be `mod/cluster_map_aa_greenmenu`,
+  `ClusterMap`, loose `cluster_map_aa_greenmenu`, or `mod/ClusterMap`. The
+  remount ladder and write-probe run on the REAL card root (a mount point,
+  never the payload's parent folder).
+- `tools/find_card_test.sh` + `tools/find_card_child.sh`: a tested offline
+  regression harness (fake mount + sandbox staging), in CI. All card
+  view/layout combinations PASS, including "card mounts but payload absent".
+- `mod/custom.sh` mirrors the same discovery (mount table first) for its
+  pre-install payload search.
+
 ### Card-root remount fix (v0.4.4)
 - greenmenu/common.sh now derives the card root correctly for both layouts
   (the M.I.B. mod `<card>/mod/<payload>` layout and the standalone

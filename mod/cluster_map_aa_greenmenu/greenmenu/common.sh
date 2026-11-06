@@ -4,47 +4,77 @@
 PATH=/proc/boot:/bin:/usr/bin:/usr/sbin:/sbin:/mnt/app/armle/bin:/mnt/app/armle/sbin:/mnt/app/armle/usr/bin:/mnt/app/armle/usr/sbin:$PATH
 export PATH
 
-# The scripts' own folder first: the update can run from a USB stick (#24)
-# or the second SD slot, and a card that is not /fs/sda0 must not be missed.
-# TWO payload layouts exist:
-#   1. The M.I.B. mod layout the Addon installs to:
-#          <card>/mod/cluster_map_aa_greenmenu/greenmenu/...  (this file)
-#   2. The fork's standalone SWDL card layout:
-#          <card>/ClusterMap/greenmenu/...
-# The card root is NOT simply the payload's parent directory: in layout 1
-# that parent is the card's `mod` folder, which is not a mount point and
-# cannot be remounted (a GEM console run printed "Can't remount
-# /net/mmx/fs/sda0/mod"). Derive the card root so it cannot be wrong:
-# strip "/mod" when the payload sits inside it, else strip one level.
-PKG=
-HERE=`cd "\`dirname "$0"\`" 2>/dev/null && pwd`
-if [ -f "$HERE/../enable_hook.sh" ]; then
-    PKG=`cd "$HERE/.." && pwd`
-fi
-if [ -n "$PKG" ]; then
-    PKGPARENT=`dirname "$PKG"`; PKGNAME=`basename "$PKG"`
-    if [ "$PKGNAME" != "ClusterMap" ] && [ "`basename "$PKGPARENT"`" = "mod" ]; then
-        # M.I.B. mod layout: <card>/mod/<payload> -> card root above mod/
-        VOLUME=`dirname "$PKGPARENT"`
-    elif [ "$PKGNAME" = "ClusterMap" ]; then
-        # standalone layout: <card>/ClusterMap
-        VOLUME="$PKGPARENT"
-    else
-        VOLUME="$PKGPARENT"
-    fi
-fi
-if [ -z "$PKG" ]; then
-    for v in /fs/sda0 /fs/sdb0 /fs/usb0_0 /fs/usb1_0 /net/mmx/fs/sda0 /net/mmx/fs/sdb0; do
-        if [ -f "$v/ClusterMap/enable_hook.sh" ]; then PKG="$v/ClusterMap"; VOLUME="$v"; break; fi
-        if [ -f "$v/mod/cluster_map_aa_greenmenu/enable_hook.sh" ]; then
-            PKG="$v/mod/cluster_map_aa_greenmenu"; VOLUME="$v"; break
-        fi
+# ---------------------------------------------------------------------------
+# find_card: THE card/payload locator. Every script that sources this file
+# gets VOLUME (the card root) and PKG (the payload folder) out of it —
+# nothing else in the code base may hardcode a card path.
+#
+# What it copes with (owner requirements: the card can be anywhere):
+#   * the card under ANY of these views:
+#       local views:        /fs/sda0 /fs/sdb0 /fs/usb0_0 ... (plus whatever
+#                           `mount` says is actually mounted there)
+#       QNET network views: /net/<node>/fs/sdaN (card owned by another core)
+#   * the payload in any of these places:
+#       <card>/mod/cluster_map_aa_greenmenu   (M.I.B. mod layout, this Addon)
+#       <card>/ClusterMap                     (fork's standalone SWDL card)
+#       <card>/mod/ClusterMap                 (standalone under a mod folder)
+#       <card>/cluster_map_aa_greenmenu       (loose copy at the card root)
+#
+# Mount-table-derived candidates come first, then the fixed list as a
+# fallback (covers a mount table quirks). The unit's GEM console can run on
+# either QNX core; the mount table of THIS core is tried first, and its
+# /fs/* storage views are what this node can remount.
+# ---------------------------------------------------------------------------
+find_card()
+{
+    _cands=""
+    VOLUME=""; PKG=""
+
+    # 1. every storage-looking mount point this node knows about
+    for _p in `mount 2>/dev/null | sed -n "s|^.* on \(/[^ ]*\) .*|\1|p"`; do
+        _cands="$_cands $_p"
     done
-fi
+    # 2. the fixed fallback list (a mount table that does not show /fs/*)
+    _cands="$_cands /fs/sda0 /fs/sdb0 /fs/sda1 /fs/sdd0 /fs/usb0_0 /fs/usb1_0 /net/mmx/fs/sda0 /net/mmx/fs/sdb0"
+
+    for _v in $_cands; do
+        [ -d "$_v" ] || continue
+        for _rel in mod/cluster_map_aa_greenmenu ClusterMap cluster_map_aa_greenmenu mod/ClusterMap; do
+            if [ -f "$_v/$_rel/enable_hook.sh" ]; then
+                VOLUME=`cd "$_v" 2>/dev/null && pwd`
+                PKG="$VOLUME/$_rel"
+                return 0
+            fi
+        done
+    done
+    return 1
+}
+
+find_card || {
+    # Last resort for nodes where the mount table names nothing (some GEM
+    # consoles): the network views with the modern node name spellings.
+    for _v in /fs/sda0 /fs/sdb0 /net/mmx/fs/sda0 /net/mmx/fs/sdb0; do
+        if [ -d "$_v" ]; then
+            for _rel in mod/cluster_map_aa_greenmenu ClusterMap cluster_map_aa_greenmenu mod/ClusterMap; do
+                if [ -f "$_v/$_rel/enable_hook.sh" ]; then
+                    VOLUME="$_v"; PKG="$_v/$_rel"; break
+                fi
+            done
+        fi
+        [ -n "$PKG" ] && break
+    done
+}
+
 if [ -z "$PKG" ]; then
-    echo "ClusterMap folder not found on the SD card or USB stick."
+    echo "ClusterMap folder not found on any mounted card, stick or USB media."
+    echo "(This script looked at the unit's mount table and every known card"
+    echo " view, for mod/cluster_map_aa_greenmenu and ClusterMap layouts.)"
     exit 0
 fi
+# The card root is VOLUME now (a real mount point), never the payload's
+# parent: in the M.I.B. mod layout that parent is the card's mod FOLDER,
+# which cannot be remounted (a GEM run printed "Can't remount
+# /net/mmx/fs/sda0/mod" for exactly this reason).
 
 # The GEM console can run on a core whose view of the SD card is a QNET
 # mount of another core's device (MIB2.5 High shows this card as
