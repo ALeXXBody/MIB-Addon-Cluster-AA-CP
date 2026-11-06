@@ -113,6 +113,20 @@ RESULT=$?
 cat $OUT
 
 echo ""
+echo "--- install self-check (unit files) --------------------------------"
+for u in /mnt/app/eso/lib/gal_dualscreen/profiles.conf \
+         /mnt/app/eso/lib/gal_dualscreen/libgal_hook.so \
+         /mnt/app/eso/lib/gal_dualscreen/gal_dualscreen.conf \
+         /mnt/app/navigation/stream-player; do
+	if [ -r "$u" ]; then
+		echo "  ok: $u"
+	else
+		echo "  MISSING: $u  <- the hook will stay stock until this exists"
+	fi
+done
+echo "  (a MISSING line here = the finalize step did not run: re-copy the"
+echo "   mod/ folder, re-run this screen, or send this photo.)"
+echo ""
 if grep -q -e "CLUSTERMAP_INSTALL_OK" -e "CLUSTERMAP_TURN_BY_TURN_OK" $OUT; then
 	echo "Install finished. Reboot the unit (hold the power button for 10"
 	echo "seconds), then open the Green Engineering Menu again: the new"

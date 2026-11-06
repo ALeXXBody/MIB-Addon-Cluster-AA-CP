@@ -50,6 +50,21 @@ Then: phone on USB → Google Maps or Waze → cluster switched to map view.
 
 GEM → **ClusterMap → 8. Uninstall**: it restores the stock hook config and removes the menu screen. The card's `mod/` folder can then simply be deleted from the card at home.
 
+## If the cluster map stops showing after a phone reconnect
+
+The hook protects the unit: when it cannot verify that the unit's AA
+program matches a profile in the table, it leaves stock gal untouched (no
+map). The GEM console's **Last hook events** tells you which of these:
+
+| Log line | Meaning | Fix |
+|---|---|---|
+| `firmware.profiles result=missing` / `firmware.verify … no_profile` | the unit has **no profile table** — the install that copies it never ran (or ran from an old payload) | re-copy the zip's **whole `mod/` folder** onto the card, then Run /mod/custom.sh **again**, then reconnect the phone. `custom.sh` now prints an **install self-check** that shows the unit files (profile table, hook, conf, player) all as `ok:` lines — a `MISSING:` line is the instruction to re-run |
+| `firmware.verify … profile_check` | the table is there but your train's AA files differ | send the Save-logs bundle; do not edit the table |
+
+So: map not showing after an update is almost always the **install not
+re-run** rather than the unit breaking. The self-check makes that state
+visible at install time.
+
 ## If the console says “NOT INSTALLED: the SD card is READ-ONLY to the unit”
 
 1. SD adapter **LOCK slider** → unlock, re-insert, run the screen again.
