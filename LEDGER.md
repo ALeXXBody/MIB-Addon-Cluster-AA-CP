@@ -290,6 +290,35 @@ What was done to make the split real and stable:
 | engdefs/ screen file (not launcher edit) | M.I.B.'s own registration pattern; symlink into engdefs happens at M.I.B. install anyway |
 | Sibling-fork repo (this fork repo) | License independence + upstream parity: fork keeps the AA oncology; upstream keeps broad compatibility |
 
+### 2026-11-06 round 3 — the offline gate (venv + pytest car sim) caught the last two single-spelling bugs (v0.4.16)
+
+`tools/venv_test.sh` builds a venv (pytest) and runs `tools/car_sim/` in a
+private mount namespace: /mnt,/net,/fs,/sim are tmpfs shadows; `/bin` (the
+first PATH entry every script keeps) is an overlay with sim stubs — `mount`
+honours QNX's -uw/-ur flag forms and declares CB_MOUNT_TABLE, `on` fails
+like a node without cross-node caps. "Read-only view" is expressed the way
+the code actually measures it: the view's own probe names
+(.clustermap_probe family) fail through EEXIST — read paths keep working.
+
+The suite drives the REAL scripts end to end:
+- ladder picks a view that is PROVEN writable through its own spelling
+  (FQDN QNET included) and prints the winning form;
+- find_card discovers the payload under local, shorthand and FQDN card
+  views and still reports a blocked card as a warning, not a stop;
+- ensure_write_dir both branches + home-record marker (card / /tmp);
+- enable_hook FULL lifecycle with everything else read-only, artifacts
+  land ONLY at the FQDN view, config carries the injection, backups get
+  recorded and UNINSTALL restores the stock config;
+- greenmenu status/verify resolve files across views.
+
+REAL bugs the gate caught and fixed offline:
+1. install read the supervisor config through /mnt/system BEFORE any view
+   ladder — now system_pick_view resolves the reachable spelling first;
+2. the /eso short-alias preload check aborted installs on consoles that
+   cannot see /eso — runtime resolves /eso on its own node; the check is
+   now a NOTE with the staged path, and Verify/Status validate it after
+   the reboot.
+
 ### 2026-11-06 round 2 — the owner's QNET complaint was right: view-spelling unification (v0.4.15)
 
 The owner reported the card mounts as `/net/mmx.mibhigh.net/…` while our

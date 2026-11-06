@@ -32,6 +32,8 @@
 # THROUGH THE SAME SPELLING it plans to write through.
 APP_MOUNT=/mnt/app
 APP_VIEWS="/mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app"
+SYSTEM_MOUNT=/mnt/system
+SYS_VIEWS="/mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system"
 PRELOAD_WRITE_DIR="$APP_MOUNT/eso/lib/gal_dualscreen"
 PRELOAD_SO_ALIAS=/eso/lib/gal_dualscreen/libgal_hook.so
 PRELOAD_SO_REAL="$PRELOAD_WRITE_DIR/libgal_hook.so"
@@ -44,6 +46,16 @@ APP_LADDER_FORM=
 app_pick_view()
 {
     for _v in $APP_VIEWS; do
+        [ -d "$_v" ] && { echo "$_v"; return 0; }
+    done
+    return 1
+}
+
+# The first system view that EXISTS on this node (read-only needs like
+# reading the supervisor config or jsonlint staging). No remount happens.
+system_pick_view()
+{
+    for _v in $SYS_VIEWS; do
         [ -d "$_v" ] && { echo "$_v"; return 0; }
     done
     return 1

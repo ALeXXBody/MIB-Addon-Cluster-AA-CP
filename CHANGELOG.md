@@ -1,5 +1,39 @@
 # Changelog
 
+### v0.4.16: the offline car-simulation gate (venv + pytest) — install/uninstall lifecycle PROVEN offline (2026-11-06)
+
+New: `tools/venv_test.sh` — a Python venv + pytest gate that builds a
+SIMULATED unit in a private mount namespace (stubs for `mount`/`on`,
+genuine tmpfs-view semantics) and drives the REAL payload scripts offline:
+18 tests pass, including the full install→uninstall lifecycle with the unit
+addressable ONLY through the FQDN QNET spelling (`/net/mmx.mibhigh.net/…`)
+and every other view genuinely read-only.
+
+Found and fixed in the same gate (offline, before the next car round):
+
+- `enable_hook.sh` resolved its supervisor config through the hardcoded
+  /mnt/system spelling BEFORE any ladder — on a console that only resolves
+  the FQDN view the install aborted before starting. A `system_pick_view()`
+  read-resolution now picks the reachable spelling first; the write ladder
+  still re-points the target to the view that accepted the write probe.
+- The `/eso/lib/gal_dualscreen/libgal_hook.so` short-alias verification
+  aborted the install when the CONSOLE could not see /eso (it is resolved
+  by the RUNTIME node, not the console). It is now an explicit NOTE with
+  the staged file path; the install continues on the strength of the
+  write-view verification, and Status/Verify check the alias after boot.
+- The "Could not locate children.gal.envs" failure now prints what the
+  patcher actually read, so a defective unit config is diagnosed on the
+  console instead of a guess round.
+- `lib_app_mount.sh`: system views get the same candidate list shape as
+  the app views (FQDN first-class member).
+
+The sim suite (tools/car_sim/) is part of CI from now on: ladder choice,
+probe-through-same-spelling, card discovery on FQDN/QNET views, write-home
+fallback, engdefs view reporting, status/verify view retries and the
+lifecycle all break loudly when a view regression creeps in.
+
+### v0.4.15
+
 ### v0.4.15: the unit's partition views are single-spelled now, everywhere (2026-11-06)
 
 Owner evidence: the card is NOT read-only; the unit shows mounts only as

@@ -1,0 +1,28 @@
+#!/bin/sh
+# Sim mount stub (tools/car_sim/stubs/mount).
+# Parses the QNX-style runtime's mount calls that our scripts make:
+#   mount                -> prints CB_MOUNT_TABLE verbatim (| separated lines)
+#   mount -uw <view>     -> remount RW; exit 1 if CB_MOUNT_FAIL = "|view|view|"
+#   mount -ur <view>     -> remount RO; always succeeds
+#   mount -uw <dev> <mnt> -> last /* argument is the view being remounted
+# This mirrors the unit's mount utility (which DOES accept -uw/-ur; host
+# util-linux does not) so the ladder logic sees the unit's semantics.
+VIEW=""; MODE=""
+for a in "$@"; do
+    case "$a" in
+        -uw) MODE=uw ;;
+        -ur) MODE=ur ;;
+        -u)  MODE=ur ;;
+        /*)  VIEW="$a" ;;
+    esac
+done
+if [ "$MODE" = uw ] && [ -n "$VIEW" ]; then
+    case "|$CB_MOUNT_FAIL|" in
+        *"|$VIEW|"*) exit 1 ;;
+    esac
+fi
+if [ -n "$VIEW" ] || [ -n "$MODE" ]; then
+    exit 0
+fi
+printf "%s\n" "$CB_MOUNT_TABLE"
+exit 0

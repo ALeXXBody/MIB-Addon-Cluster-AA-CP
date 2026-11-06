@@ -8,3 +8,7 @@
 *.imgfs
 *.iso
 .venv/
+
+# offline car-sim testing
+.venv/
+__pycache__/

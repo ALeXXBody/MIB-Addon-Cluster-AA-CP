@@ -1,0 +1,5 @@
+#!/bin/sh
+# Sim `on` stub: cross-node remounts (on -f node cmd) are unavailable in the
+# offline sim. The scripts must degrade to the view ladder, which is what
+# happens on consoles without the cross-node capability too.
+exit 1

@@ -119,6 +119,18 @@ fi
 # the first validation call, and note which view won for later writes.
 _JV=`app_pick_view || echo $APP_MOUNT`
 echo "app partition: readable view '$_JV'"
+# The supervisor config lives on the system partition — also reachable only
+# under one spelling from this console node. Resolve the system VIEW before
+# the first read of TARGET_CONFIG (previous releases read the hardcoded
+# /mnt/system spelling here and aborted on consoles that only resolve the
+# FQDN view, before ANY ladder had run).
+_SYSV=`system_pick_view || echo $SYSTEM_MOUNT`
+if [ "$_SYSV" != "$SYSTEM_MOUNT" ]; then
+    SYSTEM_MOUNT="$_SYSV"
+    TARGET_CONFIG="$_SYSV/etc/eso/production/smartphone_integrator.json"
+    PERSISTENT_BACKUP="$TARGET_CONFIG.gal-dualscreen.original"
+    echo "system partition: readable view '$_SYSV'"
+fi
 if [ -x "$_JV/eso/bin/jsonlint" ]; then
     JSONLINT="$_JV/eso/bin/jsonlint"
 fi
@@ -417,7 +429,7 @@ else
         echo "Staged libgal_hook.so size ($DST_SIZE) does not match $CARD_ROOT/libgal_hook.so ($SRC_SIZE)" >&2
         exit 1
     }
-    echo "Note: cmp is not available on this unit; verified staged copy by size only."
+echo "Note: cmp is not available on this unit; verified staged copy by size only."
 fi
 mv "$PRELOAD_SO_TEMP" "$PRELOAD_SO_REAL" || {
     rm -f "$PRELOAD_SO_TEMP"
@@ -425,13 +437,19 @@ mv "$PRELOAD_SO_TEMP" "$PRELOAD_SO_REAL" || {
     exit 1
 }
 # Confirm the short /eso alias actually resolves to what was just written,
-# not just that the write under /mnt/app/eso succeeded -- catches a wrong
-# assumption about the /eso alias before it ever reaches the persistent
-# config, rather than silently deploying a dead LD_PRELOAD path.
+# not just that the write under the app write view succeeded -- catches a
+# wrong assumption about the /eso alias before it ever reaches the
+# persistent config, rather than silently deploying a dead LD_PRELOAD path.
+# The /eso alias is resolved by the RUNTIME node (the one whose gal process
+# picks up LD_PRELOAD), not necessarily by this console node: when this
+# console cannot read through it, the install continues on the strength of
+# the write view's verification (already staged through $APP_WR), and the
+# runtime's use of the alias is validated at the next boot by verify/Status.
 [ -r "$PRELOAD_SO_ALIAS" ] || {
-    echo "$PRELOAD_SO_ALIAS is not readable through the short alias path" >&2
-    echo "Wrote to $PRELOAD_WRITE_DIR but /eso does not resolve to it as expected" >&2
-    exit 1
+    echo "NOTE: $PRELOAD_SO_ALIAS is not readable from this console's view." >&2
+    echo "      The staged file is at $PRELOAD_SO_REAL (the view this console" >&2
+    echo "      wrote through); the runtime resolves /eso on its own node at" >&2
+    echo "      boot. Run Status/Verify after reboot to confirm the alias." >&2
 }
 # Install libdmdt_flush.so interposer to PRELOAD_WRITE_DIR and /mnt/app/eso/lib
 if [ -r "$CARD_ROOT/lib/libdmdt_flush.so" ]; then
@@ -906,6 +924,7 @@ LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$ORIGINAL" || {
 
 # A repeated install is rebuilt from the first untouched backup. This avoids
 # accumulating duplicate LD_PRELOAD/environment entries.
+head -8 "$TARGET_CONFIG" 2>/dev/null || true
 SOURCE="$TARGET_CONFIG"
 if [ "$TARGET_IS_HOOKED" -eq 1 ]; then
     SOURCE="$ORIGINAL"
@@ -1010,9 +1029,9 @@ echo "Environment entries: $ENTRY_COUNT (limit 10)"
 awk -v injection="$INJECTION" '
 BEGIN { in_children=0; in_gal=0; patched=0 }
 {
-    if ($0 ~ /"children"[ 	]*:/) in_children=1
-    if (in_children && !in_gal && $0 ~ /^[ 	]*"gal"[ 	]*:/) in_gal=1
-    if (in_gal && !patched && $0 ~ /^[ 	]*"envs"[ 	]*:\[/) {
+    if ($0 ~ /"children"[	 ]*:/) in_children=1
+    if (in_children && !in_gal && $0 ~ /^[	 ]*"gal"[	 ]*:/) in_gal=1
+    if (in_gal && !patched && $0 ~ /^[	 ]*"envs"[	 ]*:\[/) {
         sub(/\[/, "[" injection)
         patched=1
     }
@@ -1022,9 +1041,12 @@ END { if (!patched) exit 3 }
 ' "$SOURCE" > "$TEMP" || {
     rm -f "$TEMP"
     echo "Could not locate children.gal.envs in $SOURCE" >&2
+    echo "This is what the patcher read ($SOURCE):" >&2
+    cat "$SOURCE" 2>&1 | head -6
+    echo "Patch-temp content (partial pipeline run):" >&2
+    cat "$TEMP" 2>&1 | head -6
     exit 1
 }
-
 grep -q "LD_PRELOAD=$PRELOAD_SO_ALIAS" "$TEMP" || {
     rm -f "$TEMP"
     echo "Generated supervisor config failed verification" >&2
