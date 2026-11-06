@@ -21,6 +21,44 @@
 - `mod/custom.sh` mirrors the same discovery (mount table first) for its
   pre-install payload search.
 
+### Cluster remote: no-GEM switches via the cluster's own OK press (v0.4.6)
+The subscriber ask: "Don't enter GEM each time — control the addon from the
+M.I.B. unit". The AA-side answer is: the addon's cluster input channel
+carries the unit's own OK/rotary events (the hook owns that channel), so a
+set of gestures can drive the Addon's own switches *live* — no GEM, no
+reinstall, no restart of anything:
+
+  * short OK press (<0.8 s) -> cycle the turn-card clear preset
+    (top strip -> sides free -> middle band -> off -> top strip …),
+    applied live by the new ui-config sender (media message 0x8009 runs
+    the same UpdateUiConfigRequest Google's DHU carries, on the cluster
+    video channel, with the file-based `GAL_UICONFIG=1` poller and a
+    `/tmp/gal_uiconfig` preset file);
+  * long OK press (>=0.8 s) -> toggle the turn-info strip live
+    (`/tmp/stream-player.navstrip` "1"/"0", same file the GEM's on/off
+    switch writes);
+  * rotary +- -> zoom in/out live (the existing /tmp/stream-player.zoom
+    file read by the player).
+
+Feature is opt-in: GAL_CLUSTER_REMOTE=1 (the GEM switch "Cluster remote:
+ON" sets the setting; takes effect at the NEXT gal start). Reason for
+opt-in: the hook intercepts OK gestures only when the phone session is
+live and the phone has the cluster view; the gestures were car-verified in
+the openclcardev/openautolink's working sessions only in their setups —
+the car test here should confirm the same happens on the Addon before any
+default flips to 1.
+
+Implementation in src/video_sink_hook.c (video_sink_hook.c):
+- cluster_remote_{toggle_strip,cycle_card,zoom} + cluster_remote_event();
+  runs in cluster_input_message on message id 0x8001 (the input report on
+  the cluster channel; probe-only until enabled);
+- ui_config_poll in input_inject section: /tmp/gal_uiconfig file sender of
+  UpdateUiConfigRequest 0x8009, GEM-free, live, opt-in via GAL_UICONFIG.
+Rebuilt libgal_hook.so (cluster-remote-20261106). New GEM switch
+cluster_remote.sh (ON/OFF, writes the settings file line, next gal start).
+
+Payload SHA256SUMS regenerated (41 files).
+
 ### Card-root remount fix (v0.4.4)
 - greenmenu/common.sh now derives the card root correctly for both layouts
   (the M.I.B. mod `<card>/mod/<payload>` layout and the standalone

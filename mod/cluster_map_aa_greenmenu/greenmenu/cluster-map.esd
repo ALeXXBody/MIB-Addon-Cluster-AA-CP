@@ -63,15 +63,15 @@ script
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/card_clear.sh top"
-    label   "Turn-card clear: TOP strip (next connect)"
+    label   "Turn-card clear: TOP strip"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/card_clear.sh sides"
-    label   "Turn-card clear: SIDES free (next connect)"
+    label   "Turn-card clear: SIDES free"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/card_clear.sh band"
-    label   "Turn-card clear: middle BAND (next connect)"
+    label   "Turn-card clear: middle BAND"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/card_clear.sh off"
@@ -84,6 +84,14 @@ script
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/navstrip.sh off"
     label   "Turn info strip: OFF"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/cluster_remote.sh on"
+    label   "Cluster remote: ON (OK press = toggle strip / presets)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/cluster_remote.sh off"
+    label   "Cluster remote: OFF"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/uninstall.sh"
