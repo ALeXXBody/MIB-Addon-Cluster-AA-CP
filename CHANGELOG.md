@@ -7,6 +7,19 @@
 - Ships fork's sh-helpers + per-train profiles.conf + Nav / turn-arrows jars from upstream for review; per-unit binaries are built separately.
 - Full fontious README, install.md, car-test-notes.md and FORK.md (linked from upstream).
 
+### Card-root remount fix (v0.4.4)
+- greenmenu/common.sh now derives the card root correctly for both layouts
+  (the M.I.B. mod `<card>/mod/<payload>` layout and the standalone
+  `<card>/ClusterMap`), so the remount ladder and the writability probe
+  target the mount point, not the card's `mod` folder. This is the real fix
+  behind the GEM console's "Can't remount /net/mmx/fs/sda0/mod" line and the
+  reappearing read-only failures.
+- mod/custom.sh checks that the card still has every script the installed
+  screen curls (status/install/keep_map/zoom/card_clear/navstrip) and tells
+  the owner to re-copy the repo's mod/ folder when one is missing — the
+  cause of GEM's "Script not found: …/card_clear.sh" screens.
+- Payload SHA256SUMS regenerated.
+
 ### Turn-card clear + turn-info strip (v0.4.3)
 Two new GEM switches, both from docs/android-auto-research.md's findings:
 

@@ -79,6 +79,22 @@ cp -p "$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.esd" \
 echo "GEM screen installed on the unit: $ENGDEFS/cluster-map.esd"
 echo ""
 
+# 2b. Sanity: the screen file lists script files on the card. If GEM shows
+#     "Script not found: /net/mmx/fs/sda0/mod/…/greenmenu/<name>" after the
+#     install, the card's copy of this repository is older or incomplete —
+#     the screen on the unit came from the card, so the two disagree only
+#     when the card lost files. Check the ones the screen points at:
+for f in greenmenu/status.sh greenmenu/install.sh greenmenu/keep_map.sh \
+         greenmenu/zoom.sh greenmenu/card_clear.sh greenmenu/navstrip.sh; do
+	if [ ! -f "$SD/mod/cluster_map_aa_greenmenu/$f" ]; then
+		echo "NOTE: missing on the card: mod/cluster_map_aa_greenmenu/$f"
+		echo "      -> copy this repository's whole 'mod/' folder onto the card"
+		echo "         again, THEN re-run this screen. GEM would otherwise print"
+		echo "         'Script not found' for the missing item."
+	fi
+done
+echo ""
+
 # 3. Run the mod's own installer (status checks, gal profile check, hook +
 #    player install — the same script the new screen's 'Install' entry runs).
 #    Output is captured so the tail message can reflect the real result.

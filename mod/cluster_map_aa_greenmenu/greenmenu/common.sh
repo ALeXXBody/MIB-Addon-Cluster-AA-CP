@@ -6,20 +6,46 @@ export PATH
 
 # The scripts' own folder first: the update can run from a USB stick (#24)
 # or the second SD slot, and a card that is not /fs/sda0 must not be missed.
+# TWO payload layouts exist:
+#   1. The M.I.B. mod layout the Addon installs to:
+#          <card>/mod/cluster_map_aa_greenmenu/greenmenu/...  (this file)
+#   2. The fork's standalone SWDL card layout:
+#          <card>/ClusterMap/greenmenu/...
+# The card root is NOT simply the payload's parent directory: in layout 1
+# that parent is the card's `mod` folder, which is not a mount point and
+# cannot be remounted (a GEM console run printed "Can't remount
+# /net/mmx/fs/sda0/mod"). Derive the card root so it cannot be wrong:
+# strip "/mod" when the payload sits inside it, else strip one level.
 PKG=
 HERE=`cd "\`dirname "$0"\`" 2>/dev/null && pwd`
 if [ -f "$HERE/../enable_hook.sh" ]; then
     PKG=`cd "$HERE/.." && pwd`
-    VOLUME=`dirname "$PKG"`
-else
+fi
+if [ -n "$PKG" ]; then
+    PKGPARENT=`dirname "$PKG"`; PKGNAME=`basename "$PKG"`
+    if [ "$PKGNAME" != "ClusterMap" ] && [ "`basename "$PKGPARENT"`" = "mod" ]; then
+        # M.I.B. mod layout: <card>/mod/<payload> -> card root above mod/
+        VOLUME=`dirname "$PKGPARENT"`
+    elif [ "$PKGNAME" = "ClusterMap" ]; then
+        # standalone layout: <card>/ClusterMap
+        VOLUME="$PKGPARENT"
+    else
+        VOLUME="$PKGPARENT"
+    fi
+fi
+if [ -z "$PKG" ]; then
     for v in /fs/sda0 /fs/sdb0 /fs/usb0_0 /fs/usb1_0 /net/mmx/fs/sda0 /net/mmx/fs/sdb0; do
         if [ -f "$v/ClusterMap/enable_hook.sh" ]; then PKG="$v/ClusterMap"; VOLUME="$v"; break; fi
+        if [ -f "$v/mod/cluster_map_aa_greenmenu/enable_hook.sh" ]; then
+            PKG="$v/mod/cluster_map_aa_greenmenu"; VOLUME="$v"; break
+        fi
     done
 fi
 if [ -z "$PKG" ]; then
     echo "ClusterMap folder not found on the SD card or USB stick."
     exit 0
 fi
+
 # The GEM console can run on a core whose view of the SD card is a QNET
 # mount of another core's device (MIB2.5 High shows this card as
 # /net/<node>/dev/sda0t12 on /fs/sda0). A remount may then have to reach

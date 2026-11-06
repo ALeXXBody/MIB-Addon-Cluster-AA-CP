@@ -188,6 +188,24 @@ New ranked implementable list (see research doc §6):
    sections exist and show broken images until then).
 4. Upstream PR (remount ladder + honest guards + provenance + car data) — after 1–2.
 
+### 2026-11-06: the card-root bug — and the "Script not found" pair
+
+The GEM screenshots from the car showed two failures with one root:
+1. `mount: Can't remount /net/mmx/fs/sda0/mod` — common.sh derived the card
+   root as *the payload's parent dir*, which in the M.I.B. mod layout is the
+   card's `mod` FOLDER, not a mount point. Every remount had been aimed at
+   that folder instead of the card root; the read-only probe was placed
+   there too. Fixed: the card root now strips `/mod` for the mod layout
+   (standalone `ClusterMap` layout keeps the same rule), and the ladder runs
+   against the actual mount point (`/fs/sda0` first from the console view of
+   the card, then the net forms). The write-probe sits at the card root.
+2. `"Script not found: .../card_clear.sh top"` — the screen file in
+   engdefs/ comes from the CARD's `greenmenu/cluster-map.esd`; if the card's
+   mod folder has an older/partial copy, the unit's screen points at files
+   the card does not have. mod/custom.sh now checks the screen's script list
+   and prints a clear instruction ("copy the repo's mod/ folder again") when
+   the card lacks one.
+
 ## 9. Hard-won debugging signatures (do not rediscover)
 
 - "Screens not visible in GEM" → wrong parent (`screen x greenmenu` — no such screen), or
