@@ -107,6 +107,16 @@
   `v1.1.1-beta18-16-g4b43ddf` (provenance + SHA recorded in the fork's
   `CHANGELOG-fork.md`, section "Local build record (zoom-fork-local)").
 
+### Release archive layout (v0.4.7+)
+
+The customer zip carries ONLY the card content plus two zip-only files that
+cannot collide with M.I.B.'s card root (M.I.B.'s own card root ships its
+own LICENSE and README.md; a careless whole-root copy would otherwise
+overwrite them):
+- `mod/` (the card content; the only folder an owner copies)
+- `HOW-TO-INSTALL.txt` (generated per tag; the 3 steps + the do-not-copy warning)
+- `MIB-Addon-Cluster-AA-CP-LICENSE.txt` (GPL text, named to avoid the clash)
+
 ## 6. Release process
 
 - Per-tag release: **push a tag `v*`** → GitHub Action (`.github/workflows/release.yml`)
