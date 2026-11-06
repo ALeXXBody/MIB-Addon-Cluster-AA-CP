@@ -78,13 +78,47 @@ echo ""
 #    reboots; the fork's uninstall removes it again.
 ENGDEFS=/net/mmx/mnt/app/eso/hmi/engdefs
 mount -uw /net/mmx/mnt/app 2>/dev/null
-cp -p "$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.esd" \
+# Generate the screen file FROM FIND_CARD'S RESULT: every GEM item's script
+# path must name the card view this console actually sees — hardcoding
+# /net/mmx/fs/sda0/... made the buttons break whenever the card's view
+# changed (the "Script not found" screens). The template carries a
+# @GREENMENU@ placeholder; the located path replaces it.
+TPL="$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.template.esd"
+CONSOLE_ERRORS=""
+if [ -f "$TPL" ]; then
+	# the view this console itself resolved the payload under: prefer the
+	# payload path EXACTLY as custom.sh found it ($SD), not the fixed forms
+	GEN=`sed "s|@GREENMENU@|$SD/mod/cluster_map_aa_greenmenu/greenmenu/|g" "$TPL"`
+	# verify every generated script file exists NOW; report the missing ones
+	echo "  GEM screen paths check (from the template):"
+	echo "$GEN" | while IFS= read -r ln; do
+		case "$ln" in
+			*value*0x0100\ *|*value*system*)
+				continue ;;
+			*)
+				continue ;;
+		esac
+	done
+	# (the real check: extract each quoted script path and test it)
+	echo "$GEN" | grep -o '"/net/[^"]*\.sh[^"]*"' | tr -d '"' | while IFS= read -r sp; do
+		sp=${sp%% *}
+		case "$sp" in */esd/scripts/*) continue ;; esac   # M.I.B.'s own scripts (reboot) live on the unit, not on our card
+		if [ ! -f "$sp" ]; then
+			echo "    MISSING on the card: $sp"
+			CONSOLE_ERRORS=1
+		fi
+	done
+	printf '%s\n' "$GEN" > "$ENGDEFS/cluster-map.esd"
+	echo "  GEM screen generated from the card: $ENGDEFS/cluster-map.esd"
+else
+	cp -p "$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.esd" \
 	"$ENGDEFS/cluster-map.esd" || {
 	echo "FAIL: could not write $ENGDEFS/cluster-map.esd"
 	echo "(Is M.I.B. installed? It creates/maintains that folder.)"
 	trap 2
 	exit 1
-}
+	}
+fi
 echo "GEM screen installed on the unit: $ENGDEFS/cluster-map.esd"
 echo ""
 

@@ -1,0 +1,123 @@
+###########################################################################################
+#
+# Custom Green Engineering Menu screen: phone map on the digital cluster
+# Attached to the top level of the green engineering menu, so it does not
+# depend on any other screen being installed.
+# Main -> ClusterMap
+#
+# The entries run scripts straight from the SD card in slot 1:
+#   @GREENMENU@
+#
+# Screen design v2 (2026-11-06): EVERY entry routes through ONE script
+# (menus.sh). A partial card copy can then produce one "Script not found"
+# message at worst, never a tree of missing switches; custom.sh's install
+# self-check names the missing files exactly.
+
+###########################################################################################
+screen ClusterMap Main
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "Phone map on the digital cluster"
+    poll    0
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "SD card must be in slot 1. Reboot after install."
+    poll    0
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh status"
+    label   "1. Status and compatibility check"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh install"
+    label   "2. Install cluster map"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh full_frame on"
+    label   "Sharper map ON (full frame; reboot after)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh full_frame off"
+    label   "Sharper map OFF (standard; reboot after)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh keep_map on"
+    label   "Keep map ON (arbiter; fork)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh keep_map off"
+    label   "Keep map OFF (standard; fork)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh verify"
+    label   "Verify installed files (fork)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh zoom off"
+    label   "Zoom 1.0 (off; standard map view)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh zoom 1.15"
+    label   "Zoom 1.15 (crop-and-enlarge; live)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh zoom 1.35"
+    label   "Zoom 1.35 (crop-and-enlarge; live)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh cardclear top"
+    label   "Turn-card clear: TOP strip"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh cardclear sides"
+    label   "Turn-card clear: SIDES free"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh cardclear band"
+    label   "Turn-card clear: middle BAND"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh cardclear off"
+    label   "Turn-card clear: OFF (standard layout)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh navstrip on"
+    label   "Turn info strip: ON (road | ETA | distance)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh navstrip off"
+    label   "Turn info strip: OFF"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh remote on"
+    label   "Cluster remote: ON (short OK = presets, long OK = strip)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh remote off"
+    label   "Cluster remote: OFF"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh uninstall"
+    label   "Uninstall and restore original state"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh tbt"
+    label   "Switch to turn-by-turn arrows instead (no map)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh logs"
+    label   "Save logs to SD"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh porting"
+    label   "Collect files for porting (quick)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh portfull"
+    label   "Collect for porting, with Java image (55 MB, slow)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/esd/scripts/reboot.sh"
+    label   "Reboot the unit (M.I.B.'s own reboot, 10 s countdown)\n"
