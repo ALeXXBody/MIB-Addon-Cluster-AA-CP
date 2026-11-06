@@ -59,6 +59,17 @@ cluster_remote.sh (ON/OFF, writes the settings file line, next gal start).
 
 Payload SHA256SUMS regenerated (41 files).
 
+### Screen design v2: single-entry GEM switch router (v0.4.10)
+From the owner's v0.4.7 screenshots (the "Script not found" error tree):
+the GEM screen file now routes EVERY switch through one script
+(`greenmenu/menus.sh <verb> [arg]`) — no entry in the engdefs screen
+references a directly named switch script anymore, so a partial/older
+card copy can produce at worst one clear "menus.sh not found" line and
+custom.sh's missing-on-the-card scanner pins down exactly which dispatch
+file was missing. menus.sh routes: install/uninstall/status/logs/tbt/
+verify/porting(+full)/zoom(+off)/navstrip/cardclear(+off)/remote/keep_map/
+full_frame. The fork payload mirrors it; SHA256SUMS regenerated (42 files).
+
 ### Card-root remount fix (v0.4.4)
 - greenmenu/common.sh now derives the card root correctly for both layouts
   (the M.I.B. mod `<card>/mod/<payload>` layout and the standalone
