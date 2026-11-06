@@ -44,8 +44,11 @@ CARPLAY=1
 # a unit whose libairplay.so has this size (SHA-256 193a4fd9...46b5 on MU1440
 # and MU1367). The hook also checks the function prologues itself and leaves
 # CarPlay stock on a mismatch.
+# Resolved below over the same folders the collector uses: a unit that keeps
+# it only at /eso/lib would otherwise be reported as having no CarPlay at all.
 AIRPLAY_LIB=/mnt/app/eso/lib/libairplay.so
 AIRPLAY_SIZE=703688
+PROFILES=$CARD_ROOT/profiles.conf
 CARPLAY_PRELOAD=/mnt/app/eso/lib/gal_dualscreen/libcarplay_cluster.so
 CARPLAY_OK=0
 
@@ -66,6 +69,14 @@ else
     echo "ERROR: lib_app_mount.sh not found in $CARD_ROOT" >&2
     exit 1
 fi
+
+if [ ! -r "$CARD_ROOT/scripts/lib_unit.sh" ] || [ ! -r "$PROFILES" ] || \
+   [ ! -r "$CARD_ROOT/scripts/lib_cluster_frame.sh" ]; then
+    echo "ERROR: scripts/lib_unit.sh, lib_cluster_frame.sh or profiles.conf not found in $CARD_ROOT" >&2
+    exit 1
+fi
+. "$CARD_ROOT/scripts/lib_unit.sh"
+. "$CARD_ROOT/scripts/lib_cluster_frame.sh"
 
 finish()
 {
@@ -365,15 +376,121 @@ if [ -r "$CARD_ROOT/lib/libdmdt_flush.so" ]; then
     echo "Installed dmdt flush interposer to: $PRELOAD_WRITE_DIR/libdmdt_flush.so"
 fi
 
+# The profiles the hook matches gal against, and the script the player runs
+# when the cockpit's map window is not the size in the settings.
+cp "$PROFILES" "$PRELOAD_WRITE_DIR/profiles.conf" && chmod 644 "$PRELOAD_WRITE_DIR/profiles.conf" || {
+    echo "Could not copy profiles.conf to $PRELOAD_WRITE_DIR" >&2
+    exit 1
+}
+cp "$CARD_ROOT/scripts/window_fix.sh" "$PRELOAD_WRITE_DIR/window_fix.sh" 2>/dev/null || true
+chmod 755 "$PRELOAD_WRITE_DIR/window_fix.sh" 2>/dev/null || true
+cp "$CARD_ROOT/scripts/lib_cluster_frame.sh" "$PRELOAD_WRITE_DIR/lib_cluster_frame.sh" 2>/dev/null || true
+chmod 644 "$PRELOAD_WRITE_DIR/lib_cluster_frame.sh" 2>/dev/null || true
+
+TRAIN=unknown
+for f in /net/rcc/dev/shmem/version.txt /dev/shmem/version.txt; do
+    if [ -r "$f" ]; then
+        TRAIN=`grep "Current train" "$f" | sed 's/Current train = //' | sed -e 's|["'"'"']||g' | sed 's/\r//'`
+        break
+    fi
+done
+
+# The settings owners have tested, by make (profiles.conf): read here, before
+# the settings copy, which needs the make's "auto" values; used again below.
+unit_make "$PROFILES" "$TRAIN" || :
+
 # Internal copy of the settings file: the hook reads the SD card first and
 # falls back to this one, so the tuned values still apply without the card.
+# The owner's own lines from the last install are put back where this card
+# still has the shipped default (scripts/lib_keep_settings.sh).
+CONF_COPY="$PRELOAD_WRITE_DIR/gal_dualscreen.conf"
+OWNER_SAVED="$PRELOAD_WRITE_DIR/gal_dualscreen.owner.conf"
+CONF_DEFAULT="$CARD_ROOT/scripts/gal_dualscreen.default.conf"
 if [ -r "$CARD_ROOT/gal_dualscreen.conf" ]; then
-    cp "$CARD_ROOT/gal_dualscreen.conf" "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null || true
-    chmod 644 "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null || true
-    echo "Installed settings copy: $PRELOAD_WRITE_DIR/gal_dualscreen.conf"
+    KEEP_SETTINGS=`sed -n 's/^CLUSTERMAP_KEEP_SETTINGS=\([01]\)[ 	]*$/\1/p' "$CARD_ROOT/gal_dualscreen.conf" 2>/dev/null | tail -1`
+    KEEP_FROM=
+    if [ "$KEEP_SETTINGS" != 0 ] && [ -r "$CONF_DEFAULT" ] && [ -r "$CARD_ROOT/scripts/lib_keep_settings.sh" ]; then
+        . "$CARD_ROOT/scripts/lib_keep_settings.sh"
+        if [ -r "$OWNER_SAVED" ]; then
+            cp "$OWNER_SAVED" /tmp/clustermap_owner_prev.conf 2>/dev/null && KEEP_FROM=saved
+        elif [ -r "$CONF_COPY" ]; then
+            # Installed by beta18 or older, which saved no owner lines: take
+            # them from the unit's copy, less what that installer wrote into
+            # it itself (window lines, "auto" values, the make's context).
+            keep_owner_lines "$CONF_COPY" "$CONF_DEFAULT" 2>/dev/null | while IFS='=' read -r K V; do
+                case "$K" in
+                    GAL_PLAYER_WINDOW|GAL_SECONDARY_MARGINS|GAL_SECONDARY_PIXEL_ASPECT_RATIO_E4|CLUSTERMAP_FULL_FRAME) continue ;;
+                    GAL_SECONDARY_DPI) [ "$V" = "$CAR_DPI" ] && continue ;;
+                    GAL_SECONDARY_INSETS) [ "$V" = "$CAR_INSETS" ] && continue ;;
+                    GAL_VC_CONTEXT) [ "$V" = "$CAR_CONTEXT" ] && continue ;;
+                esac
+                echo "$K=$V"
+            done > /tmp/clustermap_owner_prev.conf && KEEP_FROM="the previous settings copy"
+        fi
+    fi
+    cp "$CARD_ROOT/gal_dualscreen.conf" "$CONF_COPY" 2>/dev/null || true
+    chmod 644 "$CONF_COPY" 2>/dev/null || true
+    echo "Installed settings copy: $CONF_COPY"
+    if [ -n "$KEEP_FROM" ]; then
+        KEPT=`keep_apply "$CONF_COPY" /tmp/clustermap_owner_prev.conf "$CONF_DEFAULT"` || {
+            KEPT=; echo "WARNING: could not carry over your previous settings; using the card's as they are." >&2; }
+        if [ -n "$KEPT" ]; then
+            echo "Kept from your previous install (change them on the card to override, or CLUSTERMAP_KEEP_SETTINGS=0 for a clean install):"
+            echo "$KEPT" | sed 's/^/  /'
+        fi
+    elif [ "$KEEP_SETTINGS" = 0 ]; then
+        echo "CLUSTERMAP_KEEP_SETTINGS=0: installed the card's settings only."
+    fi
+    rm -f /tmp/clustermap_owner_prev.conf 2>/dev/null
+    # The owner's lines for the next install, before this installer adds its own.
+    if [ -r "$CONF_DEFAULT" ] && [ -r "$CARD_ROOT/scripts/lib_keep_settings.sh" ]; then
+        . "$CARD_ROOT/scripts/lib_keep_settings.sh"
+        keep_owner_lines "$CONF_COPY" "$CONF_DEFAULT" > "$OWNER_SAVED.new" 2>/dev/null &&
+            mv "$OWNER_SAVED.new" "$OWNER_SAVED" 2>/dev/null || rm -f "$OWNER_SAVED.new" 2>/dev/null
+    fi
 else
     echo "NOTE: no gal_dualscreen.conf beside this script; the hook will run on built-in defaults."
 fi
+# CLUSTERMAP_KEEP_ARROWS=1: keep the turn-arrows jar with the map, adding it
+# when missing. On SEAT the two work together; on VW the map goes blank when
+# a route starts.
+WITH_ARROWS=0
+if [ "`sed -n 's/^CLUSTERMAP_KEEP_ARROWS=\([01]\)[ 	]*$/\1/p' "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | tail -1`" = 1 ]; then
+    WITH_ARROWS=1; KEEP_TBT=1
+fi
+# CLUSTERMAP_CARPLAY_TRIAL=<size in bytes>: install the CarPlay map on a unit
+# whose libairplay.so is a different build from the one the hook was written
+# against, for testing. This is the CarPlay equivalent of GAL_PROFILE_TRIAL.
+#
+# It is a weaker gate than it looks, in the safe direction: the hook attaches
+# by exported symbol name (AirPlayReceiverSessionStart and nine others), not
+# by address, and it compares the first eight bytes of every function it
+# trampolines before touching it -- "prologue mismatch" in its log, and
+# CarPlay stays stock. That is not proof the build fits: 857735 (Audi K3346,
+# VWG11 K3342) passes both checks with 26 AirPlay functions changed, Setup
+# among them. So nothing suggests this any more; it stays for a developer
+# with a build they have checked. Asked for in #10 (US P3662, which worked).
+AIRPLAY_TRIAL=`sed -n 's/^CLUSTERMAP_CARPLAY_TRIAL=\([0-9]*\)[ 	]*$/\1/p' \
+    "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | tail -1`
+for d in /mnt/app/eso/lib /eso/lib /mnt/app/armle/lib /mnt/app/usr/lib /mnt/app/root/lib-target; do
+    if [ -r "$d/libairplay.so" ]; then AIRPLAY_LIB="$d/libairplay.so"; break; fi
+done
+AIRPLAY_NOW=`wc -c < $AIRPLAY_LIB 2>/dev/null | sed 's/ //g'`
+AIRPLAY_ALLOWED=0
+[ "$AIRPLAY_NOW" = "$AIRPLAY_SIZE" ] && AIRPLAY_ALLOWED=1
+[ -n "$AIRPLAY_TRIAL" ] && [ "$AIRPLAY_NOW" = "$AIRPLAY_TRIAL" ] && AIRPLAY_ALLOWED=1
+# CLUSTERMAP_CARPLAY=0: the Android Auto map only. CarPlay's preload and
+# firewall rule are left out, for wireless adapters that do not get along
+# with them (#55, #56). The same as --no-carplay, from the card.
+if [ "`sed -n 's/^CLUSTERMAP_CARPLAY=\([01]\)[ 	]*$/\1/p' "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | tail -1`" = 0 ]; then
+    CARPLAY=0
+fi
+
+# The settings owners have tested, by make (unit_make above): the cockpit
+# map window, then DPI and insets. Used for "auto" in gal_dualscreen.conf
+# (#41) and, for the window, when the display manager does not list it (#15,
+# #19: a SEAT and a Skoda drew stripes in an 800x480 window). Values:
+# docs/Install.md.
 
 # The cluster map window. The cluster's encoder expects the window it shows
 # to be this size; an 800x480 window on a cluster whose map window is, say,
@@ -388,33 +505,117 @@ MAP_SIZE=`( cd /eso && LD_PRELOAD="$PRELOAD_WRITE_DIR/libdmdt_flush.so" \
     $1 == 33 {
         for (i = 2; i < NF; i++) if ($i == "x") { print $(i - 1) "x" $(i + 1); exit }
     }'`
+# A GAL_PLAYER_WINDOW line in the card's settings is used only when the
+# display manager does not list the window (#19: a SEAT that never reported
+# its 1010x376, with its own map on the cockpit at every install).
+MAP_SET=`sed -n 's/^GAL_PLAYER_WINDOW=\([0-9]*x[0-9]*\)[ 	]*$/\1/p' \
+    "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | tail -1`
+MAP_FROM="display manager"
+MAP_GUESSED=
+if [ -z "$MAP_SIZE" ] && [ -n "$MAP_SET" ]; then
+    MAP_SIZE=$MAP_SET
+    MAP_FROM="GAL_PLAYER_WINDOW in gal_dualscreen.conf"
+fi
+if [ -z "$MAP_SIZE" ] && [ -n "$CAR_WINDOW" ]; then
+    MAP_SIZE=$CAR_WINDOW
+    MAP_FROM="usual size on $CAR_MAKE; the display manager did not list it"
+    MAP_GUESSED=1
+fi
 MAP_W=`echo "$MAP_SIZE" | sed -n 's/^\([0-9][0-9]*\)x[0-9][0-9]*$/\1/p'`
 MAP_H=`echo "$MAP_SIZE" | sed -n 's/^[0-9][0-9]*x\([0-9][0-9]*\)$/\1/p'`
 if [ -n "$MAP_W" ] && [ -n "$MAP_H" ] && [ "$MAP_W" -ge 320 ] && [ "$MAP_W" -le 1920 ] && \
    [ "$MAP_H" -ge 160 ] && [ "$MAP_H" -le 1080 ]; then
-    echo "Cluster map window: ${MAP_W}x${MAP_H}"
+    echo "Cluster map window: ${MAP_W}x${MAP_H} (from the $MAP_FROM)"
+    if [ -n "$MAP_GUESSED" ]; then
+        # #52: a VW cockpit with a 1010x376 window took the 800x480 guess.
+        echo "  This size is a guess, and not every $CAR_MAKE cockpit has it. If the map"
+        echo "  does not appear, put the cockpit in map view with the car's own"
+        echo "  navigation and install again, or set GAL_PLAYER_WINDOW in"
+        echo "  gal_dualscreen.conf (dmdt_gd.txt in Save logs lists window 33)."
+    fi
 else
     MAP_W=800; MAP_H=480
     echo "Cluster map window: not reported by the display manager; using 800x480."
+    echo "  The stock map window is only listed once the cockpit has shown its"
+    echo "  own map. If your cockpit map is not 800x480, the picture can arrive"
+    echo "  as stripes or the wrong shape. To get the right size: put the"
+    echo "  cockpit in map view with the car's own navigation, then run this"
+    echo "  install again. If it still is not listed, set the size yourself in"
+    echo "  gal_dualscreen.conf, e.g. GAL_PLAYER_WINDOW=1010x376 on SEAT and Skoda."
 fi
 # Android Auto's frame is always 800x480: the phone is asked to leave
-# margins so the rest has the window's shape (none for an 800x480 window).
-# "|| :" because expr exits 1 when the answer is 0, and this runs under set -e.
-if [ `expr $MAP_W \* 480` -gt `expr $MAP_H \* 800` ]; then
-    MARGIN_W=0
-    MARGIN_H=`expr 480 - \( 800 \* $MAP_H + $MAP_W \) / \( 2 \* $MAP_W \) \* 2 || :`
-else
-    MARGIN_W=`expr 800 - \( 480 \* $MAP_W + $MAP_H \) / \( 2 \* $MAP_H \) \* 2 || :`
-    MARGIN_H=0
+# margins so the rest (the band) has the window's shape, none for an 800x480
+# window, or with CLUSTERMAP_FULL_FRAME=1 a pixel aspect ratio, so it draws
+# on the whole frame (scripts/lib_cluster_frame.sh). The green menu's
+# sharper-map switch changes the same lines later without a new install.
+FULL_FRAME=`sed -n 's/^CLUSTERMAP_FULL_FRAME=\([01]\)[ 	]*$/\1/p' \
+    "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | tail -1`
+[ "$FULL_FRAME" = 1 ] || FULL_FRAME=0
+# The owner's choice is saved as it is even where this window cannot use it:
+# when the player finds the real window later, window_fix.sh applies it.
+FULL_FRAME_ASKED=$FULL_FRAME
+if [ "$FULL_FRAME" = 1 ] && ! frame_full_ok $MAP_W $MAP_H; then
+    echo "CLUSTERMAP_FULL_FRAME: the ${MAP_W}x${MAP_H} window is not wider than the frame's 5:3, so it gets no full frame; kept on in case the cockpit's window turns out wider."
+    FULL_FRAME=0
 fi
-if [ "$MARGIN_W" -gt 0 ] || [ "$MARGIN_H" -gt 0 ]; then
+if ! frame_write_conf "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" $MAP_W $MAP_H $FULL_FRAME_ASKED; then
+    if [ "$FULL_FRAME" = 1 ]; then
+        echo "WARNING: could not edit the settings copy; CLUSTERMAP_FULL_FRAME ignored, using margins."
+    fi
+    FULL_FRAME=0
+    frame_geometry $MAP_W $MAP_H 0
+fi
+if [ "$FULL_FRAME" = 1 ]; then
+    echo "Android Auto: whole 800x480 frame, pixel aspect ${PIXEL_ASPECT_E4}/10000, stretched to the window (CLUSTERMAP_FULL_FRAME; car-tested only on AMDFX60's Skoda Superb)."
+elif [ "$MARGIN_W" -gt 0 ] || [ "$MARGIN_H" -gt 0 ]; then
     echo "Android Auto: 800x480 with ${MARGIN_W}x${MARGIN_H} margins, scaled to fill the window."
 fi
-if [ -w "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" ]; then
-    { echo; echo "# Written by the installer from the cluster map window it read."
-      echo "GAL_PLAYER_WINDOW=${MAP_W}x${MAP_H}"
-      echo "GAL_SECONDARY_MARGINS=${MARGIN_W}x${MARGIN_H}"; } >> "$PRELOAD_WRITE_DIR/gal_dualscreen.conf"
+
+# "auto" DPI and insets: the values owners settled on for this make and
+# window. A number in the card's file is kept as it is. Rewritten in place
+# because the hook keeps the first value it reads for a key.
+if [ "${MAP_W}x${MAP_H}" = "$CAR_WINDOW" ]; then
+    AUTO_FROM="tested on $CAR_MAKE, ${MAP_W}x${MAP_H}"
+else
+    CAR_DPI=125; CAR_INSETS=40,40,127,127
+    AUTO_FROM="no tested values for this car and window; shipped defaults"
 fi
+CONF_DPI=`sed -n 's/^GAL_SECONDARY_DPI=\([^ 	]*\)[ 	]*$/\1/p' "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | head -1`
+CONF_INSETS=`sed -n 's/^GAL_SECONDARY_INSETS=\([^ 	]*\)[ 	]*$/\1/p' "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | head -1`
+if [ "$CONF_DPI" = auto ] || [ "$CONF_INSETS" = auto ]; then
+    if sed -e "s/^GAL_SECONDARY_DPI=auto[ 	]*$/GAL_SECONDARY_DPI=$CAR_DPI/" \
+           -e "s/^GAL_SECONDARY_INSETS=auto[ 	]*$/GAL_SECONDARY_INSETS=$CAR_INSETS/" \
+           "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" > "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new" &&
+       mv "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new" "$PRELOAD_WRITE_DIR/gal_dualscreen.conf"; then
+        :
+    else
+        rm -f "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new"
+        echo "WARNING: could not fill in the auto settings; the hook uses its built-in values." >&2
+    fi
+fi
+# Audi A4 B9 (AUG22) shows its cockpit map in context 72, not 70 (#14). The
+# shipped 70 is changed in the installed copy; any other number is kept.
+if [ "$CAR_CONTEXT" != 70 ] &&
+   grep -q '^GAL_VC_CONTEXT=70[ 	]*$' "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null; then
+    if sed "s/^GAL_VC_CONTEXT=70[ 	]*$/GAL_VC_CONTEXT=$CAR_CONTEXT/" "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" \
+           > "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new" &&
+       mv "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new" "$PRELOAD_WRITE_DIR/gal_dualscreen.conf"; then
+        echo "Cockpit context: $CAR_CONTEXT ($CAR_MAKE)"
+    else
+        rm -f "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new"
+        echo "WARNING: could not set GAL_VC_CONTEXT=$CAR_CONTEXT; set it in gal_dualscreen.conf." >&2
+    fi
+fi
+[ "$CONF_DPI" = auto ] && echo "Map DPI: $CAR_DPI ($AUTO_FROM)" || echo "Map DPI: ${CONF_DPI:-built-in} (from gal_dualscreen.conf)"
+[ "$CONF_INSETS" = auto ] && echo "Map insets: $CAR_INSETS ($AUTO_FROM)" || echo "Map insets: ${CONF_INSETS:-built-in} (from gal_dualscreen.conf)"
+# The DPI the hook will actually use, for the summary. --dpi goes into the
+# environment, which the hook reads before the conf file, so it wins.
+case "$CONF_DPI" in
+    auto) EFFECTIVE_DPI=$CAR_DPI ;;
+    '')   EFFECTIVE_DPI=built-in ;;
+    *)    EFFECTIVE_DPI=$CONF_DPI ;;
+esac
+[ "$DPI" -ne 140 ] && EFFECTIVE_DPI=$DPI
 
 # Install stream-player to /mnt/app/navigation
 # Through a new file and a rename: copying over the old player fails while it
@@ -434,11 +635,17 @@ fi
 # The CarPlay map, when this unit's CarPlay library is the one the hook knows.
 CARPLAY_WHY=
 if [ "$CARPLAY" -eq 0 ]; then
-    CARPLAY_WHY="not requested (--no-carplay)"
+    CARPLAY_WHY="turned off (--no-carplay or CLUSTERMAP_CARPLAY=0)"
 elif [ ! -r "$CARD_ROOT/carplay/libcarplay_cluster.so" ] || [ ! -r "$CARD_ROOT/carplay/carplay_cluster.sh" ]; then
     CARPLAY_WHY="its files are not in this package"
-elif [ "`wc -c < $AIRPLAY_LIB 2>/dev/null | sed 's/ //g'`" != "$AIRPLAY_SIZE" ]; then
-    CARPLAY_WHY="this unit's CarPlay library is a different build (`wc -c < $AIRPLAY_LIB 2>/dev/null | sed 's/ //g'` bytes)"
+elif [ "$AIRPLAY_ALLOWED" -ne 1 ]; then
+    if [ -z "$AIRPLAY_NOW" ]; then
+        CARPLAY_WHY="this unit has no $AIRPLAY_LIB"
+    elif [ -n "$AIRPLAY_TRIAL" ]; then
+        CARPLAY_WHY="this unit's CarPlay library is a different build ($AIRPLAY_NOW bytes), and CLUSTERMAP_CARPLAY_TRIAL says $AIRPLAY_TRIAL"
+    else
+        CARPLAY_WHY="this unit's CarPlay library is a different build ($AIRPLAY_NOW bytes), which needs a port"
+    fi
 elif [ -d "$APP_MOUNT/carplaymaps" ] || grep -q carplaymaps "$APP_MOUNT/eso/bin/apps/dio_manager" 2>/dev/null; then
     CARPLAY_WHY="CarPlay Maps VC is installed; uninstall it first to use this one"
 else
@@ -449,6 +656,13 @@ else
         mv "$PRELOAD_WRITE_DIR/libcarplay_cluster.so.new" "$PRELOAD_WRITE_DIR/libcarplay_cluster.so" && CARPLAY_OK=1
     if [ "$CARPLAY_OK" -eq 1 ]; then
         echo "Installed the CarPlay map files to: $PRELOAD_WRITE_DIR"
+        if [ "$AIRPLAY_NOW" != "$AIRPLAY_SIZE" ]; then
+            echo "CarPlay map: UNTESTED CarPlay library ($AIRPLAY_NOW bytes), allowed by"
+            echo "             CLUSTERMAP_CARPLAY_TRIAL. The hook checks the names and first"
+            echo "             bytes of the functions it attaches to. That does not prove this"
+            echo "             build fits: if CarPlay misbehaves, remove the line and install"
+            echo "             again."
+        fi
     else
         rm -f "$PRELOAD_WRITE_DIR/libcarplay_cluster.so.new"
         CARPLAY_WHY="copying its files failed"
@@ -456,10 +670,51 @@ else
 fi
 [ "$CARPLAY_OK" -eq 1 ] || echo "CarPlay map: not installed, $CARPLAY_WHY."
 
+# CLUSTERMAP_CARPLAY_SCALE=<percent>, 70 to 200: declare the display that
+# much larger in millimetres than the 200 mm wide the hook declares by
+# default. The iPhone picks its UI scale from pixels per millimetre, so a
+# larger display at the same pixels gets a smaller UI and more map; below
+# 100 the UI is larger. The frame stays the window's size, so it costs no
+# decoding time (#19; ipaifix/mst2-carplay-scale and DiPlay found the same
+# on the main screen).
+#
+# CLUSTERMAP_CARPLAY_FRAME_SCALE=<percent>, 100 to 200: the beta13 way, asked
+# for by testers who preferred it (#10). The iPhone is asked for a frame that
+# much larger, at the same pixel density, and the player shrinks it into the
+# window. More map, smaller everything, at a cost in decoding time: the
+# player decodes in software (#19). It replaces CLUSTERMAP_CARPLAY_SCALE.
+CP_SCALE=`sed -n 's/^CLUSTERMAP_CARPLAY_SCALE=\([0-9]*\)[ 	]*$/\1/p' \
+    "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | tail -1`
+case "$CP_SCALE" in
+    '') CP_SCALE=100 ;;
+esac
+[ "$CP_SCALE" -lt 70 ] && CP_SCALE=70
+[ "$CP_SCALE" -gt 200 ] && CP_SCALE=200
+CP_FRAME=`sed -n 's/^CLUSTERMAP_CARPLAY_FRAME_SCALE=\([0-9]*\)[ 	]*$/\1/p' \
+    "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | tail -1`
+case "$CP_FRAME" in
+    '') CP_FRAME=100 ;;
+esac
+[ "$CP_FRAME" -gt 200 ] && CP_FRAME=200
+CP_W=$MAP_W; CP_H=$MAP_H
+# Even sizes: H.264 frames are encoded in 2x2 chroma blocks.
+if [ "$CP_FRAME" -gt 100 ]; then
+    CP_SCALE=$CP_FRAME
+    CP_W=`expr $MAP_W \* $CP_FRAME / 200 \* 2`
+    CP_H=`expr $MAP_H \* $CP_FRAME / 200 \* 2`
+fi
+CP_W_MM=`expr 200 \* $CP_SCALE / 100`
+CP_H_MM=`expr $CP_W_MM \* $CP_H / $CP_W`
+if [ "$CARPLAY_OK" -eq 1 ] && [ "$CP_FRAME" -gt 100 ]; then
+    echo "CarPlay map: frame ${CP_W}x${CP_H} (${CP_FRAME} %), shown in the ${MAP_W}x${MAP_H} window"
+elif [ "$CARPLAY_OK" -eq 1 ] && [ "$CP_SCALE" -ne 100 ]; then
+    echo "CarPlay map: display declared as ${CP_W_MM}x${CP_H_MM} mm (${CP_SCALE} %) for the ${MAP_W}x${MAP_H} window"
+fi
+
 # CarPlay's safe area: the part of the window the dials do not cover, where
 # the iPhone keeps the car and its instruction card. The same
 # GAL_SECONDARY_INSETS (top,bottom,left,right) Android Auto uses, which are
-# in its 800x480 frame after margins, scaled to the window. harman-f's hook
+# in its 800x480 frame, less the margins, scaled to the window. harman-f's hook
 # reads it when the iPhone connects. Without it the whole window counts as
 # visible (Golf R: card and car under the dials).
 CARPLAY_SAFEAREA=$APP_MOUNT/root/mibr-carplay111-safearea.conf
@@ -467,14 +722,25 @@ if [ "$CARPLAY_OK" -eq 1 ]; then
     INSETS=`sed -n 's/^GAL_SECONDARY_INSETS=\([0-9]*\),\([0-9]*\),\([0-9]*\),\([0-9]*\)[ 	]*$/\1 \2 \3 \4/p' \
         "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | tail -1`
     set -- ${INSETS:-40 40 127 127}
-    SAFE_Y=`expr $1 \* $MAP_H / \( 480 - $MARGIN_H \) || :`
-    SAFE_B=`expr $2 \* $MAP_H / \( 480 - $MARGIN_H \) || :`
-    SAFE_X=`expr $3 \* $MAP_W / \( 800 - $MARGIN_W \) || :`
-    SAFE_R=`expr $4 \* $MAP_W / \( 800 - $MARGIN_W \) || :`
-    SAFE_W=`expr $MAP_W - $SAFE_X - $SAFE_R || :`
-    SAFE_H=`expr $MAP_H - $SAFE_Y - $SAFE_B || :`
+    # The insets count from the edge of the whole 800x480 frame, margins of
+    # the band included; CarPlay has no margins, so take them off first (SEAT
+    # and Skoda: 91 px top and bottom, which had made the safe area too
+    # small). BAND_MARGIN, not MARGIN: with CLUSTERMAP_FULL_FRAME the Android
+    # Auto margins are 0, but the insets are still set for the band, and
+    # CarPlay knows nothing of full frame.
+    IN_T=`expr $1 - $BAND_MARGIN_H / 2 || :`; [ "$IN_T" -lt 0 ] && IN_T=0
+    IN_B=`expr $2 - $BAND_MARGIN_H / 2 || :`; [ "$IN_B" -lt 0 ] && IN_B=0
+    IN_L=`expr $3 - $BAND_MARGIN_W / 2 || :`; [ "$IN_L" -lt 0 ] && IN_L=0
+    IN_R=`expr $4 - $BAND_MARGIN_W / 2 || :`; [ "$IN_R" -lt 0 ] && IN_R=0
+    SAFE_Y=`expr $IN_T \* $CP_H / \( 480 - $BAND_MARGIN_H \) || :`
+    SAFE_B=`expr $IN_B \* $CP_H / \( 480 - $BAND_MARGIN_H \) || :`
+    SAFE_X=`expr $IN_L \* $CP_W / \( 800 - $BAND_MARGIN_W \) || :`
+    SAFE_R=`expr $IN_R \* $CP_W / \( 800 - $BAND_MARGIN_W \) || :`
+    SAFE_W=`expr $CP_W - $SAFE_X - $SAFE_R || :`
+    SAFE_H=`expr $CP_H - $SAFE_Y - $SAFE_B || :`
+    # echo, not printf: some units have no printf binary
     if [ "$SAFE_W" -ge 160 ] && [ "$SAFE_H" -ge 120 ] &&
-       printf 'x=%s\ny=%s\nw=%s\nh=%s\n' $SAFE_X $SAFE_Y $SAFE_W $SAFE_H > "$CARPLAY_SAFEAREA"; then
+       { echo "x=$SAFE_X"; echo "y=$SAFE_Y"; echo "w=$SAFE_W"; echo "h=$SAFE_H"; } > "$CARPLAY_SAFEAREA"; then
         echo "CarPlay map: safe area ${SAFE_W}x${SAFE_H} at ${SAFE_X},${SAFE_Y} (from the insets)"
     else
         rm -f "$CARPLAY_SAFEAREA"
@@ -482,6 +748,60 @@ if [ "$CARPLAY_OK" -eq 1 ]; then
     fi
 else
     rm -f "$CARPLAY_SAFEAREA" 2>/dev/null || true
+fi
+
+# What the iPhone draws on the cluster, from gal_dualscreen.conf. harman-f's
+# hook reads these files when the iPhone connects; with none of the settings
+# present they are removed and the iPhone draws its default.
+#   CLUSTERMAP_CARPLAY_VIEW=full|map|card   map and card, the map only, or the card only
+#   CLUSTERMAP_CARPLAY_SPEEDLIMIT, _COMPASS, _ETA = yes|no
+#   CLUSTERMAP_CARPLAY_CARD_POSITION=left|right|top
+CP_NAV=$APP_MOUNT/root/mibr-carplay111-nav
+cp_setting() {
+    sed -n "s/^CLUSTERMAP_CARPLAY_$1=\\([a-z]*\\)[ 	]*\$/\\1/p" \
+        "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | tail -1
+}
+rm -f "$CP_NAV-query.enabled" "$CP_NAV.surface" "$CP_NAV.showSpeedLimit" \
+      "$CP_NAV.showCompass" "$CP_NAV.showETA" "$CP_NAV.maneuverLayout" 2>/dev/null || true
+if [ "$CARPLAY_OK" -eq 1 ]; then
+    CP_VIEW=`cp_setting VIEW`
+    case "$CP_VIEW" in
+        map)  echo map > "$CP_NAV.surface" ;;
+        card) echo instructioncard > "$CP_NAV.surface" ;;
+        full) echo base > "$CP_NAV.surface" ;;
+        '')   ;;
+        *)    echo "CarPlay map: CLUSTERMAP_CARPLAY_VIEW=$CP_VIEW not understood (full, map or card); ignored" ;;
+    esac
+    CP_QUERY=
+    for k in SPEEDLIMIT:showSpeedLimit COMPASS:showCompass ETA:showETA; do
+        v=`cp_setting ${k%%:*}`
+        case "$v" in
+            yes|no) echo "$v" > "$CP_NAV.${k#*:}"; CP_QUERY="$CP_QUERY ${k#*:}=$v" ;;
+            '') ;;
+            *) echo "CarPlay map: CLUSTERMAP_CARPLAY_${k%%:*}=$v not understood (yes or no); ignored" ;;
+        esac
+    done
+    v=`cp_setting CARD_POSITION`
+    # Unset on SEAT: top. With a route the iPhone otherwise puts the card on
+    # the left and the car under the right dial; owners found top keeps the
+    # car centred (#19). "iphone" leaves it to the iPhone, as before.
+    if [ -z "$v" ] && [ "$CAR_MAKE" = SEAT ]; then
+        v=top
+        echo "CarPlay map: card at the top by default on SEAT (CLUSTERMAP_CARPLAY_CARD_POSITION=iphone to leave it to the iPhone)"
+    fi
+    case "$v" in
+        left|right|top) echo "$v" > "$CP_NAV.maneuverLayout"; CP_QUERY="$CP_QUERY card=$v" ;;
+        ''|iphone) ;;
+        *) echo "CarPlay map: CLUSTERMAP_CARPLAY_CARD_POSITION=$v not understood (left, right, top or iphone); ignored" ;;
+    esac
+    # if, not "[ ] &&": as the last command of this block a false test would
+    # end the install under set -e (beta14, #52).
+    if [ -n "$CP_QUERY" ]; then
+        : > "$CP_NAV-query.enabled"
+    fi
+    if [ -n "$CP_VIEW$CP_QUERY" ]; then
+        echo "CarPlay map: view ${CP_VIEW:-full};${CP_QUERY:- iPhone defaults}"
+    fi
 fi
 
 mount -ur "$APP_MOUNT" 2>/dev/null || true
@@ -593,12 +913,17 @@ INJECTION="\"LD_PRELOAD=$PRELOAD_SO_ALIAS\", \"GAL_DUALSCREEN_ENABLE=1\", \"GAL_
 # worth more than one extra option.
 INJECTED_COUNT=`echo "$INJECTION" | awk -F'", ' '{print NF-1}'`
 EXISTING_COUNT=`awk '
-BEGIN { in_children=0; in_gal=0 }
+BEGIN { in_children=0; in_gal=0; in_envs=0; line="" }
 {
     if ($0 ~ /"children"[ 	]*:/) in_children=1
     if (in_children && !in_gal && $0 ~ /^[ 	]*"gal"[ 	]*:/) in_gal=1
-    if (in_gal && $0 ~ /^[ 	]*"envs"[ 	]*:\[/) {
-        line=$0; sub(/^[^\[]*\[/, "", line); sub(/\].*$/, "", line)
+    # The array is on one line on the Golf, one entry per line on VWG11:
+    # gather it up to the closing bracket either way.
+    if (in_gal && !in_envs && $0 ~ /^[ 	]*"envs"[ 	]*:\[/) {
+        in_envs=1; line=$0; sub(/^[^\[]*\[/, "", line)
+    } else if (in_envs) line=line $0
+    if (in_envs && line ~ /\]/) {
+        sub(/\].*$/, "", line)
         n=split(line, parts, /"[ 	]*,[ 	]*"/)
         if (line ~ /^[ 	]*$/) n=0
         print n; exit
@@ -646,7 +971,12 @@ grep -q "LD_PRELOAD=$PRELOAD_SO_ALIAS" "$TEMP" || {
 # always come and go together. CarPlay is asked for the cluster map
 # window's size, read above, so its stream fills the player's window.
 if [ "$CARPLAY_OK" -eq 1 ]; then
-    CP_INJECTION="\"LD_PRELOAD=$CARPLAY_PRELOAD\", \"ALTSCREEN111_WIDTH=$MAP_W\", \"ALTSCREEN111_HEIGHT=$MAP_H\", "
+    CP_INJECTION="\"LD_PRELOAD=$CARPLAY_PRELOAD\", \"ALTSCREEN111_WIDTH=$CP_W\", \"ALTSCREEN111_HEIGHT=$CP_H\", "
+    CP_ADDED=3
+    if [ "$CP_SCALE" -ne 100 ]; then
+        CP_INJECTION="$CP_INJECTION\"ALTSCREEN111_WIDTH_MM=$CP_W_MM\", \"ALTSCREEN111_HEIGHT_MM=$CP_H_MM\", "
+        CP_ADDED=5
+    fi
     CP_EXISTING=`awk '
     BEGIN { in_children=0; in_cp=0 }
     {
@@ -664,7 +994,7 @@ if [ "$CARPLAY_OK" -eq 1 ]; then
         CARPLAY_OK=0; CARPLAY_WHY="CarPlay already has a preloaded library (another CarPlay mod?)"
     elif [ -z "$CP_EXISTING" ]; then
         CARPLAY_OK=0; CARPLAY_WHY="no carplay entry in the supervisor config"
-    elif [ `expr $CP_EXISTING + 3` -gt 10 ]; then
+    elif [ `expr $CP_EXISTING + $CP_ADDED` -gt 10 ]; then
         CARPLAY_OK=0; CARPLAY_WHY="its environment list would pass the limit of 10"
     else
         awk -v injection="$CP_INJECTION" '
@@ -686,7 +1016,7 @@ if [ "$CARPLAY_OK" -eq 1 ]; then
         }
     fi
     if [ "$CARPLAY_OK" -eq 1 ]; then
-        echo "CarPlay map: added to dio_manager's start-up ($CP_EXISTING + 3 environment entries)."
+        echo "CarPlay map: added to dio_manager's start-up ($CP_EXISTING + $CP_ADDED environment entries)."
     else
         echo "CarPlay map: not installed, $CARPLAY_WHY. The Android Auto map is unaffected."
     fi
@@ -771,11 +1101,28 @@ echo "  preload target: $PRELOAD_SO_ALIAS"
 echo "    on the internal /mnt/app partition, not the SD card -- avoids the"
 echo "    SD-card mount-timing race at GAL's boot-time launch."
 echo "  output mode: $OUTPUT (video forwarded to stream-player)"
-echo "  cluster: Android Auto 800x480 @ 30 fps (margins ${MARGIN_W}x${MARGIN_H}), DPI $DPI, ${MAP_W}x${MAP_H} window"
+if [ "$FULL_FRAME" = 1 ]; then
+    echo "  cluster: Android Auto 800x480 @ 30 fps (full frame, pixel aspect ${PIXEL_ASPECT_E4}/10000), DPI $EFFECTIVE_DPI, ${MAP_W}x${MAP_H} window"
+else
+    echo "  cluster: Android Auto 800x480 @ 30 fps (margins ${MARGIN_W}x${MARGIN_H}), DPI $EFFECTIVE_DPI, ${MAP_W}x${MAP_H} window"
+fi
 if [ "$CARPLAY_OK" -eq 1 ]; then echo "  CarPlay map: installed, ${MAP_W}x${MAP_H}"; else echo "  CarPlay map: no ($CARPLAY_WHY)"; fi
 echo "  debug logs: $DEBUG"
 echo "  second sink: $SECOND_SINK   inject metadata: $INJECT_META"
-echo "  AAP minor version: ${AAP_MINOR:-2 (stock)}"
+# The hook reads GAL_DUALSCREEN_AAP_MINOR from its own copy of the settings at
+# run time, so --aap-minor is not the only source. Without the flag this line
+# used to say "2 (stock)" while the hook was in fact using the file's value --
+# which sent two testers (#19, #37) chasing a protocol version they were not
+# running. Report what will actually be used.
+AAP_MINOR_CONF=`sed -n 's/^GAL_DUALSCREEN_AAP_MINOR=\([0-9]*\)[ 	]*$/\1/p' \
+    "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | tail -1`
+if [ -n "$AAP_MINOR" ]; then
+    echo "  AAP minor version: $AAP_MINOR (--aap-minor)"
+elif [ -n "$AAP_MINOR_CONF" ]; then
+    echo "  AAP minor version: $AAP_MINOR_CONF (from gal_dualscreen.conf)"
+else
+    echo "  AAP minor version: 2 (stock)"
+fi
 echo "  stream forwarding: $STREAM"
 echo "  cluster input service: $CLUSTER_INPUT"
 echo "  hook log: $HOOK_LOG_PATH"
@@ -792,31 +1139,54 @@ NAVIGNORE_MARKER=/mnt/app/eso/hmi/lsd/.aacluster_navignore_added
 # Firmware where the bundled NavActiveIgnore.jar has been seen working. It is a
 # Java patch: on a firmware it does not fit, the centre screen may not start,
 # so it is never added automatically anywhere else.
-NAVIGNORE_TRAINS="MHI2_ER_VWG13_P4521 MHI2_ER_VWG13_K4525"
-TRAIN=unknown
-for f in /net/rcc/dev/shmem/version.txt /dev/shmem/version.txt; do
-    if [ -r "$f" ]; then
-        TRAIN=`grep "Current train" "$f" | sed 's/Current train = //' | sed -e 's|["'"'"']||g' | sed 's/\r//'`
-        break
-    fi
-done
+# Where it is added without being asked is "navignore" in profiles.conf: trains
+# where owners ran this same jar, or the toolbox's copy of it, and sent logs
+# showing it loaded (#15). Those logs came from the green menu, which only runs
+# once the centre screen has started, so the patch fits.
+# CLUSTERMAP_ADD_NAVIGNORE=1 in gal_dualscreen.conf: add it on any other
+# firmware too, when the owner asks. It is the same jar the toolbox applies,
+# but done here it gets lsd.sh.before_* backups and is removed again by
+# uninstall. Off by default: on a firmware it does not fit, the centre screen
+# may not start (see docs/Install.md, Safety and recovery).
+NAVIGNORE_ASKED=`sed -n 's/^CLUSTERMAP_ADD_NAVIGNORE=\([01]\)[ 	]*$/\1/p' \
+    "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | tail -1`
+# Never where profiles.conf says "nonavignore": with it, Android Auto stopped
+# working on an S2125 (#39, FAILED_NO_GAL_DEVICE). Owners updated to
+# MHI2_ER_VWG11_K3342 run it fine (#39, #28; the #28 freeze was an edited
+# gal.json). The Audi K3346 kept its map through a route without it (#14).
+NAVIGNORE_NEVER=0
+if train_has "$PROFILES" "$TRAIN" nonavignore; then NAVIGNORE_NEVER=1; fi
 echo
 if [ ! -r "$LSD_SH" ] || [ ! -r "$CARD_ROOT/lsd_jar.sh" ]; then
     echo "WARNING: cannot check the Java interface ($LSD_SH or lsd_jar.sh missing)." >&2
 else
-    if sh "$CARD_ROOT/lsd_jar.sh" loaded NavActiveIgnore.jar; then
+    if sh "$CARD_ROOT/lsd_jar.sh" loaded NavActiveIgnore.jar && [ "$NAVIGNORE_NEVER" -eq 1 ]; then
+        echo "WARNING: NavActiveIgnore is loaded. On firmware $TRAIN it has stopped" >&2
+        echo "         Android Auto (#39). If it does, remove it with the toolbox or" >&2
+        echo "         this package's uninstall, or update to MHI2_ER_VWG11_K3342." >&2
+    elif sh "$CARD_ROOT/lsd_jar.sh" loaded NavActiveIgnore.jar; then
         echo "Java check: NavActiveIgnore is loaded (required)."
     elif sh "$CARD_ROOT/lsd_jar.sh" loaded CarPlayNavigationPatch.jar; then
         # CarPlay Maps VC ships the same nine classes under another name.
         echo "Java check: CarPlayNavigationPatch is loaded (the same patch as NavActiveIgnore)."
+    elif [ "$NAVIGNORE_NEVER" -eq 1 ]; then
+        echo "Java check: NavActiveIgnore is not loaded, and is never added on $TRAIN"
+        if [ "$NAVIGNORE_ASKED" = 1 ]; then
+            echo "            (CLUSTERMAP_ADD_NAVIGNORE=1 ignored: it broke Android Auto on this firmware, #39)."
+            echo "            Owners updated to MHI2_ER_VWG11_K3342 have it working (#39, #28)."
+        fi
     elif [ "$KEEP_NAVIGNORE" -eq 1 ]; then
         echo "Java check: NavActiveIgnore is NOT loaded and was left alone (--no-navignore)."
         echo "            The cluster will drop its map when the phone navigates."
     else
         NAV_OK=0
-        for t in $NAVIGNORE_TRAINS; do case "$TRAIN" in *${t}*) NAV_OK=1 ;; esac; done
+        NAV_WHY="firmware $TRAIN"
+        if train_has "$PROFILES" "$TRAIN" navignore; then NAV_OK=1; fi
+        if [ "$NAV_OK" -eq 0 ] && [ "$NAVIGNORE_ASKED" = 1 ]; then
+            NAV_OK=1; NAV_WHY="asked for by CLUSTERMAP_ADD_NAVIGNORE=1 on $TRAIN"
+        fi
         if [ "$NAV_OK" -eq 1 ]; then
-            echo "Java check: NavActiveIgnore is not loaded; adding it (firmware $TRAIN)."
+            echo "Java check: NavActiveIgnore is not loaded; adding it ($NAV_WHY)."
             if sh "$CARD_ROOT/lsd_jar.sh" add NavActiveIgnore.jar "$CARD_ROOT/thirdparty/NavActiveIgnore.jar"; then
                 mount -uw /mnt/app 2>/dev/null && { : > "$NAVIGNORE_MARKER"; mount -ur /mnt/app 2>/dev/null || true; }
             else
@@ -825,14 +1195,36 @@ else
             fi
         else
             echo "WARNING: NavActiveIgnore is NOT loaded, and it is not added automatically" >&2
-            echo "         on firmware $TRAIN. Apply it from the toolbox:" >&2
-            echo "         Customization > Navigation > Ignore navigation-active status." >&2
+            echo "         on firmware $TRAIN. Without it the cluster drops the map as" >&2
+            echo "         soon as the phone starts a route. To have this installer add" >&2
+            echo "         it, put CLUSTERMAP_ADD_NAVIGNORE=1 in gal_dualscreen.conf and" >&2
+            echo "         install again; or apply it from the toolbox: Customization >" >&2
+            echo "         Navigation > Ignore navigation-active status. It edits the script" >&2
+            echo "         that starts the centre screen: check SSH works first, and keep a" >&2
+            echo "         copy: cp $LSD_SH $LSD_SH.myback" >&2
+        fi
+    fi
+    TBT_OK=0
+    if train_has "$PROFILES" "$TRAIN" arrows; then TBT_OK=1; fi
+    if [ "$WITH_ARROWS" -eq 1 ] && ! sh "$CARD_ROOT/lsd_jar.sh" loaded VCAndroidAuto.jar; then
+        if [ "$TBT_OK" -eq 1 ]; then
+            echo "Java check: adding VCAndroidAuto.jar beside the map (CLUSTERMAP_KEEP_ARROWS=1)."
+            if sh "$CARD_ROOT/lsd_jar.sh" add VCAndroidAuto.jar "$CARD_ROOT/thirdparty/VCAndroidAuto.jar"; then
+                mount -uw /mnt/app 2>/dev/null && { : > /mnt/app/eso/hmi/lsd/.aacluster_tbt_added; mount -ur /mnt/app 2>/dev/null || true; }
+            else
+                echo "WARNING: could not add VCAndroidAuto.jar; lsd.sh is unchanged." >&2
+            fi
+        else
+            echo "WARNING: CLUSTERMAP_KEEP_ARROWS=1 ignored: the arrows jar is not known to" >&2
+            echo "         work on firmware $TRAIN." >&2
         fi
     fi
     if sh "$CARD_ROOT/lsd_jar.sh" loaded VCAndroidAuto.jar; then
         if [ "$KEEP_TBT" -eq 1 ]; then
-            echo "Java check: VCAndroidAuto.jar is loaded and was kept (--keep-turn-by-turn)."
-            echo "            Expect the cluster map to fail when a route starts."
+            echo "Java check: VCAndroidAuto.jar is loaded and was kept with the map."
+            case "$TRAIN" in
+                *_VWG*) echo "            On VW, expect the cluster map to go blank when a route starts." ;;
+            esac
         elif sh "$CARD_ROOT/turn_by_turn.sh" remove; then
             :
         else
