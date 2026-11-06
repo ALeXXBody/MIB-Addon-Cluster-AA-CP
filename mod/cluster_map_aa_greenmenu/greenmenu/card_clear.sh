@@ -72,7 +72,7 @@ else
     # Remove any stale hex line, add the chosen preset's payload, then sync.
     sed -i '/^GAL_SECONDARY_UI_CONFIG_HEX=/d' "$CONF" || {
         echo "Could not rewrite gal_dualscreen.conf. Nothing changed."; exit 1; }
-    printf 'GAL_SECONDARY_UI_CONFIG_HEX=%s\n' "$HEX" >> "$CONF" || {
+    echo "GAL_SECONDARY_UI_CONFIG_HEX=$HEX" >> "$CONF" || {
         echo "Could not append the settings line. Nothing changed."; exit 1; }
 fi
 sync

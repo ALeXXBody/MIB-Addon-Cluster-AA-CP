@@ -43,7 +43,7 @@ if grep -q "^GAL_PLAYER_ZOOM_E4=" "$CONF"; then
     mv "$CONF.new" "$CONF" 2>/dev/null || {
         echo "Could not rewrite GAL_PLAYER_ZOOM_E4 in $CONF. Nothing changed."; rm -f "$CONF.new"; exit 1; }
 else
-    printf 'GAL_PLAYER_ZOOM_E4=%s\n' "$WANT" >> "$CONF" || { echo "Could not add GAL_PLAYER_ZOOM_E4 to $CONF. Nothing changed."; exit 1; }
+    echo "GAL_PLAYER_ZOOM_E4=$WANT" >> "$CONF" || { echo "Could not add GAL_PLAYER_ZOOM_E4 to $CONF. Nothing changed."; exit 1; }
 fi
 sync
 # Live change for the running session (the player polls this small file):

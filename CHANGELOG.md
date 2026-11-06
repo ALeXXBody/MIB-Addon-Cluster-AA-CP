@@ -1,5 +1,49 @@
 # Changelog
 
+### v0.4.14: the drift check was lying + never-block-on-RO-card + M.I.B.'s tools contract (2026-11-06)
+
+- **`tools/payload_sync.sh` rewritten (both false-OK bugs fixed):**
+  `diff -u … | head` had masked the honest exit status behind head's
+  always-success status, so the checker reported "OK, no drift" while the
+  fork mirror drifted for weeks. It also lacked the layout rules that make
+  a two-repo mirror sound: fork-only extras (binaries/, config/,
+  custom.sh, README.md) are whitelisted; the fork's NESTED copies
+  (`scripts/enable_hook.sh`, `scripts/disable_hook.sh`,
+  `scripts/collect_logs.sh` — the copies the fork's M.I.B. screens run)
+  are explicitly governed to byte-match the Addon's canonical root files.
+  `tar --exclude` order fixed (POSIX tar applies trailing `--exclude`
+  positionally and silently ignores it).
+- **`enable_hook.sh` / `disable_hook.sh`: payload-root resolution by
+  content.** CARD_ROOT is the folder that actually holds
+  `libgal_hook.so` — one level up when the script copy is reached from the
+  fork's nested `scripts/` layout. Both M.I.B. entry points
+  (`mod/custom.sh` screen chain and `esd/scripts/cm_aa_install.sh`) now
+  behave identically, with zero duplicate maintenance.
+- **A read-only card can no longer stop the install.** The greenmenu
+  installer no longer hard-exits on the card probe. `enable_hook.sh`
+  gained `ensure_write_dir()`: the card's `backups/`+`logs/` when
+  writable, `/tmp/clustermap_unit/{backups,logs}` otherwise, with the
+  chosen home recorded into the card's `last_install_paths.txt` or the
+  unit's `/tmp/clustermap_last_paths` — and `disable_hook.sh` reads BOTH
+  sources to find the install's backups for uninstall/restore. Verified
+  functionally against a genuinely read-only filesystem (both branches).
+- **QNET view spelled the way the owner's unit does.** find_card's
+  candidate + fallback lists carry `/net/mmx.mibhigh.net/fs/sd{a,b}0`
+  next to the `/net/mmx/…` shorthand; the card remount ladder uses the
+  mount point from the mount TABLE (any slot), not a hardcoded
+  `/fs/sda0`; card-path bootstrap for M.I.B.'s bundled tools uses the
+  slot-aware views (${_v}/apps/sbin) plus QNET shorthand/FQDN forms.
+- **M.I.B.'s bundled-tools contract.** M.I.B. bundles its own missing
+  binaries (sed, awk, cut, tee, sha1sum, …) on ITS card and prepends that
+  folder to PATH (config/GLOBALS). Our payload runs from the same card, so
+  `find_card()` does the same (defense-in-depth: our scripts also stay
+  printf/tr/diff/grep -o-free, with `tools/gem_portable_check.sh` in CI
+  failing any regression, and `cmp` uses a size-verified fallback).
+- `mod/custom.sh`: self-check shows "ok" via reachable unit views
+  (/mnt/app + /net) and prints a targeted diagnosis instead of a bare
+  MISSING list; its "install did not finish" advice matches the new
+  read-only-is-not-fatal behavior.
+
 ## 0.1.0 — 2026-11-04
 - Initial mod packaging for M.I.B.
 - Four GEM screens: status / install / uninstall / collect fork logs.

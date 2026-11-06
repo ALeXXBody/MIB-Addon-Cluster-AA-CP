@@ -14,6 +14,13 @@ export PATH
 set -eu
 
 CARD_ROOT=`cd "\`dirname "$0"\`" && pwd`
+# One canonical payload root: if this script copy was reached from a NESTED
+# layout (the fork's scripts/ copy of the same tree -- M.I.B.'s cm_aa_*
+# screens run it from there), the card root is one level up. Resolve it by
+# what must exist, not by a layout name.
+if [ ! -f "$CARD_ROOT/libgal_hook.so" ] && [ -f "$CARD_ROOT/../libgal_hook.so" ]; then
+    CARD_ROOT=`cd "$CARD_ROOT/.." && pwd`
+fi
 SYSTEM_MOUNT=/mnt/system
 TARGET_CONFIG=$SYSTEM_MOUNT/etc/eso/production/smartphone_integrator.json
 PERSISTENT_BACKUP=$TARGET_CONFIG.gal-dualscreen.original
@@ -21,9 +28,45 @@ JSONLINT=/mnt/app/eso/bin/jsonlint
 # Match the QNX login/startup loader path. In particular, libiplcommon.so,
 # libosal.so, and libutil.so are supplied by /lib, not /mnt/app/eso/lib.
 VALIDATOR_LD_LIBRARY_PATH=/proc/boot:/lib:/lib/dll:/usr/lib:/mnt/app/root/lib-target:/mnt/app/usr/lib:/mnt/app/armle/lib:/mnt/app/armle/lib/dll:/mnt/app/armle/usr/lib:/eso/lib:/mnt/app/eso/lib
-BACKUP_DIR="$CARD_ROOT/backups"
-ORIGINAL="$BACKUP_DIR/smartphone_integrator.json.original"
-LOG_DIR="$CARD_ROOT/logs"
+# Backups/logs prefer the card; when the card is read-only to the unit
+# (which previously stopped the WHOLE install), they fall back to /tmp so
+# the install never blocks on the card. Uninstall then reads whichever
+# folder the install actually used (recorded in a marker file).
+BACKUP_DIR=""; LOG_DIR=""; WRITE_HOME=""; ORIGINAL=""
+ensure_write_dir() {
+    if mkdir "$CARD_ROOT/backups" 2>/dev/null || { [ -d "$CARD_ROOT/backups" ] && mkdir "$CARD_ROOT/.rw_probe" 2>/dev/null; }; then
+        rmdir "$CARD_ROOT/.rw_probe" 2>/dev/null || true
+        WRITE_HOME="$CARD_ROOT"
+        BACKUP_DIR="$CARD_ROOT/backups"
+        LOG_DIR="$CARD_ROOT/logs"
+    else
+        WRITE_HOME="/tmp/clustermap_unit"
+        BACKUP_DIR="$WRITE_HOME/backups"
+        LOG_DIR="$WRITE_HOME/logs"
+        echo "NOTE: card is read-only to the unit; backups/logs go to $WRITE_HOME (RAM: uninstall then still restores, but they are lost on every reboot)." >&2
+    fi
+    mkdir -p "$BACKUP_DIR" "$LOG_DIR" || {
+        echo "ERROR: could not create $BACKUP_DIR / $LOG_DIR" >&2
+        exit 1
+    }
+    # The SD-untouched-original path follows the SAME home: the whole point
+    # of this helper is that no collector of install files assumes the card.
+    ORIGINAL="$BACKUP_DIR/smartphone_integrator.json.original"
+    # record for uninstall/tools: where this install's files went (card if
+    # writable, otherwise the /tmp home; uninstall reads both in order).
+    # stderr is redirected FIRST: the stderr of a failed open on the card
+    # must not paint the console red on an already-announced condition.
+    if echo "BACKUP_DIR=$BACKUP_DIR" 2>/dev/null > "$CARD_ROOT/last_install_paths.txt"; then
+        echo "LOG_DIR=$LOG_DIR" >> "$CARD_ROOT/last_install_paths.txt"
+        echo "WRITE_HOME=$WRITE_HOME" >> "$CARD_ROOT/last_install_paths.txt"
+    else
+        {
+            echo "BACKUP_DIR=$BACKUP_DIR"
+            echo "LOG_DIR=$LOG_DIR"
+            echo "WRITE_HOME=$WRITE_HOME"
+        } > /tmp/clustermap_last_paths 2>/dev/null
+    fi
+}
 DPI=140
 DEBUG=0
 SECOND_SINK=1
@@ -268,10 +311,7 @@ LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$TARGET_CONFIG"
     exit 1
 }
 
-mkdir -p "$BACKUP_DIR" "$LOG_DIR" || {
-    echo "Cannot create $BACKUP_DIR / $LOG_DIR under $CARD_ROOT" >&2
-    exit 1
-}
+ensure_write_dir
 # mkdir -p SUCCEEDS on an already-existing directory even when the
 # filesystem is mounted read-only, so it cannot detect the SD card's
 # default state after a power cycle. Relying on it meant the install got
@@ -282,9 +322,9 @@ mkdir -p "$BACKUP_DIR" "$LOG_DIR" || {
 # is the thing that has to work, and fail here with the real reason.
 WRITE_PROBE="$LOG_DIR/.write_probe.$$"
 if ! : > "$WRITE_PROBE" 2>/dev/null; then
-    echo "Cannot write $CARD_ROOT -- it is mounted read-only." >&2
-    echo "The SD card returns to read-only on every boot; run this first:" >&2
-    echo "    mount -uw $CARD_ROOT" >&2
+    echo "Cannot write the install's work dir ($LOG_DIR, home: $WRITE_HOME)." >&2
+    echo "If that home is the SD card, unlock the card (LOCK slider up) or" >&2
+    echo "clear the dirty flag with chkdsk /f, and run Install again." >&2
     exit 1
 fi
 rm -f "$WRITE_PROBE"
@@ -851,7 +891,7 @@ if [ "$TARGET_IS_HOOKED" -eq 1 ]; then
     SOURCE="$ORIGINAL"
 fi
 
-TEMP="$CARD_ROOT/logs/smartphone_integrator.json.new.$$"
+TEMP="$LOG_DIR/smartphone_integrator.json.new.$$"
 
 # Point the hook at the SD-card log path. The SD card is writable right
 # now (this script required it), and stays writable across a GAL restart

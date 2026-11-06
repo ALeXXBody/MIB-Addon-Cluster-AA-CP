@@ -67,13 +67,17 @@ Sharper map, Keep map and Zoom change the **unit's installed settings**, not you
 
 ## Troubleshooting — “Read-only file system” / `CLUSTERMAP_INSTALL_FAILED`
 
-The installer keeps `backups/` and `logs/` on the SD card, so the card must be writable to the unit. The three usual causes, in order:
+The installer prefers `backups/` and `logs/` on the SD card, but since
+v0.4.14 a read-only card is announced, not fatal: those folders fall back
+to `/tmp/clustermap_unit` on the unit (RAM: kept only until the next
+reboot), and the install continues. The three usual causes for the card
+being read-only, in order:
 
 1. **The LOCK slider on the SD adapter is on.** MicroSD→SD adapters are shipped with it slid down (locked). Move it to the up/unlocked position, re-insert, run the screen again.
 2. **The card is not FAT32.** exFAT/NTFS cards normally mount read-only on the unit. Reformat FAT32 and re-copy M.I.B. + this repo's `mod/`.
 3. **The card has the volume-dirty flag set** (typically after it was pulled while the unit was writing). The unit then mounts it read-only until the flag is cleared: run `chkdsk /f X:` (Windows) on the card from a PC, re-insert, run again.
 
-The Green Engineering Menu console now says explicitly when the card is read-only, with these same three steps.
+The Green Engineering Menu console says explicitly when the card is read-only, with these same three steps — and the install tells you where its backups went.
 
 ## Android Auto capabilities research
 

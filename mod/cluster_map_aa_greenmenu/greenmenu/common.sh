@@ -5,6 +5,14 @@ PATH=/proc/boot:/bin:/usr/bin:/usr/sbin:/sbin:/mnt/app/armle/bin:/mnt/app/armle/
 export PATH
 
 # ---------------------------------------------------------------------------
+# M.I.B.'s own contract (config/GLOBALS): the unit lacks printf/tr/cmp/diff,
+# and its M.I.B. card ships app/sbin/{sed,awk,cut,tee,sha1sum,dd,gzip}. Our
+# payload runs from that same card, so find_card PATCHES PATH in front with
+# the card's tools folder the moment it locates it. Nothing later in this
+# file or the scripts that source it needs to re-derive the tools.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
 # find_card: THE card/payload locator. Every script that sources this file
 # gets VOLUME (the card root) and PKG (the payload folder) out of it —
 # nothing else in the code base may hardcode a card path.
@@ -35,7 +43,9 @@ find_card()
         _cands="$_cands $_p"
     done
     # 2. the fixed fallback list (a mount table that does not show /fs/*)
-    _cands="$_cands /fs/sda0 /fs/sdb0 /fs/sda1 /fs/sdd0 /fs/usb0_0 /fs/usb1_0 /net/mmx/fs/sda0 /net/mmx/fs/sdb0"
+    _cands="$_cands /fs/sda0 /fs/sdb0 /fs/sda1 /fs/sdd0 /fs/usb0_0 /fs/usb1_0 \
+           /net/mmx/fs/sda0 /net/mmx/fs/sdb0 \
+           /net/mmx.mibhigh.net/fs/sda0 /net/mmx.mibhigh.net/fs/sdb0"
 
     for _v in $_cands; do
         [ -d "$_v" ] || continue
@@ -43,6 +53,17 @@ find_card()
             if [ -f "$_v/$_rel/enable_hook.sh" ]; then
                 VOLUME=`cd "$_v" 2>/dev/null && pwd`
                 PKG="$VOLUME/$_rel"
+                # M.I.B.'s bundled tools on this card: put them FIRST on
+                # PATH (M.I.B.'s config/GLOBALS contract). Nothing later in
+                # the run needs to re-derive them.
+                for _t in "${_v}/apps/sbin" "${_v}/tools/sbin" \
+                          /net/mmx/fs/sda0/apps/sbin /net/mmx/fs/sdb0/apps/sbin \
+                          /net/mmx.mibhigh.net/fs/sda0/apps/sbin; do
+                    if [ -f "${_t}/sed" ] || [ -f "${_t}/sha1sum" ]; then
+                        PATH="$_t:$PATH"; export PATH
+                        break
+                    fi
+                done
                 return 0
             fi
         done
@@ -53,7 +74,8 @@ find_card()
 find_card || {
     # Last resort for nodes where the mount table names nothing (some GEM
     # consoles): the network views with the modern node name spellings.
-    for _v in /fs/sda0 /fs/sdb0 /net/mmx/fs/sda0 /net/mmx/fs/sdb0; do
+    for _v in /fs/sda0 /fs/sdb0 /net/mmx/fs/sda0 /net/mmx/fs/sdb0 \
+              /net/mmx.mibhigh.net/fs/sda0 /net/mmx.mibhigh.net/fs/sdb0; do
         if [ -d "$_v" ]; then
             for _rel in mod/cluster_map_aa_greenmenu ClusterMap cluster_map_aa_greenmenu mod/ClusterMap; do
                 if [ -f "$_v/$_rel/enable_hook.sh" ]; then
@@ -85,11 +107,18 @@ CARD_LINE=`mount 2>/dev/null | grep " on /fs/sda0 " | head -1`
 CARD_DEV=`echo "$CARD_LINE" | sed -n "s|^\([^ ]*\) on .*|\1|p"`
 CARD_NODE=`echo "$CARD_LINE" | sed -n "s|^/net/\([^/]*\)/dev/.* on .*|\1|p"`
 [ -n "$CARD_LINE" ] && echo "Card mounted as: $CARD_LINE"
-mount -uw /fs/sda0 2>&1 | head -1 || true
+# Never a guessed slot: the mount point comes from the same mount-table
+# line that identified the card (the M.I.B. GEM console prints exactly
+# "/net/mmx.mibhigh.net/dev/sda0t12 on /fs/sda0" / "/fs/sda0" style lines).
+CARD_MNT=`echo "$CARD_LINE" | sed -n "s|.* on \(/[^ ]*\) .*|\1|p"`
+[ -n "$CARD_MNT" ] || CARD_MNT="$VOLUME"
+mount -uw "$CARD_MNT" 2>&1 | head -1 || true
 if [ -n "$CARD_NODE" ]; then
-	mount -uw "$CARD_DEV" /fs/sda0 2>&1 | head -1 || true
-	on -f "$CARD_NODE" mount -uw /fs/sda0 2>&1 | head -1 || true
-	on -f mmx /bin/mount -uw /fs/sda0 2>&1 | head -1 || true
+	mount -uw "$CARD_DEV" "$CARD_MNT" 2>&1 | head -1 || true
+	on -f "$CARD_NODE" mount -uw "$CARD_MNT" 2>&1 | head -1 || true
+	# both node spellings: the shorthand name and the FQDN form
+	on -f mmx /bin/mount -uw "$CARD_MNT" 2>&1 | head -1 || true
+	on -f mmx.mibhigh.net /bin/mount -uw "$CARD_MNT" 2>&1 | head -1 || true
 fi
 mount -uw "$VOLUME" 2>&1 | head -1 || true
 # Probe it (non-fatal: Status and other read-only entries still work fine).

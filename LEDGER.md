@@ -3,7 +3,7 @@
 > **Purpose:** every verified fact, decision and signature from building and
 > debugging this Addon on the real car, in one file. Read this before doing
 > any new work on the project. Update it as findings land; do not re-derive
-> what is already written here. Last updated: 2026-11-05 (owner: ALeXXBody;
+> what is already written here. Last updated: 2026-11-06 (owner: ALeXXBody;
 > agent sessions across OpenCode/GLM; every claim was verified unless it
 > says *proposal* or *untested*).
 
@@ -289,6 +289,46 @@ What was done to make the split real and stable:
 | `mod/custom.sh` as the only entry | M.I.B.'s documented mod hook, idempotent |
 | engdefs/ screen file (not launcher edit) | M.I.B.'s own registration pattern; symlink into engdefs happens at M.I.B. install anyway |
 | Sibling-fork repo (this fork repo) | License independence + upstream parity: fork keeps the AA oncology; upstream keeps broad compatibility |
+
+### 2026-11-06 round — "fix it once and for good" (v0.4.14)
+
+The owner's screenshot disproved two assumptions at once: the card lives
+under the QNET view `/net/mmx.mibhigh.net/…` (not only `/net/mmx/…`), and
+the payload mirror had been drifting while the drift check printed OK.
+
+1. **The drift check itself was broken.** `diff -u ... | head` pipes the
+   real verdict into head's (always-0) exit status, so
+   `tools/payload_sync.sh` printed "OK, no drift" even when the fork's
+   mirror was stale. Rewritten: un-piped diff, a nested-duplicate map, a
+   fork-only whitelist, plus a tar-invocation fix (`--exclude` must come
+   BEFORE `-cf - .`). Verified against the genuinely stale mirror: old
+   script "OK", new script reports the drift.
+2. **One canonical payload, two legitimate entry points.** The fork's M.I.B.
+   screens (`esd/scripts/cm_aa_install.sh`) run the nested
+   `scripts/enable_hook.sh`; the Addon's greenmenu runs the root copy.
+   `payload_sync.sh` now mirrors the Addon's canonical root files onto both
+   (`scripts/` copies are governed duplicates), Card-root resolution in
+   enable/ disable_hook is content-based (`libgal_hook.so` one level up), so
+   both paths behave identically forever.
+3. **A read-only card no longer blocks the install.** install.sh's hard
+   probe is gone; `ensure_write_dir()` picks the card when writable,
+   `/tmp/clustermap_unit` otherwise, records the home in the card's
+   `last_install_paths.txt` (or `/tmp/clustermap_last_paths`), written with
+   stderr redirected FIRST (redirect-order pitfall: a failed open paints
+   the console red if stderr is redirected second). disable_hook reads both
+   sources. Functional tests: writable (card wins + card marker written)
+   and genuinely-RO card (/tmp fallback + /tmp marker) — both PASS.
+4. **M.I.B.'s bundled-tools contract adopted.** `find_card()` prepends the
+   card's `apps/sbin` (M.I.B. ships sed/awk/cut/tee/sha1sum/… there;
+   its `config/GLOBALS` marks them "not on any unit") with slot-aware +
+   QNET-FQDN candidates; CI guard `tools/gem_portable_check.sh` now fails on
+   any bare `printf/tr/diff/grep -o`. All GEM-run scripts and custom.sh were
+   swept printf/tr/grep -o-free.
+5. `common.sh`'s card remount ladder now derives the mount POINT from the
+   mount-table line (no hardcoded `/fs/sda0`), extends candidates with
+   `/net/mmx.mibhigh.net/fs/sd{a,b}0`, and `mod/custom.sh`'s self-check
+   counts ok over both app views (`/mnt/app`, `/net/mmx/mnt/app`) instead of
+   printing MISSING lines for a context the console never runs in.
 
 ## 11. Safety: what NOT to do
 

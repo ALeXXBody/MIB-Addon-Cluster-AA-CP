@@ -44,7 +44,7 @@ if grep -q "^GAL_KEEP_MAP=" "$CONF"; then
     mv "$CONF.new" "$CONF" 2>/dev/null || {
         echo "Could not rewrite GAL_KEEP_MAP in $CONF. Nothing changed."; rm -f "$CONF.new"; exit 1; }
 else
-    printf 'GAL_KEEP_MAP=%s\n' "$WANT" >> "$CONF" || { echo "Could not add GAL_KEEP_MAP to $CONF. Nothing changed."; exit 1; }
+    echo "GAL_KEEP_MAP=$WANT" >> "$CONF" || { echo "Could not add GAL_KEEP_MAP to $CONF. Nothing changed."; exit 1; }
 fi
 sync
 if [ "$WANT" = "phone" ]; then

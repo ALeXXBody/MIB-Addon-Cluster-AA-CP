@@ -26,28 +26,13 @@ if [ -n "$UNIT_MISSING" ]; then
     echo "CLUSTERMAP_TOOLS_MISSING$UNIT_MISSING"
     exit 0
 fi
-# The installer writes backups/ and logs/ on the card, so a read-only card
-# cannot install. Say so here, instead of letting enable_hook.sh stop later
-# with a bare "mkdir: Read-only file system".
-if ! mkdir "$VOLUME/.clustermap_install_probe" 2>/dev/null; then
-    echo
-    echo "NOT INSTALLED: the SD card is READ-ONLY to the unit ($VOLUME)."
-    echo "The installer keeps backups and logs on the card, so it needs a"
-    echo "writable card. Fix the card and run Install again:"
-    echo "  1. Move the LOCK slider on the SD adapter to the unlocked (up)"
-    echo "     position, push the card back in, then run Install again."
-    echo "  2. The card must be FAT32. exFAT/NTFS cards normally mount"
-    echo "     read-only on the unit: reformat FAT32 and unpack M.I.B. +"
-    echo "     the mod again."
-    echo "  3. Card OK in a PC but still read-only on the unit? Run"
-    echo "     chkdsk /f on the card from a PC: a dirty volume flag makes"
-    echo "     the unit mount it read-only until the flag is cleared."
-    echo "Alternatively, install with the card's menu screen (ClusterMap ->"
-    echo "Install) after the card passes a Status check."
-    echo
-    exit 0
-fi
-rmdir "$VOLUME/.clustermap_install_probe" 2>/dev/null
+# The card being read-only must NOT block the install any more: the
+# installer only READS from the card; backups/logs get a fallback folder on
+# the unit when the card is read-only (see ensure_write_dir() in
+# enable_hook.sh). A read-only card is announced, not fatal: every card
+# that cannot accept writes also cannot hold today's swapped logs, so the
+# scope is just narrower until the card is fixed. Say it here, keep going,
+# and let the actual writes pick their writable home.
 # VWG11 before K3342 (S2125): NavActiveIgnore stopped Android Auto there and
 # the map went at every route (#39). Owners who updated to K3342 have it
 # working, so say that instead of installing or collecting, even with a

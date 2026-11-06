@@ -34,7 +34,7 @@ export PATH=.:/proc/boot:/bin:/usr/bin:/usr/sbin:/sbin:/mnt/app/media/grancenote
 export LD_LIBRARY_PATH=/lib:/mnt/app/root/lib-target:/eso/lib:/mnt/app/usr/lib:/mnt/app/armle/lib:/mnt/app/armle/lib/dll:/mnt/app/armle/usr/lib
 unset LD_PRELOAD
 
-printf "M.I.B. - More Incredible Bash - "
+echo "M.I.B. - More Incredible Bash - "
 cat /net/mmx/fs/sda0/VERSION 2>/dev/null
 echo "Cluster Map — Android Auto to Virtual Cockpit (mib-cluster-map mod)"
 echo ""
@@ -100,7 +100,7 @@ if [ -f "$TPL" ]; then
 		esac
 	done
 	# (the real check: extract each quoted script path and test it)
-	echo "$GEN" | grep -o '"/net/[^"]*\.sh[^"]*"' | tr -d '"' | while IFS= read -r sp; do
+	echo "$GEN" | sed -n 's,^.*"\(/net/[^"]*\.sh\)[^"]*".*,\1,p' | while IFS= read -r sp; do
 		sp=${sp%% *}
 		case "$sp" in */esd/scripts/*) continue ;; esac   # M.I.B.'s own scripts (reboot) live on the unit, not on our card
 		if [ ! -f "$sp" ]; then
@@ -108,7 +108,7 @@ if [ -f "$TPL" ]; then
 			CONSOLE_ERRORS=1
 		fi
 	done
-	printf '%s\n' "$GEN" > "$ENGDEFS/cluster-map.esd"
+	echo "$GEN" > "$ENGDEFS/cluster-map.esd"
 	echo "  GEM screen generated from the card: $ENGDEFS/cluster-map.esd"
 else
 	cp -p "$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.esd" \
@@ -148,28 +148,42 @@ cat $OUT
 
 echo ""
 echo "--- install self-check (unit files) --------------------------------"
+okcount=0
 for u in /mnt/app/eso/lib/gal_dualscreen/profiles.conf \
          /mnt/app/eso/lib/gal_dualscreen/libgal_hook.so \
          /mnt/app/eso/lib/gal_dualscreen/gal_dualscreen.conf \
-         /mnt/app/navigation/stream-player; do
+         /mnt/app/navigation/stream-player \
+         /net/mmx/mnt/app/eso/lib/gal_dualscreen/profiles.conf \
+         /net/mmx/mnt/app/eso/lib/gal_dualscreen/libgal_hook.so \
+         /net/mmx/mnt/app/navigation/stream-player; do
 	if [ -r "$u" ]; then
 		echo "  ok: $u"
-	else
-		echo "  MISSING: $u  <- the hook will stay stock until this exists"
+		okcount=$((okcount+1))
 	fi
 done
-echo "  (a MISSING line here = the finalize step did not run: re-copy the"
-echo "   mod/ folder, re-run this screen, or send this photo.)"
+if [ "$okcount" -ge 4 ]; then
+	echo "  self-check: the unit files are in place (seen through one or"
+	echo "  more of the app-partition views)."
+else
+	echo "  self-check: the unit files are NOT in place yet. That means the"
+	echo "  app/system partitions could not be remounted read-write from"
+	echo "  this console context. The mount ladder inside the installer"
+	echo "  tries every form (plain /net on -f mmx/rcc). If the files stay"
+	echo "  absent, send this photo - the hook will stay stock until the"
+	echo "  files exist."
+fi
 echo ""
 if grep -q -e "CLUSTERMAP_INSTALL_OK" -e "CLUSTERMAP_TURN_BY_TURN_OK" $OUT; then
 	echo "Install finished. Reboot the unit (hold the power button for 10"
 	echo "seconds), then open the Green Engineering Menu again: the new"
 	echo "'ClusterMap' screen is at the top level of the menu."
 else
-	echo "Install did NOT finish (see the messages above — most often"
-	echo "'NOT INSTALLED: the SD card is READ-ONLY to the unit': unlock the"
-	echo "card's LOCK slider / reformat FAT32 / run chkdsk /f on the card)."
-	echo "Fix it, push the card back in, and run this screen again."
+	echo "Install did NOT finish (see the messages above). The most"
+	echo "common causes are named there; if a 'read-only' note points at"
+	echo "the card, unlock the card's LOCK slider / reformat FAT32 / run"
+	echo "chkdsk /f on the card. The install itself no longer stops on a"
+	echo "read-only card: backups/logs then go to /tmp and are only kept"
+	echo "until the next reboot, so fix the card and re-run this screen."
 fi
 echo ""
 

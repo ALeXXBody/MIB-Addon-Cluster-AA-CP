@@ -17,10 +17,28 @@ export LD_LIBRARY_PATH
 set -eu
 
 CARD_ROOT=`cd "\`dirname "$0"\`" && pwd`
+# Same payload-root resolution as enable_hook.sh: the fork's scripts/ copy
+# of this tree still resolves to the folder that holds the payload files.
+if [ ! -f "$CARD_ROOT/libgal_hook.so" ] && [ -f "$CARD_ROOT/../libgal_hook.so" ]; then
+    CARD_ROOT=`cd "$CARD_ROOT/.." && pwd`
+fi
 SYSTEM_MOUNT=/mnt/system
 TARGET_CONFIG=$SYSTEM_MOUNT/etc/eso/production/smartphone_integrator.json
 PERSISTENT_BACKUP=$TARGET_CONFIG.gal-dualscreen.original
-ORIGINAL="$CARD_ROOT/backups/smartphone_integrator.json.original"
+# Uninstall-and-restore: the install may have written its backups in one of
+# two homes (card when writable; /tmp when the card was read-only). Try the
+# card first, then the tmp home the v0.4.14 installer records. .last_paths
+# carries BACKUP_DIR/LOG_DIR; so uninstall looks in both homes.
+if [ -f "$CARD_ROOT/last_install_paths.txt" ]; then . "$CARD_ROOT/last_install_paths.txt" 2>/dev/null; elif [ -f /tmp/clustermap_last_paths ]; then . /tmp/clustermap_last_paths 2>/dev/null; fi
+BACKUP_DIR=""
+if [ -f "$CARD_ROOT/last_install_paths.txt" ]; then
+    BACKUP_DIR=`sed -n "s/^BACKUP_DIR=//p" "$CARD_ROOT/last_install_paths.txt" | tail -1`
+elif [ -f /tmp/clustermap_last_paths ]; then
+    BACKUP_DIR=`sed -n "s/^BACKUP_DIR=//p" /tmp/clustermap_last_paths | tail -1`
+fi
+[ -r "$CARD_ROOT/backups/smartphone_integrator.json.original" ] && BACKUP_DIR="$CARD_ROOT/backups"
+[ -r "$BACKUP_DIR/smartphone_integrator.json.original" ] || BACKUP_DIR=/tmp/clustermap_unit/backups
+ORIGINAL="$BACKUP_DIR/smartphone_integrator.json.original"
 JSONLINT=/mnt/app/eso/bin/jsonlint
 VALIDATOR_LD_LIBRARY_PATH=/proc/boot:/lib:/lib/dll:/usr/lib:/mnt/app/root/lib-target:/mnt/app/usr/lib:/mnt/app/armle/lib:/mnt/app/armle/lib/dll:/mnt/app/armle/usr/lib:/eso/lib:/mnt/app/eso/lib
 SYSTEM_WRITABLE=0

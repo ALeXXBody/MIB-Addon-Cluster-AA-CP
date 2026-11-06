@@ -65,7 +65,14 @@ So: map not showing after an update is almost always the **install not
 re-run** rather than the unit breaking. The self-check makes that state
 visible at install time.
 
-## If the console says “NOT INSTALLED: the SD card is READ-ONLY to the unit”
+## If the console says the SD card is READ-ONLY to the unit
+
+Since v0.4.14 a read-only card **no longer stops the install**: the
+installer only reads the payload from the card; its `backups/` and `logs/`
+then go to `/tmp/clustermap_unit` on the unit instead, and Uninstall finds
+them from the recorded install (`last_install_paths.txt` / the unit's
+`/tmp/clustermap_last_paths`). Backups in RAM are lost on every reboot, so
+still fix the card when you can:
 
 1. SD adapter **LOCK slider** → unlock, re-insert, run the screen again.
 2. Card must be **FAT32** (exFAT/NTFS mounts read-only on the unit).
