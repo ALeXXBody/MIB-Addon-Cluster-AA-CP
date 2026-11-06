@@ -252,6 +252,21 @@ find it.
   driving photos and the GEM screenshots exist only in chat. Don't re-ask the model to
   retrieve them; ask the owner to drop the files (§8 item 3).
 
+### 2026-11-06: fork "detach" settled (user's go-ahead)
+
+Result: mib-cluster-map-generic is ALREADY standalone on GitHub
+(`isFork: false`, no fork-network link — the repo was never created as a
+GitHub fork; only the code lineage was a fork). Nothing to detach there.
+What was done to make the split real and stable:
+- Issues enabled on the repo (it had been living without a tracker).
+- README/docs/FORK.md lineage wording corrected: "carries MacsInSpace's
+  engine", credits + GPL stay; no more "fork of" phrasing.
+- The REAL detach risk was two payload homes drifting (Addon `mod/…` vs
+  fork `mib-mod/sd-payload/…`). Now enforced: tools/payload_sync.sh
+  (drift check + --apply) + a nightly scheduled CI in the fork repo that
+  checks against the Addon repo, plus a manual apply path; ci.yml mirrored
+  into the fork; find_card locator test added to its CI.
+
 ## 10. Decision log (why, in one line each)
 
 | Decision | Reason |
@@ -259,7 +274,7 @@ find it.
 | Addon = M.I.b. mod (no parallel installer / launcher edit) | Owner experience: 2 files + 1 click beats editing an esd by hand |
 | Run mod payload from `mod/cluster_map_aa_generic`…  | see repo path `mod/cluster_map_aa_greenmenu/` (name kept from the original fork SD payload convention) |
 | Ship upstream v1.1.0 hook + profile_check + libdmdt | Car-tested bits; no cross-compile risk |
-| Ship **fork-built** stream-player (v0.4.0) | The fork features (zoom, arbiter) only exist in fork-built binaries; the fork source is car-proven up to this release line. Built natively, recorded SHA |
+| Ship **fork-built** stream-player (v0.4.0); the fork repo is standalone (no GitHub fork link) | The fork features (zoom, arbiter) only exist in fork-built binaries; the fork source is car-proven up to this release line. Built natively, recorded SHA |
 | Honesty guards on keep-map/zoom | With upstream player they would silently no-op — misleading |
 | `mod/custom.sh` as the only entry | M.I.B.'s documented mod hook, idempotent |
 | engdefs/ screen file (not launcher edit) | M.I.B.'s own registration pattern; symlink into engdefs happens at M.I.B. install anyway |
