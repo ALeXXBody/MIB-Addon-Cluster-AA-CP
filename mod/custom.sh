@@ -106,41 +106,127 @@ fi
 # /net/mmx/fs/sda0/... made the buttons break whenever the card's view
 # changed (the "Script not found" screens). The template carries a
 # @GREENMENU@ placeholder; the located path replaces it.
+#
+# GEM-boot safety contract (this install has no undo available: GEM parses
+# engdefs at every boot): the LIVE engdefs file is NEVER truncated with
+# unverified content. The new file is staged NEXT to the live one, checked
+# byte-for-byte on the rules below, and only then renamed in place. A
+# previous good copy is kept as cluster-map.esd.prev.
 TPL="$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.template.esd"
-CONSOLE_ERRORS=""
+GEN_PATH=""
 if [ -f "$TPL" ]; then
-	# the view this console itself resolved the payload under: prefer the
-	# payload path EXACTLY as custom.sh found it ($SD), not the fixed forms
-	GEN=`sed "s|@GREENMENU@|$SD/mod/cluster_map_aa_greenmenu/greenmenu/|g" "$TPL"`
-	# verify every generated script file exists NOW; report the missing ones
+	GEN_PATH="$SD/mod/cluster_map_aa_greenmenu/greenmenu/.cluster-map.gen"
+	GEN_ERR="0"
 	echo "  GEM screen paths check (from the template):"
-	echo "$GEN" | while IFS= read -r ln; do
-		case "$ln" in
-			*value*0x0100\ *|*value*system*)
-				continue ;;
-			*)
-				continue ;;
-		esac
-	done
-	# (the real check: extract each quoted script path and test it)
-	echo "$GEN" | sed -n 's,^.*"\(/net/[^"]*\.sh\)[^"]*".*,\1,p' | while IFS= read -r sp; do
-		sp=${sp%% *}
-		case "$sp" in */esd/scripts/*) continue ;; esac   # M.I.B.'s own scripts (reboot) live on the unit, not on our card
-		if [ ! -f "$sp" ]; then
-			echo "    MISSING on the card: $sp"
-			CONSOLE_ERRORS=1
+	sed "s|@GREENMENU@|$SD/mod/cluster_map_aa_greenmenu/greenmenu/|g" "$TPL" \
+		> "$GEN_PATH"
+	# 1. non-empty
+	if [ ! -s "$GEN_PATH" ]; then
+		echo "    ERROR: the generated file is EMPTY; keeping the unit's"
+		echo "           current screen file untouched on the unit."
+		GEN_ERR=1
+	fi
+	# 2. the screen itself and no unresolved placeholder
+	if [ "$GEN_ERR" = 0 ] && ! grep -q "screen ClusterMap" "$GEN_PATH"; then
+		echo "    ERROR: the generated file has no 'screen ClusterMap'; the"
+		echo "           unit's current screen file is kept untouched."
+		GEN_ERR=1
+	fi
+	if [ "$GEN_ERR" = 0 ] && grep -q "@GREENMENU@" "$GEN_PATH"; then
+		echo "    ERROR: generation left an unreplaced @GREENMENU@ placeholder;"
+		echo "           keeping the unit's current screen file untouched."
+		GEN_ERR=1
+	fi
+	# 3. every script path the screen names must exist on the card NOW
+	if [ "$GEN_ERR" = 0 ]; then
+		sed -n 's,^.*"\(/net/[^"]*\.sh\)[^"]*".*,\1,p' "$GEN_PATH" \
+			| while IFS= read -r sp; do
+			sp=${sp%% *}
+			case "$sp" in */esd/scripts/*) continue ;; esac
+			if [ ! -f "$sp" ]; then
+				echo "    MISSING on the card: $sp"
+			fi
+		done | grep -q "MISSING on the card" && GEN_ERR=1
+		if [ "$GEN_ERR" = 1 ]; then
+			echo "    ERROR: the generated screen names scripts that are NOT on"
+			echo "           the card (run the paths-check above); keeping the"
+			echo "           unit's current screen file untouched."
 		fi
-	done
-	echo "$GEN" > "$ENGDEFS/cluster-map.esd"
-	echo "  GEM screen generated from the card: $ENGDEFS/cluster-map.esd"
+	fi
+	if [ "$GEN_ERR" = 0 ]; then
+		# verified: stage NEXT TO the live file (same filesystem as the
+		# unit's parse) and rename in place — previous copy kept as .prev.
+		rm -f "$ENGDEFS/cluster-map.esd.prev" 2>/dev/null
+		if [ -f "$ENGDEFS/cluster-map.esd" ]; then
+			cp -p "$ENGDEFS/cluster-map.esd" "$ENGDEFS/cluster-map.esd.prev" || true
+		fi
+		cp -p "$GEN_PATH" "$ENGDEFS/.cluster-map.new" && \
+			mv "$ENGDEFS/.cluster-map.new" "$ENGDEFS/cluster-map.esd"
+		rm -f "$GEN_PATH" 2>/dev/null
+		sync 2>/dev/null || true
+		echo "  GEM screen generated from the card: $ENGDEFS/cluster-map.esd"
+		echo "  (previous screen kept as cluster-map.esd.prev)"
+	else
+		rm -f "$GEN_PATH" 2>/dev/null
+		echo "  FAIL: the unit's engdefs file was NOT touched (GEM-boot safety)."
+		echo "        Re-copy the zip's whole mod/ folder and run this screen"
+		echo "        again; if this repeats, send this console photo."
+		trap 2
+		exit 1
+	fi
 else
-	cp -p "$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.esd" \
-	"$ENGDEFS/cluster-map.esd" || {
-	echo "FAIL: could not write $ENGDEFS/cluster-map.esd"
-	echo "(Is M.I.B. installed? It creates/maintains that folder.)"
-	trap 2
-	exit 1
-	}
+	# No template on the card: the pre-built screen is the source, with the
+	# same verify-then-replace dance -- BUT its hardcoded /net/mmx/fs/sda0
+	# prefix is rewritten to the view this console actually found the payload
+	# under ($SD), exactly like the template generation does.
+	BUILT="$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.esd"
+	if [ ! -s "$BUILT" ] || ! grep -q "screen ClusterMap" "$BUILT"; then
+		echo "FAIL: the card's pre-built cluster-map.esd is missing/incomplete."
+		echo "Re-copy the zip's whole mod/ folder and run this screen again."
+		trap 2
+		exit 1
+	fi
+	GEN_PATH="$SD/mod/cluster_map_aa_greenmenu/greenmenu/.cluster-map.gen"
+	sed "s|/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/|$SD/mod/cluster_map_aa_greenmenu/greenmenu/|g" \
+		"$BUILT" > "$GEN_PATH"
+	BUILD_ERR=0
+	if [ ! -s "$GEN_PATH" ] || ! grep -q "screen ClusterMap" "$GEN_PATH"; then
+		echo "ERROR: the pre-built screen's rewrite failed; keeping the"
+		echo "       unit's current screen file untouched."
+		BUILD_ERR=1
+	fi
+	if [ "$BUILD_ERR" = 0 ]; then
+		sed -n 's,^.*"\(/net/[^"]*\.sh\)[^"]*".*,\1,p' "$GEN_PATH" \
+			| while IFS= read -r sp; do
+			sp=${sp%% *}
+			case "$sp" in */esd/scripts/*) continue ;; esac
+			if [ ! -f "$sp" ]; then echo "MISSING on the card: $sp"; fi
+		done | grep -q "MISSING on the card" && BUILD_ERR=1
+		if [ "$BUILD_ERR" = 1 ]; then
+			echo "ERROR: the pre-built screen names scripts that are NOT on"
+			echo "       the card; keeping the unit's current screen file"
+			echo "       untouched. See the MISSING lines above."
+		fi
+	fi
+	if [ "$BUILD_ERR" = 0 ]; then
+		rm -f "$ENGDEFS/cluster-map.esd.prev" 2>/dev/null
+		if [ -f "$ENGDEFS/cluster-map.esd" ]; then
+			cp -p "$ENGDEFS/cluster-map.esd" "$ENGDEFS/cluster-map.esd.prev" || true
+		fi
+		cp -p "$GEN_PATH" "$ENGDEFS/.cluster-map.new" && \
+			mv "$ENGDEFS/.cluster-map.new" "$ENGDEFS/cluster-map.esd"
+		rm -f "$GEN_PATH" 2>/dev/null
+		sync 2>/dev/null || true
+		echo "  GEM screen installed from the card's built file: $ENGDEFS/cluster-map.esd"
+		echo "  (previous screen kept as cluster-map.esd.prev)"
+	else
+		rm -f "$GEN_PATH" 2>/dev/null
+		echo "  FAIL: the unit's engdefs file was NOT touched (GEM-boot safety)."
+		echo "        Re-copy the zip's whole mod/ folder and run this screen"
+		echo "        again; if this repeats, send this console photo."
+		trap 2
+		exit 1
+	fi
 fi
 echo "GEM screen installed on the unit: $ENGDEFS/cluster-map.esd"
 echo ""

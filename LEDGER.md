@@ -290,6 +290,26 @@ What was done to make the split real and stable:
 | engdefs/ screen file (not launcher edit) | M.I.B.'s own registration pattern; symlink into engdefs happens at M.I.B. install anyway |
 | Sibling-fork repo (this fork repo) | License independence + upstream parity: fork keeps the AA oncology; upstream keeps broad compatibility |
 
+### 2026-11-07 round — GEM hang on "Green menu starting..." (v0.4.17)
+
+The owner's car: after running the addon install, the GEM hangs at its
+starting screen. The install layer's own write path had NO safety net on
+the unit file: `mod/custom.sh` ALWAYS truncated /eso/hmi/engdefs/
+cluster-map.esd with whatever the generation produced, so a failed
+generation = a broken screen file parsed on EVERY GEM boot = stuck GEM
+with no card-only recovery.
+
+Moved to a verified stage-and-rename contract inside custom.sh:
+gen -> non-empty + `screen ClusterMap` + no @GREENMENU@ left + every named
+script exists on the card -> stage beside the live file -> rename; keep
+the previous file as cluster-map.esd.prev; `sync` after the rename; on any
+check failure leave the live file alone and STOP before the installer.
+
+Facts to re-verify on the car once the owner un-sticks (card out / card in
+discriminator): whether the hang followed our engdefs write or a gal-level
+hml change; the screenshot decides which. The .prev copy is the rollback
+lever inside our own screen if the GEM lets us run again.
+
 ### 2026-11-06 round 3 — the offline gate (venv + pytest car sim) caught the last two single-spelling bugs (v0.4.16)
 
 `tools/venv_test.sh` builds a venv (pytest) and runs `tools/car_sim/` in a

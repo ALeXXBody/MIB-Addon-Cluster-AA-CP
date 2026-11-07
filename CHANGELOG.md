@@ -1,5 +1,36 @@
 # Changelog
 
+### v0.4.17: the GEM-boot hang round — the install can no longer place an unverified screen file (2026-11-07)
+
+Symptom on the owner's car: after the addon install, the Green Engineering
+Menu hangs at its "Green menu starting..." screen. The hazard class this
+round exposed: `mod/custom.sh` TRUNCATED the unit's live
+`/eso/hmi/engdefs/cluster-map.esd` with whatever the template generation
+produced — a failed generation (empty or malformed output) would land a
+broken screen file on the unit, which the GEM par选择ses on every boot,
+with no recovery path available from the card.
+
+GEM-boot safety contract now enforced everywhere in the screen install:
+- the live engdefs file is NEVER truncated with unverified content;
+- the generated screen is staged beside it, and renamed in place ONLY
+  when it passes four checks: non-empty, contains `screen ClusterMap`,
+  contains no unreplaced `@GREENMENU@`, and every script path it names
+  exists on the card (checked without subshell-losing pipes);
+- a failed generation leaves the unit's screen file as-is and exits with
+  an explicit FAIL line (the installer is not run either);
+- the previous good screen is kept as `cluster-map.esd.prev`;
+- `sync` runs after the screen write (renames through QNET views need it).
+The pre-built (fallback) screen path got the same safety: its hardcoded
+`/net/mmx/fs/sda0` prefix is rewritten to the card view this console found
+the payload under, then verified, staged and renamed — no raw `cp -p` of an
+unverified file into engdefs.
+
+Offline gate extended to 21 tests: full custom.sh flow (payload -> screen
+write -> installer), a deliberately broken template leaves the live file
+INTACT, and the template-less fallback rewrites/stages safely.
+
+### v0.4.16
+
 ### v0.4.16: the offline car-simulation gate (venv + pytest) — install/uninstall lifecycle PROVEN offline (2026-11-06)
 
 New: `tools/venv_test.sh` — a Python venv + pytest gate that builds a
