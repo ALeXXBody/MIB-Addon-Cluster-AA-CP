@@ -1,5 +1,41 @@
 # Changelog
 
+### v0.4.18: the surgical revert + the hook can no longer go live from an install alone (2026-11-07)
+
+Owner's car: unit stuck at "green menu starting..." after the first install
+that ever completed far enough to inject the hook's LD_PRELOAD into gal's
+supervisor config. This release answers the two hard requirements that
+came out of it:
+
+- **`rescue_revert.sh`** — a surgical, flash-free revert of EXACTLY what an
+  install added on the unit, idempotent, runnable from ANY shell the unit
+  can offer (the emergency serial console, SSH/telnet, or the GEM once it
+  comes back). It: deletes the engdefs screen file (the GEM parses that
+  file on every boot); restores `smartphone_integrator.json` from the
+  untouched backup the install kept ON THE UNIT
+  (`smartphone_integrator.json.gal-dualscreen.original`) or the card copy;
+  removes the hook files; removes the NavActiveIgnore.jar line + markers.
+  Everything else — FEC, coding, M.I.B. customisation — is untouched.
+- **BOOT-SAFETY DEFAULT: the install no longer arms the hook.** The files
+  are staged; gal's supervisor config is left WITHOUT the hook's
+  LD_PRELOAD unless the owner explicitly arms it (a `HOOK_ARMED` marker on
+  the payload or `CLUSTERMAP_HOOK_ARMED=1` in the environment). A hook
+  that is not preloaded cannot take gal down at boot, so the GEM-hang
+  class is gone by construction. Arming is one deliberate action.
+- **One protocol per cluster, enforced**: if M.I.B.'s own CarPlay Maps VC
+  payload (omonob / carplaymaps) is configured on the unit, the install
+  refuses before touching anything (rc 4) — the stacking conflict is a
+  documented unit-killer.
+- Post-write verification of the injected config is aware of whether the
+  install was armed or not (the unarmed install's verification no longer
+  demands LD_PRELOAD).
+
+Offline gate: 23 tests. New coverage: the armed install DOES inject
+(explicit action verified), the unarmed install provably does NOT, and an
+M.I.B.-CarPlay stack is refused with the config left untouched.
+
+### v0.4.17
+
 ### v0.4.17: the GEM-boot hang round — the install can no longer place an unverified screen file (2026-11-07)
 
 Symptom on the owner's car: after the addon install, the Green Engineering

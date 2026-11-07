@@ -69,10 +69,16 @@ def test_install_then_uninstall_via_fqdn_view(car):
     assert fq.exists(), f"{fq} missing\n--stdout--\n{out}"
     assert not pathlib.Path(APP_VIEWS[0], HOOK_SUB).exists(), \
         " libgal_hook.so landed on /mnt/app — wrong view"
-    # The supervisor config carries the hook's LD_PRELOAD entry:
+    # BOOT-SAFETY CONTRACT: an install stages the hook files but leaves
+    # gal's supervisor config WITHOUT the hook's LD_PRELOAD line. The hook
+    # can only go live on an explicit, separate owner action.
     cfg = pathlib.Path(SYS_VIEWS[1], "etc/eso/production/smartphone_integrator.json")
-    txt = cfg.read_text()
-    assert "libgal_hook.so" in txt, f"config after install:\n{txt}"
+    cfgtxt = cfg.read_text()
+    assert "LD_PRELOAD" not in cfgtxt, (
+        f"unarmed install injected a preload into gal: {cfgtxt[:200]}...")
+    assert "GAL_DUALSCREEN_DEBUG" in cfgtxt, f"env entries missing: {cfgtxt}"
+
+    # The supervisor config carries the hook's LD_PRELOAD entry:
     # The install recorded its backup home on the WRITABLE card:
     marker = pathlib.Path(PKG, "last_install_paths.txt")
     assert marker.exists(), f"--stdout--\n{out}\n--stderr--\n{p.stderr}"

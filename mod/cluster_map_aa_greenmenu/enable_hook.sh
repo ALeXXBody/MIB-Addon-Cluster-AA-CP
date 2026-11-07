@@ -131,6 +131,20 @@ if [ "$_SYSV" != "$SYSTEM_MOUNT" ]; then
     PERSISTENT_BACKUP="$TARGET_CONFIG.gal-dualscreen.original"
     echo "system partition: readable view '$_SYSV'"
 fi
+
+# One protocol per cluster: M.I.B.'s own CarPlay Maps VC payload
+# (omonob / carplaymaps) uses the same mechanism on the same gal. If it is
+# already configured, refuse an install on it and DON'T modify anything.
+STACK_SCAN=`grep -e omonob -e carplaymaps "$TARGET_CONFIG" 2>/dev/null | head -1`
+if [ -n "$STACK_SCAN" ]; then
+    echo "NOT INSTALLED: M.I.B.'s own CarPlay Maps VC payload is configured"
+    echo "on this unit ('$STACK_SCAN' in smartphone_integrator.json)."
+    echo "One protocol per cluster: our hook would conflict with it and"
+    echo "the two together are a documented unit-killer. Remove that"
+    echo "payload (M.I.B.'s own screens), then run this install again."
+    exit 4
+fi
+
 if [ -x "$_JV/eso/bin/jsonlint" ]; then
     JSONLINT="$_JV/eso/bin/jsonlint"
 fi
@@ -932,6 +946,26 @@ fi
 
 TEMP="$LOG_DIR/smartphone_integrator.json.new.$$"
 
+# M.I.B. contract, boot-safety form: an install must NEVER be able to
+# take the whole gal process down. The hook is staged in-line (so a later
+# enable is one click) but its PRIMARY switch stays OFF until the owner
+# turns it on explicitly:
+#   * at install time: a file named HOOK_ARMED in the payload folder, or
+#     CLUSTERMAP_HOOK_ARMED=1 in the environment (--enables the map at
+#     the same install), or
+#   * afterwards: the ClusterMap screen's own "Enable the map" entry (the
+#     persistent gal_dualscreen.conf's GAL_DUALSCREEN_ENABLE, written by
+#     greenmenu/map_on_off.sh).
+# A hook that never switches anything on cannot break gal at boot; the GEM
+# stays green and the recovery is then one click inside the menu.
+HOOK_ARMED=0
+if [ "${CLUSTERMAP_HOOK_ARMED:-0}" = 1 ]; then
+    HOOK_ARMED=1
+fi
+if [ -f "$CARD_ROOT/HOOK_ARMED" ]; then
+    HOOK_ARMED=1
+fi
+
 # Point the hook at the SD-card log path. The SD card is writable right
 # now (this script required it), and stays writable across a GAL restart
 # that does not go through a fresh boot. It mounts read-only again on the
@@ -989,7 +1023,14 @@ DPI_ENV=
 # whether the tooling finds it. Emitted only when --log asked for a path.
 LOG_ENV=
 [ -n "$LOG_PATH_REQUESTED" ] && LOG_ENV="\"GAL_HOOK_LOG=$HOOK_LOG_PATH\", "
-INJECTION="\"LD_PRELOAD=$PRELOAD_SO_ALIAS\", \"GAL_DUALSCREEN_ENABLE=1\", \"GAL_DUALSCREEN_DEBUG=$DEBUG\", $OPT_ENV$LOG_ENV$DPI_ENV"
+if [ "$HOOK_ARMED" = 1 ]; then
+    INJECTION="\"LD_PRELOAD=$PRELOAD_SO_ALIAS\", \"GAL_DUALSCREEN_ENABLE=1\", \"GAL_DUALSCREEN_DEBUG=$DEBUG\", $OPT_ENV$LOG_ENV$DPI_ENV"
+else
+    # Boot-safe stage: the files are in place, the hook is simply
+    # not preloaded into gal; no enable switch exists either, so a
+    # later enable has nothing to undo.
+    INJECTION="\"GAL_DUALSCREEN_DEBUG=$DEBUG\", $OPT_ENV$LOG_ENV$DPI_ENV"
+fi
 
 # Refuse to write an array that smartphone_integrator would silently
 # truncate. At 11 entries the ENTIRE injection was dropped once -- GAL ran
@@ -1047,7 +1088,11 @@ END { if (!patched) exit 3 }
     cat "$TEMP" 2>&1 | head -6
     exit 1
 }
-grep -q "LD_PRELOAD=$PRELOAD_SO_ALIAS" "$TEMP" || {
+case "$INJECTION" in
+    *"LD_PRELOAD=$PRELOAD_SO_ALIAS"*) VERIFY_TOKEN="LD_PRELOAD=" ;;
+    *) VERIFY_TOKEN="GAL_DUALSCREEN_DEBUG=" ;;
+esac
+grep -q "$VERIFY_TOKEN" "$TEMP" || {
     rm -f "$TEMP"
     echo "Generated supervisor config failed verification" >&2
     exit 1
@@ -1166,7 +1211,7 @@ cp "$TEMP" "$SYSTEM_TEMP" || {
     exit 1
 }
 chmod 644 "$SYSTEM_TEMP" 2>/dev/null || true
-grep -q "LD_PRELOAD=$PRELOAD_SO_ALIAS" "$SYSTEM_TEMP" || {
+grep -q "$VERIFY_TOKEN" "$SYSTEM_TEMP" || {
     rm -f "$TEMP"
     echo "Staged supervisor config failed verification" >&2
     exit 1

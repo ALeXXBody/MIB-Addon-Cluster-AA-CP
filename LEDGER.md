@@ -290,6 +290,28 @@ What was done to make the split real and stable:
 | engdefs/ screen file (not launcher edit) | M.I.B.'s own registration pattern; symlink into engdefs happens at M.I.B. install anyway |
 | Sibling-fork repo (this fork repo) | License independence + upstream parity: fork keeps the AA oncology; upstream keeps broad compatibility |
 
+### 2026-11-07 round 2 — the unit-stuck round's answer (v0.4.18)
+
+Symptom root: the FIRST install that ever completed far enough to inject
+the hook's LD_PRELOAD into gal's supervisor config — and gal is the
+process that draws the GEM ("green menu starting..."), so the hang had no
+card-side recovery. The owner demanded a revert without firmware.
+
+Delivered:
+- rescue_revert.sh — surgical, idempotent, flash-free, runs from any shell
+  (emergency serial console / SSH / GEM); reverts exactly the four write
+  targets, with per-step prints and the untouched-original restore path;
+- the boot-safety default: installs never arm the hook — arming is an
+  explicit second action (card HOOK_ARMED marker, or env
+  CLUSTERMAP_HOOK_ARMED=1, or future GEM one-click);
+- one-protocol-per-cluster refusal (M.I.B.'s CarPlay Maps VC on the unit);
+- verification tokens made arm-aware.
+
+Recovery used on the car: the emergency serial console (mib2-toolbox
+rescue: USB-TTL 3.3V at 115200, GND->FBAS-, Tx/Rx crossed) OR dealer ODIS
+without flashing; the firmware-SD update is the option of last resort
+because it wipes customisations.
+
 ### 2026-11-07 round — GEM hang on "Green menu starting..." (v0.4.17)
 
 The owner's car: after running the addon install, the GEM hangs at its
