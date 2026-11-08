@@ -12,3 +12,6 @@
 # offline car-sim testing
 .venv/
 __pycache__/
+
+# local release builds
+dist/

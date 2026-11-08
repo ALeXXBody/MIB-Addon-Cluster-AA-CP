@@ -6,13 +6,15 @@ import textwrap
 
 from conftest import APP_VIEWS, SYS_VIEWS, JSONLINT_SH
 
+# Source of truth in THIS repo; the ZIP ships it as mod/cluster_aa.
 PAYLOAD_SRC = pathlib.Path(
     "/tmp/opencode/mib2/mib-mod-repo/mod/cluster_map_aa_greenmenu")
-PKG = "/fs/sda0/mod/cluster_map_aa_greenmenu"
+
+PKG = "/fs/sda0/mod/cluster_aa"
 
 
 def _stage_payload(car, card="/fs/sda0"):
-    dst = pathlib.Path(card, "mod/cluster_map_aa_greenmenu")
+    dst = pathlib.Path(card, "mod/cluster_aa")
     dst.mkdir(parents=True, exist_ok=True)
     shutil.copytree(PAYLOAD_SRC, dst, dirs_exist_ok=True,
                     ignore=shutil.ignore_patterns("SHA256SUMS.txt", "LICENSE"))

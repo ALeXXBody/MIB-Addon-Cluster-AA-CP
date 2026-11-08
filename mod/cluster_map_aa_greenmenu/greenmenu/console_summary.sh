@@ -32,7 +32,6 @@ sed -n \
     -e '/^ok: /p' \
     -e '/^unit files:/p' \
     -e '/^self-check:/p' \
-    -e '/^CLUSTERMAP_/p' \
     -e '/^Install finished/p' \
     -e '/^Uninstall finished/p' \
     -e '/^Sharper map/p' \

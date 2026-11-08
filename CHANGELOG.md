@@ -1,5 +1,50 @@
 # Changelog
 
+### v0.4.20: the card is never written + a diag file on EVERY exit (2026-11-08)
+
+Root cause of the recurring "the SD card is READ-ONLY" reports: **our own
+writes**. The addon used to write backups, logs, probes and staging files
+onto the FAT card during every run; a FAT volume whose dirty bit gets set
+is mounted read-only by QNX on the next boot. That made the addon fail on
+the card's write state and made a *phantom* read-only card the explanation
+for every failed run.
+
+- **The card is read-only media, permanently.** Backups and logs now live
+  on the unit's RAM (`/tmp/clustermap_unit/backups`, `/tmp` for the hook
+  log). The persistent recovery copy that uninstall needs is the one kept
+  beside the live supervisor config on the unit. `common.sh` no longer
+  remounts or probes the card; the phantom "READ-ONLY card" message and the
+  whole remount ladder are gone. The card is only ever READ.
+- **One diagnostic file on EVERY exit path.** v0.4.19 wrote diag.txt only
+  at the end of a run, so a run that stopped during screen generation left
+  no evidence at all. `mod/custom.sh` now installs an EXIT trap: every
+  exit (success, early failure, signal) writes the bundle. It always lands
+  at `/tmp/clustermap_diag/diag.txt` (RAM, guaranteed) and is copied to
+  `<payload>/diag.txt` on the card best-effort, once, for convenience.
+  The bundle now also carries the script's own narration, so an early
+  stop states WHY. `diag.txt.prev` keeps one previous bundle.
+- **Shorter card folder: `mod/cluster_aa`.** The shipped payload folder is
+  now `mod/cluster_aa` (was `mod/cluster_map_aa_greenmenu`). Every locator
+  tries `mod/cluster_aa` first and still finds the old names, so the
+  owner's existing card keeps working. The release zip packs
+  `mod/cluster_aa/`. Arming accepts `HOOK_ARMED` or the 8.3-safe
+  `ARMNOW.TXT`.
+- **Quiet, honest console.** The unarmed run says nothing about arming; the
+  outcome is one of: `Map install: DONE`, `Map install: FAILED`,
+  `Staged only (not armed)`, or `Map already live ... nothing changed`.
+  Measured worst case: 17 non-blank lines for an unarmed run (was pages).
+  Internal `CLUSTERMAP_*` markers no longer leak to the screen.
+- **Rule 2 bug fixed:** the screen-generation block moved fully inside the
+  arming gate. Previously an unarmed run still executed it with an empty
+  engdefs path and could write `/cluster-map.esd` at the filesystem root.
+- **GEM sanity check fixed:** the "scripts missing on the card" loop used
+  the old folder name and printed six 4-line warnings on the new layout; it
+  now uses the found payload name and prints ONE line.
+
+Offline gate: **31 tests** (added: every-exit-path diag, early-failure
+reason in the bundle, no-payload still leaves a diag, already-live verdict,
+card-never-written homes, shipped `mod/cluster_aa` discovery).
+
 ### v0.4.19: one file to send (diag.txt) + the quiet GEM console (2026-11-08)
 
 Two owner requests, now the default behavior of every install/uninstall and

@@ -34,13 +34,76 @@ export PATH=.:/proc/boot:/bin:/usr/bin:/usr/sbin:/sbin:/mnt/app/media/grancenote
 export LD_LIBRARY_PATH=/lib:/mnt/app/root/lib-target:/eso/lib:/mnt/app/usr/lib:/mnt/app/armle/lib:/mnt/app/armle/lib/dll:/mnt/app/armle/usr/lib
 unset LD_PRELOAD
 
-echo "M.I.B. - More Incredible Bash - "
+# Console narration is mirrored into ONE capture file, so the diagnostic
+# bundle below can carry the reason for an EARLY stop too (the install step
+# itself is only reached at the end; a screen-generation failure must still
+# leave evidence). say() is the only writer of console text in this script.
+CM_DIAG_DIR=/tmp/clustermap_diag
+mkdir -p "$CM_DIAG_DIR" 2>/dev/null
+CM_CONSOLE_LOG="$CM_DIAG_DIR/console.log"
+: > "$CM_CONSOLE_LOG" 2>/dev/null
+say() { echo "$@"; echo "$@" >> "$CM_CONSOLE_LOG" 2>/dev/null; }
+OUT=""
+SD=""
+PAYLOAD_NAME=""
+_FINISHED=""
+
+# EVERY exit path delivers the diagnostic file: the owner must always be able
+# to send one file, and it must contain the reason the run stopped.
+finish() {
+	_rc=$1
+	if [ -z "$_FINISHED" ]; then
+		_FINISHED=1
+		_DC=""
+		if [ -n "$SD" ] && [ -n "$PAYLOAD_NAME" ] && \
+		   [ -r "$SD/$PAYLOAD_NAME/greenmenu/diag_collect.sh" ]; then
+			_DC="$SD/$PAYLOAD_NAME/greenmenu/diag_collect.sh"
+		fi
+		# Combine the install log (if the step ran) with THIS script's
+		# narration, and hand that to the collector as the run summary.
+		_CMB="$CM_DIAG_DIR/run_combined.log"
+		{
+			[ -n "$OUT" ] && [ -r "$OUT" ] && cat "$OUT"
+			echo ""
+			echo "== custom.sh console (run narration)"
+			[ -n "$OUT" ] && [ -r "$OUT" ] || \
+				echo "(the install step was never reached)"
+			cat "$CM_CONSOLE_LOG" 2>/dev/null
+		} > "$_CMB" 2>/dev/null
+		if [ -n "$_DC" ]; then
+			sh "$_DC" append-run "$_CMB" >/dev/null 2>&1
+		else
+			# No payload reachable: still leave a file on the unit.
+			mkdir -p "$CM_DIAG_DIR" 2>/dev/null
+			{
+				echo "Cluster Map add-on diagnostic bundle"
+				echo "run stopped before the payload could be located"
+				echo ""
+				cat "$CM_CONSOLE_LOG" 2>/dev/null
+			} > "$CM_DIAG_DIR/diag.txt" 2>/dev/null
+		fi
+		_DV="$CM_DIAG_DIR/diag.txt"
+		[ -r "$CM_DIAG_DIR/LAST_PATH" ] && _DV=`cat "$CM_DIAG_DIR/LAST_PATH"`
+		say "Send me this ONE file: $_DV"
+		[ -r "$CM_DIAG_DIR/LAST_CARD_PATH" ] && \
+			say "  (copy on the card: `cat "$CM_DIAG_DIR/LAST_CARD_PATH"`)"
+	fi
+	trap 2
+	exit $_rc
+}
+# 0 == EXIT in POSIX sh. Any abrupt return still produces the bundle.
+trap 'finish $?' 0
+
+say "M.I.B. - More Incredible Bash - "
+cat /net/mmx/fs/sda0/VERSION 2>/dev/null >> "$CM_CONSOLE_LOG"
 cat /net/mmx/fs/sda0/VERSION 2>/dev/null
-echo "Cluster Map — Android Auto to Virtual Cockpit (mib-cluster-map mod)"
-echo ""
+say "Cluster Map — Android Auto to Virtual Cockpit (mib-cluster-map mod)"
+say ""
 
 if [ -f /net/rcc/dev/shmem/reboot.mib ] || [ -f /net/rcc/dev/shmem/flash.mib ]; then
-	echo "Some process is already running in background, don't interrupt!"
+	say "Some process is already running in background, don't interrupt!"
+	_FINISHED=1   # not an install run: no diagnostic bundle needed
+	trap 2
 	exit 0
 fi
 
@@ -55,7 +118,7 @@ SDCANDS=`mount 2>/dev/null | sed -n "s|^.* on \(/[^ ]*\) .*|\1|p"`
 SDCANDS="$SDCANDS /net/mmx/fs/sda0 /net/mmx/fs/sdb0 /fs/sda0 /fs/sdb0"
 for v in $SDCANDS; do
 	if [ -d "$v" ] || [ -f "$v" ]; then :; else continue; fi
-	for rel in mod/cluster_map_aa_greenmenu ClusterMap cluster_map_aa_greenmenu mod/ClusterMap; do
+	for rel in mod/cluster_aa mod/cluster_map_aa_greenmenu ClusterMap cluster_map_aa_greenmenu mod/ClusterMap; do
 		if [ -f "$v/$rel/greenmenu/cluster-map.esd" ]; then
 			SD=$v
 			break
@@ -64,13 +127,15 @@ for v in $SDCANDS; do
 	[ -n "$SD" ] && break
 done
 if [ -z "$SD" ]; then
-	echo "FAIL: mod/cluster_map_aa_greenmenu/ was not found on the SD card."
-	echo "Copy this repository's 'mod/' folder onto the M.I.B. SD card first."
+	say "FAIL: mod/cluster_aa (or mod/cluster_map_aa_greenmenu) was not"
+	say "found on the SD card. Copy the zip's 'mod/' folder to the card."
 	trap 2
 	exit 1
 fi
-echo "Mod payload found: $SD/mod/cluster_map_aa_greenmenu"
-echo ""
+PAYLOAD_NAME=mod/cluster_aa
+[ -d "$SD/mod/cluster_aa" ] || PAYLOAD_NAME=mod/cluster_map_aa_greenmenu
+say "Mod payload found: $SD/$PAYLOAD_NAME"
+say ""
 
 # 2. Register the screen on the unit: copy the mod's own emerald 'screen def'
 #    file into the unit's engdefs/ folder (exactly what M.I.B.'s apps/launcher
@@ -81,20 +146,16 @@ echo ""
 # the write that can hang the engineering menu's next boot, with no undo
 # available from the card. So the install DOES NOT touch engdefs unless the
 # owner explicitly armed it: an empty file named HOOK_ARMED inside
-# mod/cluster_map_aa_greenmenu/ on the card. Arming registers the screen
+# mod/cluster_aa/ on the card. Arming registers the screen
 # AND lights the hook up in one known, deliberate step; without it the
 # install stages files only, writes unit settings nowhere, and the GEM's
 # own files stay byte-identical.
 GEM_ARMED=0
-[ -f "$SD/mod/cluster_map_aa_greenmenu/HOOK_ARMED" ] && GEM_ARMED=1
-if [ "$GEM_ARMED" = 0 ]; then
-	echo "GEM screen: NOT registered (the unit's GEM stays untouched by"
-	echo "           default). To register it AND arm the map hook in one"
-	echo "           deliberate step: on a PC, create an empty file named"
-	echo "           HOOK_ARMED inside mod/cluster_map_aa_greenmenu/ on the"
-	echo "           card, then run this screen again. The hook goes live"
-	echo "           with the same step; nothing else is written."
-fi
+[ -f "$SD/$PAYLOAD_NAME/HOOK_ARMED" ] && GEM_ARMED=1
+[ -f "$SD/$PAYLOAD_NAME/ARMNOW.TXT" ] && GEM_ARMED=1
+# An unarmed run says NOTHING here on the console: the GEM stays untouched
+# and the silent default is not console talk. The arming how-to lives in
+# the diag bundle (diag.txt, arm-state section), not on the screen.
 ENGDEFS=""
 if [ "$GEM_ARMED" = 1 ]; then
 # WHICH VIEW the unit's engdefs lives under, per console node: MHI2 mounts
@@ -110,15 +171,15 @@ for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/ap
 	if mkdir "$_v/eso/hmi/.clustermap_probe" 2>/dev/null; then
 		rmdir "$_v/eso/hmi/.clustermap_probe" 2>/dev/null
 		ENGDEFS=$_v/eso/hmi/engdefs
-		echo "engdefs: writable via '$_v'"
+		say "engdefs: writable via '$_v'"
 		break
 	fi
 done
 if [ -z "$ENGDEFS" ]; then
 	ENGDEFS=/net/mmx.mibhigh.net/mnt/app/eso/hmi/engdefs
-	echo "engdefs: NO view accepted writes (tried the FQDN, shorthand, rcc and"
-	echo "local spellings of the app partition); the screen step will report"
-	echo "exactly what failed below."
+	say "engdefs: NO view accepted writes (tried the FQDN, shorthand, rcc and"
+	say "local spellings of the app partition); the screen step will report"
+	say "exactly what failed below."
 fi
 fi
 
@@ -133,29 +194,29 @@ fi
 # unverified content. The new file is staged NEXT to the live one, checked
 # byte-for-byte on the rules below, and only then renamed in place. A
 # previous good copy is kept as cluster-map.esd.prev.
-TPL="$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.template.esd"
+if [ "$GEM_ARMED" = 1 ]; then
+TPL="$SD/$PAYLOAD_NAME/greenmenu/cluster-map.template.esd"
 GEN_PATH=""
 if [ -f "$TPL" ]; then
-	GEN_PATH="$SD/mod/cluster_map_aa_greenmenu/greenmenu/.cluster-map.gen"
+	GEN_PATH=/tmp/cluster-map.gen
 	GEN_ERR="0"
-	echo "  GEM screen paths check (from the template):"
-	sed "s|@GREENMENU@|$SD/mod/cluster_map_aa_greenmenu/greenmenu/|g" "$TPL" \
+	sed "s|@GREENMENU@|$SD/$PAYLOAD_NAME/greenmenu/|g" "$TPL" \
 		> "$GEN_PATH"
 	# 1. non-empty
 	if [ ! -s "$GEN_PATH" ]; then
-		echo "    ERROR: the generated file is EMPTY; keeping the unit's"
-		echo "           current screen file untouched on the unit."
+		say "    ERROR: the generated file is EMPTY; keeping the unit's"
+		say "           current screen file untouched on the unit."
 		GEN_ERR=1
 	fi
 	# 2. the screen itself and no unresolved placeholder
 	if [ "$GEN_ERR" = 0 ] && ! grep -q "screen ClusterMap" "$GEN_PATH"; then
-		echo "    ERROR: the generated file has no 'screen ClusterMap'; the"
-		echo "           unit's current screen file is kept untouched."
+		say "    ERROR: the generated file has no 'screen ClusterMap'; the"
+		say "           unit's current screen file is kept untouched."
 		GEN_ERR=1
 	fi
 	if [ "$GEN_ERR" = 0 ] && grep -q "@GREENMENU@" "$GEN_PATH"; then
-		echo "    ERROR: generation left an unreplaced @GREENMENU@ placeholder;"
-		echo "           keeping the unit's current screen file untouched."
+		say "    ERROR: generation left an unreplaced @GREENMENU@ placeholder;"
+		say "           keeping the unit's current screen file untouched."
 		GEN_ERR=1
 	fi
 	# 3. every script path the screen names must exist on the card NOW
@@ -165,13 +226,13 @@ if [ -f "$TPL" ]; then
 			sp=${sp%% *}
 			case "$sp" in */esd/scripts/*) continue ;; esac
 			if [ ! -f "$sp" ]; then
-				echo "    MISSING on the card: $sp"
+				say "    MISSING on the card: $sp"
 			fi
 		done | grep -q "MISSING on the card" && GEN_ERR=1
 		if [ "$GEN_ERR" = 1 ]; then
-			echo "    ERROR: the generated screen names scripts that are NOT on"
-			echo "           the card (run the paths-check above); keeping the"
-			echo "           unit's current screen file untouched."
+			say "    ERROR: the generated screen names scripts that are NOT on"
+			say "           the card (run the paths-check above); keeping the"
+			say "           unit's current screen file untouched."
 		fi
 	fi
 	if [ "$GEN_ERR" = 0 ]; then
@@ -185,13 +246,13 @@ if [ -f "$TPL" ]; then
 			mv "$ENGDEFS/.cluster-map.new" "$ENGDEFS/cluster-map.esd"
 		rm -f "$GEN_PATH" 2>/dev/null
 		sync 2>/dev/null || true
-		echo "  GEM screen generated from the card: $ENGDEFS/cluster-map.esd"
-		echo "  (previous screen kept as cluster-map.esd.prev)"
+		say "  GEM screen generated from the card: $ENGDEFS/cluster-map.esd"
+		say "  (previous screen kept as cluster-map.esd.prev)"
 	else
 		rm -f "$GEN_PATH" 2>/dev/null
-		echo "  FAIL: the unit's engdefs file was NOT touched (GEM-boot safety)."
-		echo "        Re-copy the zip's whole mod/ folder and run this screen"
-		echo "        again; if this repeats, send this console photo."
+		say "  FAIL: the unit's engdefs file was NOT touched (GEM-boot safety)."
+		say "        Re-copy the zip's whole mod/ folder and run this screen"
+		say "        again; if this repeats, send this console photo."
 		trap 2
 		exit 1
 	fi
@@ -200,20 +261,20 @@ else
 	# same verify-then-replace dance -- BUT its hardcoded /net/mmx/fs/sda0
 	# prefix is rewritten to the view this console actually found the payload
 	# under ($SD), exactly like the template generation does.
-	BUILT="$SD/mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.esd"
+	BUILT="$SD/$PAYLOAD_NAME/greenmenu/cluster-map.esd"
 	if [ ! -s "$BUILT" ] || ! grep -q "screen ClusterMap" "$BUILT"; then
-		echo "FAIL: the card's pre-built cluster-map.esd is missing/incomplete."
-		echo "Re-copy the zip's whole mod/ folder and run this screen again."
+		say "FAIL: the card's pre-built cluster-map.esd is missing/incomplete."
+		say "Re-copy the zip's whole mod/ folder and run this screen again."
 		trap 2
 		exit 1
 	fi
-	GEN_PATH="$SD/mod/cluster_map_aa_greenmenu/greenmenu/.cluster-map.gen"
-	sed "s|/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/|$SD/mod/cluster_map_aa_greenmenu/greenmenu/|g" \
+	GEN_PATH=/tmp/cluster-map.gen
+	sed "s|/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/|$SD/$PAYLOAD_NAME/greenmenu/|g" \
 		"$BUILT" > "$GEN_PATH"
 	BUILD_ERR=0
 	if [ ! -s "$GEN_PATH" ] || ! grep -q "screen ClusterMap" "$GEN_PATH"; then
-		echo "ERROR: the pre-built screen's rewrite failed; keeping the"
-		echo "       unit's current screen file untouched."
+		say "ERROR: the pre-built screen's rewrite failed; keeping the"
+		say "       unit's current screen file untouched."
 		BUILD_ERR=1
 	fi
 	if [ "$BUILD_ERR" = 0 ]; then
@@ -224,9 +285,9 @@ else
 			if [ ! -f "$sp" ]; then echo "MISSING on the card: $sp"; fi
 		done | grep -q "MISSING on the card" && BUILD_ERR=1
 		if [ "$BUILD_ERR" = 1 ]; then
-			echo "ERROR: the pre-built screen names scripts that are NOT on"
-			echo "       the card; keeping the unit's current screen file"
-			echo "       untouched. See the MISSING lines above."
+			say "ERROR: the pre-built screen names scripts that are NOT on"
+			say "       the card; keeping the unit's current screen file"
+			say "       untouched. See the MISSING lines above."
 		fi
 	fi
 	if [ "$BUILD_ERR" = 0 ]; then
@@ -238,46 +299,43 @@ else
 			mv "$ENGDEFS/.cluster-map.new" "$ENGDEFS/cluster-map.esd"
 		rm -f "$GEN_PATH" 2>/dev/null
 		sync 2>/dev/null || true
-		echo "  GEM screen installed from the card's built file: $ENGDEFS/cluster-map.esd"
-		echo "  (previous screen kept as cluster-map.esd.prev)"
+		say "  GEM screen installed from the card's built file: $ENGDEFS/cluster-map.esd"
+		say "  (previous screen kept as cluster-map.esd.prev)"
 	else
 		rm -f "$GEN_PATH" 2>/dev/null
-		echo "  FAIL: the unit's engdefs file was NOT touched (GEM-boot safety)."
-		echo "        Re-copy the zip's whole mod/ folder and run this screen"
-		echo "        again; if this repeats, send this console photo."
+		say "  FAIL: the unit's engdefs file was NOT touched (GEM-boot safety)."
+		say "        Re-copy the zip's whole mod/ folder and run this screen"
+		say "        again; if this repeats, send this console photo."
 		trap 2
 		exit 1
 	fi
-fi   # GEM_ARMED
-echo "GEM screen installed on the unit: $ENGDEFS/cluster-map.esd"
-echo ""
+fi   # if [ -f "$TPL" ]
+say "GEM screen installed on the unit: $ENGDEFS/cluster-map.esd"
+say ""
 
 # 2b. Sanity: the screen file lists script files on the card. If GEM shows
-#     "Script not found: /net/mmx/fs/sda0/mod/…/greenmenu/<name>" after the
-#     install, the card's copy of this repository is older or incomplete —
-#     the screen on the unit came from the card, so the two disagree only
-#     when the card lost files. Check the ones the screen points at:
+#     "Script not found: .../greenmenu/<name>" after the install, the card's
+#     copy of this repository is older or incomplete. One line, not a page.
+_missing=""
 for f in greenmenu/status.sh greenmenu/install.sh greenmenu/keep_map.sh \
          greenmenu/zoom.sh greenmenu/card_clear.sh greenmenu/navstrip.sh; do
-	if [ ! -f "$SD/mod/cluster_map_aa_greenmenu/$f" ]; then
-		echo "NOTE: missing on the card: mod/cluster_map_aa_greenmenu/$f"
-		echo "      -> copy this repository's whole 'mod/' folder onto the card"
-		echo "         again, THEN re-run this screen. GEM would otherwise print"
-		echo "         'Script not found' for the missing item."
-	fi
+	[ -f "$SD/$PAYLOAD_NAME/$f" ] || _missing="$_missing $f"
 done
-echo ""
+[ -n "$_missing" ] && say "NOTE: card copy is incomplete (missing:$_missing)." \
+	"Re-copy the zip's mod/ folder."
+say ""
+fi   # GEM_ARMED
 
 # 3. Run the mod's own installer (status checks, gal profile check, hook +
 #    player install — the same script the new screen's 'Install' entry runs).
-#    Output is captured so the tail message can reflect the real result.
+#    The FULL output goes into the log (and into diag.txt); the CONSOLE gets
+#    only the curated story lines, so the GEM screen stays short.
 OUT=/tmp/cm_custom.log
-sh "$SD/mod/cluster_map_aa_greenmenu/greenmenu/install.sh" > $OUT 2>&1
+sh "$SD/$PAYLOAD_NAME/greenmenu/install.sh" > $OUT 2>&1
 RESULT=$?
-cat $OUT
+_CS="$SD/$PAYLOAD_NAME/greenmenu/console_summary.sh"
+if [ -r "$_CS" ]; then sh "$_CS" "$OUT"; else cat "$OUT"; fi
 
-echo ""
-echo "--- install self-check (unit files) --------------------------------"
 okcount=0
 # The same files under every app-partition view the unit can expose:
 # local /mnt/app, the QNET FQDN spelling, the shorthand, and the rcc core.
@@ -286,31 +344,40 @@ for _view in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt
 	         "$_view/eso/lib/gal_dualscreen/libgal_hook.so" \
 	         "$_view/eso/lib/gal_dualscreen/gal_dualscreen.conf" \
 	         "$_view/navigation/stream-player"; do
-		if [ -r "$u" ]; then
-			echo "  ok: $u"
-			okcount=$((okcount+1))
-		fi
+		[ -r "$u" ] && okcount=$((okcount+1))
 	done
 done
+say ""
 if [ "$okcount" -ge 4 ]; then
-	echo "unit files: present across the unit's views (detail in diag.txt)."
+	say "Unit files: present (detail in diag.txt)."
 else
-	echo "unit files: NOT found on the unit yet (the hook stays stock;"
-	echo "           reasons in the summary above and in diag.txt)."
+	say "Unit files: not present on the unit yet (hook stays stock; detail in diag.txt)."
 fi
-echo ""
-if grep -q -e "CLUSTERMAP_INSTALL_OK" -e "CLUSTERMAP_TURN_BY_TURN_OK" $OUT; then
-	echo "Map install: DONE. Reboot the unit (power button ~10 s), reconnect"
-	echo "the phone, and the map is on the cluster."
+# Is the hook ALREADY live on this unit (an earlier armed install)? Then an
+# unarmed run is a no-op on the live state and must say exactly that.
+_HOOKLIVE=0
+for _v in /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /mnt/system /net/rcc/mnt/system; do
+	_c="$_v/etc/eso/production/smartphone_integrator.json"
+	if [ -r "$_c" ] && grep -q 'libgal_hook.so' "$_c" 2>/dev/null; then
+		_HOOKLIVE=1; break
+	fi
+done
+if [ "$GEM_ARMED" != 1 ] && [ "$_HOOKLIVE" = 1 ]; then
+	say "Map already live on this unit (hook was armed earlier); nothing"
+	say "changed. Detail in the diag file below."
+elif [ "$GEM_ARMED" != 1 ]; then
+	# The truth, in one line: files are staged but nothing is live yet.
+	say "Staged only (not armed): the map is not live until HOOK_ARMED is"
+	say "present on the card. Detail + how to arm: the diag file below."
+elif grep -q -e "CLUSTERMAP_INSTALL_OK" -e "CLUSTERMAP_TURN_BY_TURN_OK" $OUT; then
+	say "Map install: DONE. Reboot the unit (power button ~10 s), reconnect"
+	say "the phone, and the map is on the cluster."
 else
-	echo "Map install: FAILED - the reason is in the summary above; every"
-	echo "detail is on the card in mod/cluster_map_aa_greenmenu/diag.txt."
+	say "Map install: FAILED - the reason is in the summary above; full"
+	say "detail is in the diagnostic file named just below."
 fi
-echo ""
+say ""
 
-# The diag bundle: the unit's state + the FULL run log, one file to send me.
-sh "$SD/mod/cluster_map_aa_greenmenu/greenmenu/diag_collect.sh" append-run "$OUT"
-echo "Everything from the unit in one file: mod/cluster_map_aa_greenmenu/diag.txt"
-
-trap 2
-exit $RESULT
+# The bundle (unit state + full run log + this narration) is written by
+# finish(), which runs on EVERY exit path — early failures included.
+finish $RESULT

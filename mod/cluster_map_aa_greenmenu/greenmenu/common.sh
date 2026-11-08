@@ -49,7 +49,7 @@ find_card()
 
     for _v in $_cands; do
         [ -d "$_v" ] || continue
-        for _rel in mod/cluster_map_aa_greenmenu ClusterMap cluster_map_aa_greenmenu mod/ClusterMap; do
+        for _rel in mod/cluster_aa mod/cluster_map_aa_greenmenu ClusterMap cluster_map_aa_greenmenu mod/ClusterMap; do
             if [ -f "$_v/$_rel/enable_hook.sh" ]; then
                 VOLUME=`cd "$_v" 2>/dev/null && pwd`
                 PKG="$VOLUME/$_rel"
@@ -77,7 +77,7 @@ find_card || {
     for _v in /fs/sda0 /fs/sdb0 /net/mmx/fs/sda0 /net/mmx/fs/sdb0 \
               /net/mmx.mibhigh.net/fs/sda0 /net/mmx.mibhigh.net/fs/sdb0; do
         if [ -d "$_v" ]; then
-            for _rel in mod/cluster_map_aa_greenmenu ClusterMap cluster_map_aa_greenmenu mod/ClusterMap; do
+            for _rel in mod/cluster_aa mod/cluster_map_aa_greenmenu ClusterMap cluster_map_aa_greenmenu mod/ClusterMap; do
                 if [ -f "$_v/$_rel/enable_hook.sh" ]; then
                     VOLUME="$_v"; PKG="$_v/$_rel"; break
                 fi
@@ -107,37 +107,14 @@ CARD_LINE=`mount 2>/dev/null | grep " on /fs/sda0 " | head -1`
 CARD_DEV=`echo "$CARD_LINE" | sed -n "s|^\([^ ]*\) on .*|\1|p"`
 CARD_NODE=`echo "$CARD_LINE" | sed -n "s|^/net/\([^/]*\)/dev/.* on .*|\1|p"`
 [ -n "$CARD_LINE" ] && echo "Card mounted as: $CARD_LINE"
-# Never a guessed slot: the mount point comes from the same mount-table
-# line that identified the card (the M.I.B. GEM console prints exactly
-# "/net/mmx.mibhigh.net/dev/sda0t12 on /fs/sda0" / "/fs/sda0" style lines).
-CARD_MNT=`echo "$CARD_LINE" | sed -n "s|.* on \(/[^ ]*\) .*|\1|p"`
-[ -n "$CARD_MNT" ] || CARD_MNT="$VOLUME"
-mount -uw "$CARD_MNT" 2>&1 | head -1 || true
-if [ -n "$CARD_NODE" ]; then
-	mount -uw "$CARD_DEV" "$CARD_MNT" 2>&1 | head -1 || true
-	on -f "$CARD_NODE" mount -uw "$CARD_MNT" 2>&1 | head -1 || true
-	# both node spellings: the shorthand name and the FQDN form
-	on -f mmx /bin/mount -uw "$CARD_MNT" 2>&1 | head -1 || true
-	on -f mmx.mibhigh.net /bin/mount -uw "$CARD_MNT" 2>&1 | head -1 || true
-fi
-mount -uw "$VOLUME" 2>&1 | head -1 || true
-# Probe it (non-fatal: Status and other read-only entries still work fine).
-if ! mkdir "$VOLUME/.clustermap_rw_probe" 2>/dev/null; then
-    echo ""
-    echo "PROBLEM: the SD card is READ-ONLY to the unit ($VOLUME)."
-    echo "  1. The LOCK slider on the SD adapter must be in the unlocked"
-    echo "     (up) position."
-    echo "  2. The card must be formatted FAT32, not exFAT/NTFS."
-    echo "  3. If both are fine, run chkdsk /f on the card in a PC: a dirty"
-    echo "     volume flag makes the unit mount the card read-only."
-    echo ""
-    echo "For diagnosis, the unit's mount state:"
-    echo "MOUNT_TABLE_START"
-    mount 2>/dev/null | grep -i -e sd0 -e sda0 -e sdb0 || echo "(no sda0/sdb0 line found)"
-    echo "MOUNT_TABLE_END"
-    echo ""
-fi
-rmdir "$VOLUME/.clustermap_rw_probe" 2>/dev/null
+# RULE — THE CARD IS NEVER WRITTEN: the unit mounts a FAT volume read-only
+# when its dirty bit is set, and OUR OWN install writes (backups, logs,
+# probes, staging files) are what set that bit — that is where the phantom
+# "READ-ONLY card" reports came from. So this payload treats the card as
+# read-only media, permanently: no remount attempt on it, no probe files,
+# no staging, nothing. All unit-side state lives on the unit (/tmp or the
+# unit partitions); the card is only ever READ.
+# (The remount ladders below were therefore removed on purpose.)
 # A failed "." ends the shell, and with it the whole install, so check first.
 if [ ! -r "$PKG/scripts/lib_unit.sh" ] || [ ! -r "$PKG/profiles.conf" ]; then
     echo "This ClusterMap folder is incomplete: unpack the release zip again."

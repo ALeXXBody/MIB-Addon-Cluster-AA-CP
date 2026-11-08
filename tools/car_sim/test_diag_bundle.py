@@ -6,10 +6,12 @@ import shutil
 
 from conftest import APP_VIEWS, SYS_VIEWS
 
+# Source of truth in THIS repo; the ZIP ships it as mod/cluster_aa.
 PAYLOAD_SRC = pathlib.Path(
     "/tmp/opencode/mib2/mib-mod-repo/mod/cluster_map_aa_greenmenu")
+
 REPO_MOD = pathlib.Path("/tmp/opencode/mib2/mib-mod-repo/mod")
-PKG = "/fs/sda0/mod/cluster_map_aa_greenmenu"
+PKG = "/fs/sda0/mod/cluster_aa"
 CUSTOM = "/fs/sda0/mod/custom.sh"
 
 
@@ -39,10 +41,12 @@ def test_unarmed_run_writes_the_diag_bundle(car):
     _stage(car)
     p = car.run(["sh", CUSTOM], expect_rc=0)
     out = p.stdout
-    # quiet console: the run's outcome lines exist, the pages do not
-    assert "Map install: FAILED" in out or "Map install: DONE" in out
-    assert len([l for l in out.splitlines() if l.strip()]) < 80, \
-        f"console is too verbose again ({len(out.splitlines())} lines)"
+    # quiet console: the outcome line exists, the pages do not. An unarmed
+    # run is honestly reported as STAGED, not as a live map.
+    assert ("Map install: FAILED" in out or "Map install: DONE" in out
+            or "Staged only (not armed)" in out), out
+    n = len([l for l in out.splitlines() if l.strip()])
+    assert n < 20, f"console is too verbose again ({n} lines)\n{out}"
 
     diag = pathlib.Path(PKG, "diag.txt")
     assert diag.exists()
@@ -70,3 +74,48 @@ def test_diag_sections_carry_fine_tune_facts(car):
     assert "GAL_SECONDARY_INSETS=40,40,127,127" in txt
     assert "HOOK_ARMED marker: present" in txt
     assert "hook preloaded into gal (config carries LD_PRELOAD): YES" in txt
+
+
+# ---------------------------------------------------------------------------
+# EVERY exit path must leave a diagnostic file. The owner's rule: if a run
+# stops, one file from the card explains why — even when the run dies before
+# the install step (the v0.4.19 failure that produced no diag at all).
+# ---------------------------------------------------------------------------
+
+def test_early_screen_failure_still_writes_diag_with_reason(car):
+    _stage(car, armed=True)
+    # break the template generation: armed run reaches the screen step, the
+    # generation produces an EMPTY file, the run must stop safely.
+    tpl = pathlib.Path(PKG, "greenmenu/cluster-map.template.esd")
+    tpl.write_text("")
+    live = pathlib.Path(APP_VIEWS[1], "eso/hmi/engdefs/cluster-map.esd")
+    live.parent.mkdir(parents=True, exist_ok=True)
+    live.write_text("PREVIOUS-GOOD-SCREEN\n")
+
+    p = car.run(["sh", CUSTOM], expect_rc=None)
+    out = p.stdout
+    assert p.returncode != 0, f"expected the run to stop, got rc=0\n{out}"
+    assert "current screen file untouched" in out, out
+    # the unit's live screen is untouched
+    assert live.read_text() == "PREVIOUS-GOOD-SCREEN\n"
+    # and the reason is in the ONE file the owner sends
+    diag = pathlib.Path("/tmp/clustermap_diag/diag.txt")
+    assert diag.exists(), f"no diag bundle after an early failure\n{out}"
+    txt = diag.read_text()
+    assert "generated file is EMPTY" in txt, txt[-2000:]
+    assert "custom.sh console" in txt, txt[-2000:]
+
+
+def test_no_payload_on_card_still_leaves_a_diag(car):
+    # custom.sh placed somewhere runnable, but NO card content at all.
+    custom = pathlib.Path("/sim/custom.sh")
+    custom.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(REPO_MOD / "custom.sh", custom)
+    p = car.run(["sh", str(custom)], expect_rc=None)
+    out = p.stdout
+    assert p.returncode != 0, out
+    assert "not" in out and "found on the SD card" in out, out
+    diag = pathlib.Path("/tmp/clustermap_diag/diag.txt")
+    assert diag.exists(), f"no diag bundle when the card payload is missing\n{out}"
+    txt = diag.read_text()
+    assert "payload" in txt and "not" in txt, txt

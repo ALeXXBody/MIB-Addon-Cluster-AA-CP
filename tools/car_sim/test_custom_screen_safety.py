@@ -9,7 +9,7 @@ from conftest import APP_VIEWS, SYS_VIEWS
 
 PAYLOAD_SRC = pathlib.Path(
     "/tmp/opencode/mib2/mib-mod-repo")
-PKG = "/fs/sda0/mod/cluster_map_aa_greenmenu"
+PKG = "/fs/sda0/mod/cluster_aa"
 CUSTOM = "/fs/sda0/mod/custom.sh"
 ENGDEFS = pathlib.Path(APP_VIEWS[1], "eso/hmi/engdefs")
 PREV_GOOD = "PREVIOUS-GOOD-SCREEN-CONTENTS\n"
@@ -20,9 +20,10 @@ PREV = ENGDEFS / "cluster-map.esd.prev"
 
 def _stage(car):
     # card content: the mod payload AND the repo's mod/custom.sh at the card root
-    dst = pathlib.Path("/fs/sda0/mod/cluster_map_aa_greenmenu")
+    dst = pathlib.Path("/fs/sda0/mod/cluster_aa")
     dst.mkdir(parents=True, exist_ok=True)
     (dst / "HOOK_ARMED").write_text("")  # armed: registration + hook in one step
+    # Source of truth in THIS repo; the ZIP ships it as mod/cluster_aa.
     src = pathlib.Path(PAYLOAD_SRC / "mod/cluster_map_aa_greenmenu")
     shutil.copytree(src, dst, dirs_exist_ok=True,
                     ignore=shutil.ignore_patterns("SHA256SUMS.txt", "LICENSE"))

@@ -1,11 +1,12 @@
 #!/bin/sh
-# diag_collect.sh — writes ONE bundle file on the card:
-#   mod/cluster_map_aa_greenmenu/diag.txt
+# diag_collect.sh — writes ONE bundle file:
+#   /tmp/clustermap_diag/diag.txt        (unit RAM, always, authoritative)
+#   <payload>/diag.txt                   (best-effort copy on the card)
 # The owner sends that single file; everything needed to diagnose an add-on
 # problem or tune the map is inside it. It is written by every install,
 # uninstall and settings run (see custom.sh / menus.sh), and can also run
 # directly from M.I.B.'s own "Run custom script" as
-#   mod/cluster_map_aa_greenmenu/greenmenu/diag_collect.sh
+#   mod/cluster_aa/greenmenu/diag_collect.sh
 #
 # Console behaviour: SILENT unless asked (diag_collect.sh -v). The bundle is
 # the product; the GEM console stays readable.
@@ -28,9 +29,15 @@ PKG=`cd "$HERE/.." && pwd`
 VERBOSE=${1:--}
 
 # Portable helpers (the unit shell again: no printf/tr/diff bashisms).
-OUT="$PKG/diag.txt"
-TMP="$PKG/diag.tmp.$$"
-: > "$TMP" || { echo "diag_collect: cannot write $TMP on the card" >&2; exit 1; }
+# RULE — THE CARD IS NEVER WRITTEN during normal operation. The bundle is
+# therefore always built on the unit's RAM first (/tmp, guaranteed), and the
+# card is only given a best-effort COPY at the very end, once, for the
+# owner's convenience. A card that refuses the copy does not fail anything:
+# the /tmp file remains the source of truth and the console names it.
+mkdir -p /tmp/clustermap_diag 2>/dev/null
+TMP=/tmp/clustermap_diag/diag.tmp.$$
+: > "$TMP" || { echo "diag_collect: cannot write /tmp/clustermap_diag" >&2; exit 1; }
+OUT=/tmp/clustermap_diag/diag.txt
 
 SRC=`dirname "$0"`
 . "$SRC/common.sh" 2>/dev/null || \
@@ -194,12 +201,24 @@ if [ "$1" = append-run ] && [ -r "$2" ] && [ -n "$2" ]; then
 fi
 
 # ---- deliver ----------------------------------------------------------------
-# Keep the newest bundle plus one previous copy (so a run that went bad
-# does not destroy the last good evidence):
+# The guaranteed home is /tmp. Keep the newest bundle plus one previous copy
+# (so a run that went bad does not destroy the last good evidence):
 [ -r "$OUT" ] && cp "$OUT" "$OUT.prev" 2>/dev/null
 [ -s "$TMP" ] || echo "(empty bundle)" >> "$TMP"
 mv "$TMP" "$OUT" 2>/dev/null || { cat "$TMP" >> "$OUT" 2>/dev/null; rm -f "$TMP"; }
-sync 2>/dev/null || true
+# ONE best-effort copy onto the card, so the owner can pull a single file.
+# Failure here is silent and harmless: the /tmp bundle stays authoritative.
+CARDOUT=""
+if [ -d "$PKG" ] && cp "$OUT" "$PKG/diag.txt" 2>/dev/null; then
+    CARDOUT="$PKG/diag.txt"
+    [ -r "$OUT.prev" ] && cp "$OUT.prev" "$PKG/diag.txt.prev" 2>/dev/null
+    sync 2>/dev/null || true
+fi
+echo "$OUT" > /tmp/clustermap_diag/LAST_PATH 2>/dev/null
+[ -n "$CARDOUT" ] && echo "$CARDOUT" > /tmp/clustermap_diag/LAST_CARD_PATH 2>/dev/null
 
-if [ "$VERBOSE" = "-v" ]; then echo "diag bundle written: $OUT"; fi
+if [ "$VERBOSE" = "-v" ]; then
+    echo "diag bundle written: $OUT"
+    [ -n "$CARDOUT" ] && echo "copy on the card:   $CARDOUT"
+fi
 exit 0

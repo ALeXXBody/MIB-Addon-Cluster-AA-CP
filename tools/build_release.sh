@@ -10,7 +10,7 @@
 #     ├── MIB-Addon-Cluster-AA-CP-LICENSE.txt      (the GPL text; zip-only)
 #     └── mod/                                     (everything that goes
 #         ├── custom.sh                               on the card)
-#         └── cluster_map_aa_greenmenu/…
+#         └── cluster_aa/…
 #   dist/MIB-Addon-Cluster-AA-CP-mod-<tag>.zip.sha256
 #
 # Why NOT the repo's README.md / LICENSE / docs: M.I.B.'s own card root
@@ -27,7 +27,8 @@ DIST=dist
 rm -rf "$DIST"
 mkdir -p "$DIST/$NAME/mod"
 
-cp -r mod/cluster_map_aa_greenmenu mod/custom.sh "$DIST/$NAME/mod/"
+cp -r mod/cluster_map_aa_greenmenu "$DIST/$NAME/mod/cluster_aa"
+cp mod/custom.sh "$DIST/$NAME/mod/"
 cp LICENSE "$DIST/$NAME/MIB-Addon-Cluster-AA-CP-LICENSE.txt"
 
 # generated so the tag name lands inside the file
@@ -38,7 +39,7 @@ HOW TO INSTALL — M.I.B. Addon: Cluster AA/CP  (archive $TAG, MOD ONLY)
 This zip contains ONLY the files that go on your M.I.B. SD card:
 
     mod/custom.sh                          - the one-click hook
-    mod/cluster_map_aa_greenmenu/...       - the payload; every switch lives
+    mod/cluster_aa/...                     - the payload; every switch lives
                                              in M.I.B.'s GEM under
                                              "Cluster map" after install
     MIB-Addon-Cluster-AA-CP-LICENSE.txt    - the GPL-3.0 licence text
@@ -81,4 +82,4 @@ echo "Release artifacts in $DIST/:"
 ls -la "$DIST"
 echo
 echo "Zip contents (root level):"
-unzip -l "$DIST/$NAME-$TAG.zip" 2>/dev/null | grep -E "HOW-TO|LICENSE|mod/" | grep -vE "cluster_map_aa_greenmenu/" | head -8
+unzip -l "$DIST/$NAME-$TAG.zip" 2>/dev/null | grep -E "HOW-TO|LICENSE|mod/" | grep -vE "cluster_aa/" | head -8

@@ -18,7 +18,8 @@ run_case()
     sandbox=`mktemp -d`
 
     if [ -n "$card_layout" ]; then
-        if [ "$card_layout" = mod ]; then rel="mod/cluster_map_aa_greenmenu"
+        if [ "$card_layout" = modaa ]; then rel="mod/cluster_aa"
+        elif [ "$card_layout" = mod ]; then rel="mod/cluster_map_aa_greenmenu"
         elif [ "$card_layout" = modcm ]; then rel="mod/ClusterMap"
         elif [ "$card_layout" = loose ]; then rel="cluster_map_aa_greenmenu"
         else rel="ClusterMap"; fi
@@ -54,7 +55,8 @@ run_case()
     rm -rf "$sandbox"
 }
 
-run_case "local card, mod layout"           mod
+run_case "local card, shipped cluster_aa"    modaa
+run_case "local card, mod layout (legacy)"  mod
 run_case "QNET card view, mod layout"       mod
 run_case "card on usb view, standalone"     standalone
 run_case "local card, loose copy"           loose

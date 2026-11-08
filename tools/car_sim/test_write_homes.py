@@ -1,8 +1,13 @@
-"""ensure_write_dir picks the card when writable and /tmp when it is not,
-and records the home for uninstall."""
+"""ensure_write_dir NEVER writes the card.
+
+The install work home (backups + logs) is always /tmp/clustermap_unit on the
+unit's RAM. The card is treated as read-only media, permanently: our own
+writes were what set FAT's dirty bit and produced the phantom "READ-ONLY
+card" reports. The persistent config backup that an uninstall needs lives
+beside the live config on the unit (its own partition), not here.
+"""
 import pathlib
 import re
-import shutil
 
 ENABLE = pathlib.Path("/tmp/opencode/mib2/mib-mod-repo/"
                       "mod/cluster_map_aa_greenmenu/enable_hook.sh")
@@ -15,43 +20,38 @@ def _extract():
     return m.group(0)
 
 
-def test_card_writable_wins(car):
-    car.stage("/fs/sda0", "mod/cluster_map_aa_greenmenu/enable_hook.sh",
-              ENABLE.read_text())
+def test_home_is_ram_even_when_card_is_writable(car):
+    car.stage("/fs/sda0", "mod/cluster_aa/enable_hook.sh", ENABLE.read_text())
     fn = "/fs/sda0/.ewd_fn.sh"
     pathlib.Path(fn).write_text(_extract())
     p = car.run(["bash", "-c",
                  f'CARD_ROOT=/fs/sda0; . {fn}; ensure_write_dir; '
                  'echo "WRITE_HOME=$WRITE_HOME"; '
-                 'echo "ORIGINAL=$ORIGINAL"; '
-                 'cat /fs/sda0/last_install_paths.txt'],
-                expect_rc=0)
-    out = p.stdout
-    assert "WRITE_HOME=/fs/sda0" in out, f"--stdout--\n{out}\n--stderr--\n{p.stderr}"
-    assert "ORIGINAL=/fs/sda0/backups/smartphone_integrator.json.original" in out, out
-    assert "WRITE_HOME=/fs/sda0" in pathlib.Path("/fs/sda0/last_install_paths.txt").read_text(), out
-
-
-def test_card_ro_falls_back_to_tmp_and_records(car):
-    """A card root the console cannot even see (no card): the backup home
-    falls back to /tmp and the home record lands there too — the /tmp
-    marker path, so uninstall still finds BOTH sources."""
-    fn = "/sim/ewd_fn.sh"
-    pathlib.Path(fn).write_text(_extract())
-    # CARD_ROOT absent entirely: /fs/sda0 was never mounted in this test.
-    p = car.run(["bash", "-c",
-                 'CARD_ROOT=/fs/sda0; . /sim/ewd_fn.sh; ensure_write_dir 2>/dev/null; '
-                 'echo "WRITE_HOME=$WRITE_HOME"; echo "ORIGINAL=$ORIGINAL"; '
-                 'cat /tmp/clustermap_last_paths '
-                 '2>/dev/null || echo "NO-CARD-MARKER"'],
+                 'echo "ORIGINAL=$ORIGINAL"'],
                 expect_rc=0)
     out = p.stdout
     assert "WRITE_HOME=/tmp/clustermap_unit" in out, out
     assert "ORIGINAL=/tmp/clustermap_unit/backups/smartphone_integrator.json.original" in out, out
+    # The marker lands on the unit (/tmp), never on the card.
     marker = pathlib.Path("/tmp/clustermap_last_paths")
     assert marker.exists(), out
     txt = marker.read_text()
     assert "BACKUP_DIR=/tmp/clustermap_unit/backups" in txt
-    assert "LOG_DIR=/tmp/clustermap_unit/logs" in txt
+    assert "LOG_DIR=/tmp" in txt
     assert "WRITE_HOME=/tmp/clustermap_unit" in txt
+    # Nothing was written under the card root.
+    assert not pathlib.Path("/fs/sda0/last_install_paths.txt").exists()
+    assert not pathlib.Path("/fs/sda0/backups").exists()
+
+
+def test_no_card_mounted_still_works(car):
+    """No card at all: /tmp still serves, because the card was never needed."""
+    fn = "/sim/ewd_fn.sh"
+    pathlib.Path(fn).write_text(_extract())
+    p = car.run(["bash", "-c",
+                 'CARD_ROOT=/fs/sda0; . /sim/ewd_fn.sh; ensure_write_dir 2>/dev/null; '
+                 'echo "WRITE_HOME=$WRITE_HOME"; echo "ORIGINAL=$ORIGINAL"'],
+                expect_rc=0)
+    out = p.stdout
+    assert "WRITE_HOME=/tmp/clustermap_unit" in out, out
     assert pathlib.Path("/tmp/clustermap_unit/backups").is_dir(), out

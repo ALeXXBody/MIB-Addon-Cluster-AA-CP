@@ -181,7 +181,8 @@ def _car_clean_slate():
         shutil.rmtree(f"/{view}", ignore_errors=True)
     # M.I.B. writes under /tmp in the fallback home; clear between tests.
     shutil.rmtree("/tmp/clustermap_unit", ignore_errors=True)
-    for marker in ("/tmp/clustermap_last_paths",):
+    shutil.rmtree("/tmp/clustermap_diag", ignore_errors=True)
+    for marker in ("/tmp/clustermap_last_paths", "/tmp/cm_custom.log"):
         p = pathlib.Path(marker)
         if p.exists():
             p.unlink()

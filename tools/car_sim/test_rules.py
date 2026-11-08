@@ -91,7 +91,9 @@ def test_rule2_unarmed_install_touches_no_gem_file(car):
     p = car.run(["sh", CUSTOM], expect_rc=None)
     out = p.stdout
     assert p.returncode == 0, f"--stdout--\n{out}\n--stderr--\n{p.stderr}"
-    assert "NOT registered" in out, f"--stdout--\n{out}"
+    # The unarmed run is SILENT about arming on the console (owner's rule:
+    # minimal GEM output). The state lives in diag.txt, not on the screen.
+    assert "NOT registered" not in out, f"--stdout--\n{out}"
     assert not (ENGDEFS / "cluster-map.esd").exists(), "GEM screen registered unarmed (Rule 2)"
     assert not (ENGDEFS / "cluster-map.esd.prev").exists()
     assert not (ENGDEFS / ".cluster-map.new").exists()
@@ -118,3 +120,29 @@ def test_rule1_armed_install_backs_up_and_uninstall_restores_the_player(car):
     assert player.read_bytes() == before, \
         "uninstall did not restore the unit's stock player byte-identically"
     assert not sidecar.exists(), "the sidecar must be removed after the restore"
+
+
+def test_unarmed_run_on_an_already_live_unit_says_so(car):
+    """An unarmed run must not claim 'staged only' when the hook is ALREADY
+    live from an earlier armed install: it says 'already live, unchanged'
+    and touches nothing."""
+    _stage(car, custom=True)
+    live_cfg = (
+        "{\n"
+        ' "children": {\n'
+        '  "gal": {\n'
+        '   "envs":[\n'
+        '    "LD_PRELOAD=/eso/lib/gal_dualscreen/libgal_hook.so"\n'
+        '   ]\n'
+        "  }\n"
+        " }\n"
+        "}\n")
+    sysfile = pathlib.Path(SYS_VIEWS[1], CFG_KEY)
+    sysfile.write_text(live_cfg)
+
+    p = car.run(["sh", CUSTOM], expect_rc=None)
+    assert p.returncode == 0, f"--stdout--\n{p.stdout}\n--stderr--\n{p.stderr}"
+    assert "already live" in p.stdout, p.stdout
+    assert "Staged only" not in p.stdout, p.stdout
+    assert sysfile.read_text() == live_cfg, \
+        "an unarmed run changed an already-live supervisor config"

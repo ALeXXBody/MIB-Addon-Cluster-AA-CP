@@ -8,9 +8,11 @@ import json
 
 from conftest import APP_VIEWS, SYS_VIEWS
 
+# Source of truth in THIS repo; the ZIP ships it as mod/cluster_aa.
 PAYLOAD_SRC = pathlib.Path(
     "/tmp/opencode/mib2/mib-mod-repo/mod/cluster_map_aa_greenmenu")
-PKG = "/fs/sda0/mod/cluster_map_aa_greenmenu"
+
+PKG = "/fs/sda0/mod/cluster_aa"
 
 HOOK_SUB = "/eso/lib/gal_dualscreen/libgal_hook.so"
 
@@ -78,14 +80,18 @@ def test_install_then_uninstall_via_fqdn_view(car):
     assert "LD_PRELOAD" in cfgtxt, f"armed install must inject the preload: {cfgtxt[:160]}..."
     assert "GAL_DUALSCREEN_ENABLE=1" in cfgtxt, cfgtxt
 
-    # The supervisor config carries the hook's LD_PRELOAD entry:
-    # The install recorded its backup home on the WRITABLE card:
-    marker = pathlib.Path(PKG, "last_install_paths.txt")
+    # The install's work home is the unit's RAM, never the card; the
+    # persistent recovery copy lives beside the live config.
+    marker = pathlib.Path("/tmp/clustermap_last_paths")
     assert marker.exists(), f"--stdout--\n{out}\n--stderr--\n{p.stderr}"
     mtxt = marker.read_text()
-    assert "/fs/sda0/mod/cluster_map_aa_greenmenu/backups" in mtxt, mtxt
-    backup = pathlib.Path(PKG, "backups/smartphone_integrator.json.original")
-    assert backup.exists(), f"backup missing\n--stdout--\n{out}"
+    assert "WRITE_HOME=/tmp/clustermap_unit" in mtxt, mtxt
+    assert pathlib.Path("/tmp/clustermap_unit/backups/"
+                        "smartphone_integrator.json.original").exists(), out
+    assert pathlib.Path(str(cfg) + ".gal-dualscreen.original").exists(), out
+    # And nothing was written to the card payload folder.
+    assert not pathlib.Path(PKG, "last_install_paths.txt").exists()
+    assert not pathlib.Path(PKG, "backups").exists()
 
     # ---- uninstall ----
     q = car.run(["sh", f"{PKG}/disable_hook.sh"], expect_rc=None)

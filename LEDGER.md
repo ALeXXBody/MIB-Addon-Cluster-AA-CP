@@ -3,7 +3,7 @@
 > **Purpose:** every verified fact, decision and signature from building and
 > debugging this Addon on the real car, in one file. Read this before doing
 > any new work on the project. Update it as findings land; do not re-derive
-> what is already written here. Last updated: 2026-11-06 (owner: ALeXXBody;
+> what is already written here. Last updated: 2026-11-08 (owner: ALeXXBody;
 > agent sessions across OpenCode/GLM; every claim was verified unless it
 > says *proposal* or *untested*).
 
@@ -471,3 +471,40 @@ the payload mirror had been drifting while the drift check printed OK.
   restart.
 - MHI2Q (Qualcomm), MIB2 Standard (MST2) and Audi AU37x are **out of scope** for this
   Addon; their sibling projects own their territory (see §7 table).
+
+---
+
+## 12. Round v0.4.20 — the card is never written (2026-11-08)
+
+**Root cause found (owner was right: the card was NOT read-only).** Our own
+writes to the FAT card (backups, logs, mkdir probes, staging files) set the
+volume's dirty bit; QNX then mounts the card read-only on the next boot. The
+addon then reported "READ-ONLY card" and blamed the owner's card. The phantom
+was self-inflicted. Established fact: **a payload must never write the card.**
+
+**The rule now stored in the code:**
+- The SD card is READ-ONLY MEDIA to this addon. `common.sh` performs no
+  remount, no mkdir probe, no staging on the card. The remount ladder and the
+  "PROBLEM: the SD card is READ-ONLY" message are deleted.
+- Install work home = `/tmp/clustermap_unit` (backups + marker); hook log =
+  `/tmp/gal_dualscreen.log` (the unit-wide convention status/diag already
+  read). The persistent config recovery copy an uninstall needs is
+  `<live config>.gal-dualscreen.original` beside the config on the unit.
+- `mod/custom.sh` runs `diag_collect.sh` from an EXIT trap (`trap … 0`), so
+  EVERY exit produces the bundle. `/tmp/clustermap_diag/diag.txt` is
+  guaranteed; `<payload>/diag.txt` is a single best-effort copy for the owner.
+  The bundle includes the script's own narration, so an early stop says WHY.
+- Shipped card folder renamed to `mod/cluster_aa` (short, 8.3-friendly);
+  locators prefer it and still accept `mod/cluster_map_aa_greenmenu`,
+  `ClusterMap`, etc. Arming accepts `HOOK_ARMED` or `ARMNOW.TXT`.
+- Unarmed console verdicts are truthful: `DONE`, `FAILED`,
+  `Staged only (not armed)`, or `Map already live … nothing changed`.
+  `CLUSTERMAP_*` internals are filtered out of the console.
+- Bug fixed: screen generation is fully inside the `GEM_ARMED` gate. It
+  previously ran unarmed with an empty engdefs path and could write
+  `/cluster-map.esd`.
+
+**Offline proof:** 31 tests green (`tools/venv_test.sh`), including: card
+never written (`test_write_homes.py`), early-failure diag + reason,
+no-payload diag, already-live verdict, `mod/cluster_aa` discovery. Also green:
+`check_manifest`, `check_gem_esd`, `gem_portable_check`, `find_card_test`.

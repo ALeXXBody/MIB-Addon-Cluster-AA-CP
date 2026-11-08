@@ -28,44 +28,34 @@ JSONLINT=/mnt/app/eso/bin/jsonlint
 # Match the QNX login/startup loader path. In particular, libiplcommon.so,
 # libosal.so, and libutil.so are supplied by /lib, not /mnt/app/eso/lib.
 VALIDATOR_LD_LIBRARY_PATH=/proc/boot:/lib:/lib/dll:/usr/lib:/mnt/app/root/lib-target:/mnt/app/usr/lib:/mnt/app/armle/lib:/mnt/app/armle/lib/dll:/mnt/app/armle/usr/lib:/eso/lib:/mnt/app/eso/lib
-# Backups/logs prefer the card; when the card is read-only to the unit
-# (which previously stopped the WHOLE install), they fall back to /tmp so
-# the install never blocks on the card. Uninstall then reads whichever
-# folder the install actually used (recorded in a marker file).
+# The install's work home is the unit's RAM; the CARD IS NEVER WRITTEN.
+# (Writing to the FAT card set its dirty bit, which made the NEXT mount
+# read-only — the phantom "read-only card" reports.) The persistent config
+# backup an uninstall needs lives beside the live config on the unit.
 BACKUP_DIR=""; LOG_DIR=""; WRITE_HOME=""; ORIGINAL=""
 ensure_write_dir() {
-    if mkdir "$CARD_ROOT/backups" 2>/dev/null || { [ -d "$CARD_ROOT/backups" ] && mkdir "$CARD_ROOT/.rw_probe" 2>/dev/null; }; then
-        rmdir "$CARD_ROOT/.rw_probe" 2>/dev/null || true
-        WRITE_HOME="$CARD_ROOT"
-        BACKUP_DIR="$CARD_ROOT/backups"
-        LOG_DIR="$CARD_ROOT/logs"
-    else
-        WRITE_HOME="/tmp/clustermap_unit"
-        BACKUP_DIR="$WRITE_HOME/backups"
-        LOG_DIR="$WRITE_HOME/logs"
-        echo "NOTE: card is read-only to the unit; backups/logs go to $WRITE_HOME (RAM: uninstall then still restores, but they are lost on every reboot)." >&2
-    fi
+    # RULE — THE CARD IS NEVER WRITTEN: backups/logs live on the unit's RAM
+    # (/tmp/clustermap_unit). The gold copy for an uninstall is the
+    # PERSISTENT backup beside the supervisor config on the unit itself,
+    # which an armed install always keeps fresh. Nothing here touches the
+    # card anymore, so the card's dirty-bit can never be set by this
+    # payload, and the phantom read-only mounts are gone with it.
+    WRITE_HOME="/tmp/clustermap_unit"
+    BACKUP_DIR="$WRITE_HOME/backups"
+    # The hook's own log lives at /tmp/gal_dualscreen.log (the unit-wide
+    # convention the status/diag scripts already read). Keep it there so
+    # there is exactly ONE log path on the unit.
+    LOG_DIR="/tmp"
     mkdir -p "$BACKUP_DIR" "$LOG_DIR" || {
         echo "ERROR: could not create $BACKUP_DIR / $LOG_DIR" >&2
         exit 1
     }
-    # The SD-untouched-original path follows the SAME home: the whole point
-    # of this helper is that no collector of install files assumes the card.
     ORIGINAL="$BACKUP_DIR/smartphone_integrator.json.original"
-    # record for uninstall/tools: where this install's files went (card if
-    # writable, otherwise the /tmp home; uninstall reads both in order).
-    # stderr is redirected FIRST: the stderr of a failed open on the card
-    # must not paint the console red on an already-announced condition.
-    if echo "BACKUP_DIR=$BACKUP_DIR" 2>/dev/null > "$CARD_ROOT/last_install_paths.txt"; then
-        echo "LOG_DIR=$LOG_DIR" >> "$CARD_ROOT/last_install_paths.txt"
-        echo "WRITE_HOME=$WRITE_HOME" >> "$CARD_ROOT/last_install_paths.txt"
-    else
-        {
-            echo "BACKUP_DIR=$BACKUP_DIR"
-            echo "LOG_DIR=$LOG_DIR"
-            echo "WRITE_HOME=$WRITE_HOME"
-        } > /tmp/clustermap_last_paths 2>/dev/null
-    fi
+    {
+        echo "BACKUP_DIR=$BACKUP_DIR"
+        echo "LOG_DIR=$LOG_DIR"
+        echo "WRITE_HOME=$WRITE_HOME"
+    } > /tmp/clustermap_last_paths 2>/dev/null
 }
 DPI=140
 DEBUG=0
@@ -148,7 +138,7 @@ HOOK_ARMED=0
 if [ "${CLUSTERMAP_HOOK_ARMED:-0}" = 1 ]; then
     HOOK_ARMED=1
 fi
-if [ -f "$CARD_ROOT/HOOK_ARMED" ]; then
+if [ -f "$CARD_ROOT/HOOK_ARMED" ] || [ -f "$CARD_ROOT/ARMNOW.TXT" ]; then
     HOOK_ARMED=1
 fi
 
@@ -379,7 +369,7 @@ ensure_write_dir
 WRITE_PROBE="$LOG_DIR/.write_probe.$$"
 if ! : > "$WRITE_PROBE" 2>/dev/null; then
     echo "Cannot write the install's work dir ($LOG_DIR, home: $WRITE_HOME)." >&2
-    echo "If that home is the SD card, unlock the card (LOCK slider up) or" >&2
+    echo "(the home is /tmp, RAM: freeing RAM helps if the unit is out of it)" >&2
     echo "clear the dirty flag with chkdsk /f, and run Install again." >&2
     exit 1
 fi
@@ -756,8 +746,6 @@ if [ -x "$CARD_ROOT/stream-player" ] && [ "$HOOK_ARMED" = 1 ]; then
         rm -f "$PLAYER_DST.new"
         echo "WARNING: could not install stream-player to $PLAYER_DST; the previous player, if any, stays." >&2
     fi
-elif [ -x "$CARD_ROOT/stream-player" ]; then
-    echo "stream-player: NOT replaced (the hook is not armed; the unit's player stays)."
 fi
 
 # The CarPlay map, when this unit's CarPlay library is the one the hook knows.
@@ -946,10 +934,8 @@ fi
 # it: the hook files are staged beside gal_dualscreen.conf, nothing loads
 # them, and the unit's GEM keeps parsing its own world unchanged.
 if [ "$HOOK_ARMED" != 1 ]; then
-    echo "Supervisor config: NOT modified (the hook is not armed)."
-    echo "The hook files are staged and inert; arm the hook (create"
-    echo "HOOK_ARMED inside the payload folder on the card and re-run"
-    echo "Install) and the map goes live in one deliberate step."
+    # Silent on the console (owner's rule: minimal GEM output): the
+    # arming state is in the diag bundle; nothing else here talks.
     finish
     exit 0
 fi
@@ -1362,10 +1348,7 @@ else
         if [ "$NAV_OK" -eq 1 ]; then
             echo "Java check: NavActiveIgnore is not loaded; adding it ($NAV_WHY)."
             if [ "$HOOK_ARMED" != 1 ]; then
-                echo "Java check: NOT ADDED - the install does not arm lsd.sh" >&2
-                echo "            (no firmware-level edits without arming)." >&2
-                echo "            Arm the hook (HOOK_ARMED / CLUSTERMAP_HOOK_ARMED=1)" >&2
-                echo "            and install again to have it added." >&2
+                :  # silent: not added; diag bundle records the arm state
             elif sh "$CARD_ROOT/lsd_jar.sh" add NavActiveIgnore.jar "$CARD_ROOT/thirdparty/NavActiveIgnore.jar"; then
                 mount -uw "${APP_WR:-/mnt/app}" 2>/dev/null && { : > "$NAVIGNORE_MARKER"; mount -ur "${APP_WR:-/mnt/app}" 2>/dev/null || true; }
             else
@@ -1389,8 +1372,7 @@ else
         if [ "$TBT_OK" -eq 1 ]; then
             echo "Java check: adding VCAndroidAuto.jar beside the map (CLUSTERMAP_KEEP_ARROWS=1)."
             if [ "$HOOK_ARMED" != 1 ]; then
-                echo "Java check: NOT ADDED - the install does not arm lsd.sh" >&2
-                echo "            (Rule 1: no firmware-level edits without arming)." >&2
+                :  # silent: not added on an unarmed install
             elif sh "$CARD_ROOT/lsd_jar.sh" add VCAndroidAuto.jar "$CARD_ROOT/thirdparty/VCAndroidAuto.jar"; then
                 mount -uw "${APP_WR:-/mnt/app}" 2>/dev/null && { : > "${APP_WR:-/mnt/app}/eso/hmi/lsd/.aacluster_tbt_added"; mount -ur "${APP_WR:-/mnt/app}" 2>/dev/null || true; }
             else
