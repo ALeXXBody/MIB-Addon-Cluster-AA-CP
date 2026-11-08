@@ -637,3 +637,36 @@ probes first, remounts RW when refused (`mount -uw` on the winning view),
 writes, checksum-verifies, `sync`s, then rejoins RO (`mount -ur`) so the RW
 window is exactly the one copy. The console narrates the remount and, if
 even that fails, says NOT WRITTEN with the tuning facts.
+
+---
+
+## 16. Round v0.4.24 — the diag round: what the file proved, and the flat home
+
+**The diag reached the card and was accepted** — v0.4.23's RW-remount card
+copy works on the owner's car (the bundle's "payload version: v0.4.23"
+proves the round trip: install in car → copy on card → sent by the owner).
+
+**What the bundle establishes (unit facts, not guesses):**
+- train `MHI2_ER_VWG13_P4521`, app/system views readable+RW reachable via
+  /mnt/* AND /net/mmx.mibhigh.net/mnt/*; jsonlint present; ESO alive;
+- GEM screen registered in engdefs (the "Script not found" class ended at
+  v0.4.23's re-anchor + frozen folder name);
+- hook installed and preloaded into gal; PERSISTENT supervisor backup
+  present beside the config; hook session ran ~6 min with clean
+  own.ack/black-box streams and no aborts in the tail;
+- real installed numbers for the picture tuning:
+  `GAL_PLAYER_WINDOW=1010x376`, `GAL_SECONDARY_DPI=125`,
+  `GAL_SECONDARY_INSETS=40,40,127,127`, `GAL_SECONDARY_MARGINS=0x182`,
+  `GAL_SECONDARY_PIXEL_ASPECT_RATIO_E4=10000`, `CLUSTERMAP_FULL_FRAME=0`.
+- The install verb of that run FAILED EARLY: `mkdir -p
+  /tmp/clustermap_unit/backups` -> "Function not implemented" (ENOSYS),
+  while FILE creation inside /tmp works (the hook's own log). This unit's
+  /tmp does not support subdirectories. Nothing harmful happened because
+  the install is idempotent (the hook was already live from an earlier
+  armed install); but every restage/settings run would keep failing here.
+
+**Fix (v0.4.24):** ensure_write_dir is DIR-FIRST with a measured FLAT
+fallback — when /tmp disallows subdirectories the home becomes /tmp
+itself, backups land as flat files, the marker records HOME_MODE=flat,
+and the uninstaller resolves the original in BOTH homes. No folds, no
+code without a car-fact behind it.

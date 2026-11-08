@@ -40,21 +40,30 @@ ensure_write_dir() {
     # which an armed install always keeps fresh. Nothing here touches the
     # card anymore, so the card's dirty-bit can never be set by this
     # payload, and the phantom read-only mounts are gone with it.
+    #
+    # CAR TRUTH (owner diag 2026-11-08): this unit's /tmp REFUSES to
+    # create subdirectories (mkdir -p /tmp/clustermap_unit -> "Function
+    # not implemented", ENOSYS) while FILE creation next to it works
+    # (the hook's own /tmp/gal_dualscreen.log is written this whole run).
+    # So the install home is DIR-FIRST with a measured FLAT fallback:
+    # only files, never a directory, lose no backup, lose no marker.
     WRITE_HOME="/tmp/clustermap_unit"
     BACKUP_DIR="$WRITE_HOME/backups"
     # The hook's own log lives at /tmp/gal_dualscreen.log (the unit-wide
     # convention the status/diag scripts already read). Keep it there so
     # there is exactly ONE log path on the unit.
     LOG_DIR="/tmp"
-    mkdir -p "$BACKUP_DIR" "$LOG_DIR" || {
-        echo "ERROR: could not create $BACKUP_DIR / $LOG_DIR" >&2
-        exit 1
-    }
+    if ! mkdir -p "$BACKUP_DIR" 2>/dev/null || [ ! -d "$BACKUP_DIR" ]; then
+        echo "INFO: /tmp disallows subdirectories on this unit; install home is /tmp (flat)" >&2
+        WRITE_HOME="/tmp"
+        BACKUP_DIR="/tmp"
+    fi
     ORIGINAL="$BACKUP_DIR/smartphone_integrator.json.original"
     {
         echo "BACKUP_DIR=$BACKUP_DIR"
         echo "LOG_DIR=$LOG_DIR"
         echo "WRITE_HOME=$WRITE_HOME"
+        echo "HOME_MODE=$([ "$WRITE_HOME" = /tmp ] && echo flat || echo dir)"
     } > /tmp/clustermap_last_paths 2>/dev/null
 }
 DPI=140

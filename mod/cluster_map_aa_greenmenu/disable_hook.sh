@@ -37,7 +37,12 @@ elif [ -f /tmp/clustermap_last_paths ]; then
     BACKUP_DIR=`sed -n "s/^BACKUP_DIR=//p" /tmp/clustermap_last_paths | tail -1`
 fi
 [ -r "$CARD_ROOT/backups/smartphone_integrator.json.original" ] && BACKUP_DIR="$CARD_ROOT/backups"
-[ -r "$BACKUP_DIR/smartphone_integrator.json.original" ] || BACKUP_DIR=/tmp/clustermap_unit/backups
+[ -r "$BACKUP_DIR/smartphone_integrator.json.original" ] || {
+    # dir-first, then the FLAT home of a unit whose /tmp disallows subdirs
+    for _c in /tmp/clustermap_unit/backups /tmp; do
+        [ -r "$_c/smartphone_integrator.json.original" ] && BACKUP_DIR="$_c" && break
+    done
+}
 ORIGINAL="$BACKUP_DIR/smartphone_integrator.json.original"
 JSONLINT=/mnt/app/eso/bin/jsonlint
 VALIDATOR_LD_LIBRARY_PATH=/proc/boot:/lib:/lib/dll:/usr/lib:/mnt/app/root/lib-target:/mnt/app/usr/lib:/mnt/app/armle/lib:/mnt/app/armle/lib/dll:/mnt/app/armle/usr/lib:/eso/lib:/mnt/app/eso/lib
