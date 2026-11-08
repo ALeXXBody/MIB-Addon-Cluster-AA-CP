@@ -53,7 +53,10 @@ SYS=""; for _v in $SYSV; do
     [ -d "$_v/etc/eso/production" ] && { SYS="$_v"; break; }
 done
 CARD=""; for _v in /fs/sda0 /fs/sdb0 /net/mmx/fs/sda0 /net/mmx.mibhigh.net/fs/sda0 /net/mmx/fs/sdb0; do
-    [ -d "$_v/mod/cluster_map_aa_greenmenu" ] && { CARD="$_v"; break; }
+    for _r in mod/cluster_aa mod/cluster_map_aa_greenmenu; do
+        [ -d "$_v/$_r" ] && CARD="$_v" && break
+    done
+    [ -n "$CARD" ] && break
 done
 echo "views: app='$APP' system='$SYS' card='$CARD'"
 
@@ -86,8 +89,8 @@ if [ -f "$CFG" ]; then
                 echo "2. restored $CFG from the unit-side backup"
                 RESTORED=1
             }
-        elif [ -n "$CARD" ] && [ -r "$CARD/mod/cluster_map_aa_greenmenu/backups/smartphone_integrator.json.original" ]; then
-            cp "$CARD/mod/cluster_map_aa_greenmenu/backups/smartphone_integrator.json.original" "$CFG" && {
+        elif [ -n "$CARD" ] && [ -r "$CARD/mod/cluster_aa/backups/smartphone_integrator.json.original" ]; then
+            cp "$CARD/mod/cluster_aa/backups/smartphone_integrator.json.original" "$CFG" && {
                 echo "2. restored $CFG from the card backup"
                 RESTORED=1
             }

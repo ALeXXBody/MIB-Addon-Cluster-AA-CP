@@ -31,17 +31,16 @@ fi
 # so probe writability through the same spelling being used.
 ENGDEFS_REMOVED=0
 for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
-    [ -f "$_v/eso/hmi/engdefs/cluster-map.esd" ] || continue
-    mount -uw "$_v" 2>/dev/null
-    if mkdir "$_v/eso/hmi/.clustermap_probe" 2>/dev/null; then
-        rmdir "$_v/eso/hmi/.clustermap_probe" 2>/dev/null
-        rm -f $_v/eso/hmi/engdefs/cluster-map.esd && {
-            echo "Removed the menu screen (view: $_v)."
-            ENGDEFS_REMOVED=1
-        }
-        mount -ur "$_v" 2>/dev/null
-        break
+    _edefs="$_v/eso/hmi/engdefs"
+    [ -f "$_edefs/cluster-map.esd" ] || continue
+    # write-probe (this unit REFUSES mkdir; file writes beside it work)
+    ( : > "$_edefs/.clustermap_probe" ) 2>/dev/null || continue
+    rm -f "$_edefs/.clustermap_probe" 2>/dev/null
+    if rm -f "$_edefs/cluster-map.esd"; then
+        echo "Removed the menu screen (view: $_v)."
+        ENGDEFS_REMOVED=1
     fi
+    break
 done
 if [ "$ENGDEFS_REMOVED" = 0 ] && [ $RC -eq 0 ]; then
     echo "Menu screen not found under any app view (nothing to remove)."

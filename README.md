@@ -22,6 +22,21 @@
 5. **Reboot the unit** (hold the power button ~10 s). Back in GEM you now have a new **top-level `ClusterMap` screen**: Status / Install / Make live / Uninstall / Keep-map / Verify / logs. The map is on the cluster.
 6. **Use it:** plug your phone into USB, open Google Maps or Waze, switch the cluster to map view. Done.
 
+### v0.5.0 in one paragraph
+
+One zip, one GEM click. The menu entries are **M.I.B.-conformant bare
+paths** (`greenmenu/gem/<name>.sh` - your GEM resolves the whole quoted
+`value` as the script name, so entries never carry arguments), the screen
+paths use the spelling your GEM executes (`/net/mmx/fs/sda0/...`), every
+script name the menu can touch is existence-audited offline (48 tests),
+and every press floors the console to the minimum (GEM 4.12st's console
+re-entry bug renders "..." otherwise) while the FULL story of every run
+goes into `diag.txt` on the card. The picture tune is pinned: full frame
+on your car (`FULL_FRAME=1`, PAR 1.61, margins 0) and carried across
+re-installs (`CLUSTERMAP_KEEP_SETTINGS=1` + the shipped defaults
+snapshot). Use **short clicks**, one press then **Back**; evidence =
+press Save logs and send `mod/cluster_aa/diag.txt`.
+
 **Want it staged but not live?** Delete `mod/cluster_aa/HOOK_ARMED` from the card before step 4. The run then touches nothing live, and the GEM's **“2b. Make the map LIVE”** entry arms it later — no card edit, no PC.
 
 ## One file to send if anything looks wrong

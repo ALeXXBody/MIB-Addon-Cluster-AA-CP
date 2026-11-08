@@ -95,3 +95,17 @@ def test_every_press_carries_the_execution_proof_line():
     assert 'LaneMap' not in body
     assert 'echo "ClusterMap $VERB ran / payload on card:' in body
     pass  # the VERSION file is a zip-only artifact
+
+
+def test_settings_snapshot_ships():
+    """The keep-settings feature silently died without this file: the
+    installer gates 'carry the owner's changed lines over' on the presence
+    of scripts/gal_dualscreen.default.conf (found missing in the v0.5.0
+    audit - the gate shipped since beta19 never defended it)."""
+    from pathlib import Path as P
+    payload = P("/tmp/opencode/mib2/mib-mod-repo/mod/cluster_map_aa_greenmenu")
+    dflt = payload / "scripts/gal_dualscreen.default.conf"
+    assert dflt.is_file(), "the defaults snapshot is missing (feature dead)"
+    assert (payload / "scripts/lib_keep_settings.sh").is_file()
+    conf = (payload / "gal_dualscreen.conf").read_text()
+    assert "CLUSTERMAP_KEEP_SETTINGS=1" in conf

@@ -900,3 +900,37 @@ Either way the card's diag.txt (sections 11/12, written every run) is the
 authoritative measurement read of a press.
 
 Gate: 47 tests.
+
+---
+
+## 25. Round v0.5.0 — the FULL audit: every file, every path, every flow
+
+**Sweep across the whole payload (61 shell scripts, 173 file references, every
+source/spelling/mount/save path):**
+
+1. **rescue_revert.sh still searched only the pre-rename folder**
+   (`mod/cluster_map_aa_greenmenu`) - THE hung-GEM recovery tool would not
+   have found the card under the released layout. Fixed: both layouts.
+2. **greenmenu/uninstall.sh removed the menu screen through a `mkdir`
+   probe** - this unit REFUSES mkdir (rounds 16/18); uninstall would have
+   reported "Menu screen not found" and left the GEM screen behind.
+   Fixed: the file-write probe ladder, identical to the installer's.
+3. **status.sh carried the one remaining `grep -E`** in the chain; on the
+   unit's grep that pattern silently prints nothing. Converted to plain
+   `-e` probes (focus/player/stream events).
+4. **The keep-settings feature was silently dead since the day it
+   shipped:** the installer gates 'carry the owner's changed lines over'
+   on `scripts/gal_dualscreen.default.conf` - WHICH WAS NEVER SHIPPED.
+   The owner's tune would have been reset on every card re-install
+   despite the README's promise. Fixed: the snapshot now ships, and the
+   card config carries the explicit `CLUSTERMAP_KEEP_SETTINGS=1` switch.
+5. custom.sh's install self-check now also enumerates the GEM wrappers,
+   the shared lib and the defaults snapshot (an incomplete card copy is
+   named before it costs a car round).
+6. Re-audited and CONFIRMED sound: 173 payload file references resolve
+   (the missing-file noise was alternating fallbacks and external M.I.B.
+   payload paths, all guarded); every dot-source in the payload is
+   guarded against the shell-abort class; the card-write rules hold
+   (no writes outside the diag copy + owner-invoked Save logs); the
+   mount/unmount pairs balance; the diag bundle covers every entry; the
+   release contract still asserts the one-click zip.

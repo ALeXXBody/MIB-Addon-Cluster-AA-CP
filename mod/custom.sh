@@ -362,9 +362,20 @@ say ""
 #     copy of this repository is older or incomplete. One line, not a page.
 _missing=""
 for f in greenmenu/status.sh greenmenu/install.sh greenmenu/keep_map.sh \
-         greenmenu/zoom.sh greenmenu/card_clear.sh greenmenu/navstrip.sh; do
+         greenmenu/zoom.sh greenmenu/card_clear.sh greenmenu/navstrip.sh \
+         greenmenu/menus.sh greenmenu/collect_for_porting.sh \
+         greenmenu/collect_for_porting_full.sh scripts/lib_app_mount.sh \
+         scripts/gal_dualscreen.default.conf; do
 	[ -f "$SD/$PAYLOAD_NAME/$f" ] || _missing="$_missing $f"
 done
+# the GEM entries: every wrapper the shipped screen names must be there
+if [ -d "$SD/$PAYLOAD_NAME/greenmenu/gem" ]; then
+	for f in "$SD"/"$PAYLOAD_NAME"/greenmenu/gem/*.sh; do
+		[ -f "$f" ] || _missing="$_missing $f"
+	done
+else
+	_missing="$_missing greenmenu/gem/*.sh"
+fi
 [ -n "$_missing" ] && say "NOTE: card copy is incomplete (missing:$_missing)." \
 	"Re-copy the zip's mod/ folder."
 say ""
