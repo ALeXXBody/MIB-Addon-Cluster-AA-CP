@@ -398,12 +398,17 @@ rm -f "$WRITE_PROBE"
 # TARGET_CONFIG below -- so an interrupted or partial copy (disk full,
 # power loss mid-write) can never leave that live, already-relied-upon
 # file half-written. A direct cp onto the live path could.
-app_mount_rw || {
+if ! app_mount_rw; then
     echo "Cannot remount the app partition read-write." >&2
     echo "Forms tried: mount -uw on each of $APP_VIEWS, then" >&2
     echo "on -f mmx/rcc mount -uw /mnt/app (probed through every view spelling)." >&2
+    echo "The unit's mount answered, per form:" >&2
+    echo "$APP_LADDER_ERRORS" | while IFS= read -r _l; do \
+        [ -n "$_l" ] && echo "  app remount: $_l"; done >&2
+    echo "(the map is NOT touched by this failure; it only blocks updates)" >&2
     exit 1
-}
+fi
+[ -n "$APP_LADDER_OK" ] && echo "$APP_LADDER_OK" >&2
 echo "app partition: read-write via '$APP_LADDER_FORM'"
 # Writes go through the alias that the ladder verified (the plain /mnt/app
 # view may not be the one that went read-write on this node): re-point the

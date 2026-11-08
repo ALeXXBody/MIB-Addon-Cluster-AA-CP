@@ -755,3 +755,32 @@ therefore the LAST time a screenshot is the evidence chain.
 
 Gate: 45 tests (new: dispatcher scripts all exist; wrappers resolve to
 existing files; per-verb file names audited against the card).
+
+---
+
+## 19. Round v0.4.27 — the remount refusal becomes measurable (owner diag, pre-update)
+
+The owner's diag (v0.4.25 card) is half a goldmine, and it ends the
+"silence" of THIS failure class:
+- **the card copy works** and the GEM screen is fully resolved: section
+  6b lists every entry `ok` (24/24) for the live screen;
+- **the flat install home works** on this unit (`HOME_MODE=flat`);
+- **the map itself is alive and translating**: nav stream shows real road
+  data ("towards First Ave"), the player spawns, focus/stream/ack all
+  connected, `kombi.ready` swap at 41 s — the deliverable runs clean.
+- The scan found the last silent refusal: the REINSTALL's
+  `Cannot remount the app partition read-write` printed only the FORMS
+  tried, not what the mount actually SAID. M.I.B.'s own toolbox remounts
+  app as `mount -uw /net/mmx/mnt/app` (plain form, per cswdl/most/
+  udevice/tones), ours is a superset ladder - still refuses on that boot
+  without a word.
+
+**v0.4.27:** every remount attempt records the unit's own stderr + exit
+code (`app remount: mount -uw /mnt/app -> rc=...: <the mount's message>`),
+both in the console and the diag; the winner is announced as
+`app: read-write via '...'`; and the failure message states plainly that
+the LIVE map is not touched, only updates are blocked. Offline suite now
+includes a guard that a refusal with no stderr text is still a refusal
+(the regression that would have pretended success).
+
+Gate: 45 tests.

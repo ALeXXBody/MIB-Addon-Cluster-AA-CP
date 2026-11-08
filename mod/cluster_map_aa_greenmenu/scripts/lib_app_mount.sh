@@ -71,18 +71,28 @@ app_probe_view()
     return 1
 }
 
+# Every attempt's REAL error is recorded (the owner's rule: measured, not
+# guessed); $APP_LADDER_ERRORS carries one line per attempt so the diag
+# answers "why could nothing remount" on its own. $APP_LADDER_OK records
+# the form that worked.
+APP_LADDER_ERRORS=""
+APP_LADDER_OK=""
 app_mount_rw()
 {
     for _f in $APP_VIEWS; do
         [ -d "$_f" ] || continue
-        if mount -uw "$_f" 2>/dev/null && app_probe_view "$_f"; then
+        _err=`mount -uw "$_f" 2>&1`; _rc=$?
+        if [ "$_rc" -eq 0 ] && [ -z "$_err" ] && app_probe_view "$_f"; then
             APP_RW="$_f"; APP_LADDER_FORM="mount -uw $_f"
+            APP_LADDER_OK="app: read-write via 'mount -uw $_f'"
             APP_WRITABLE=1; return 0
         fi
+        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}mount -uw $_f -> rc=$_rc: ${_err:-no message}$(echo)"
     done
     if command -v on >/dev/null 2>&1; then
         for _n in mmx rcc; do
-            if on -f "$_n" mount -uw /mnt/app 2>/dev/null; then
+            _err=`on -f "$_n" mount -uw /mnt/app 2>&1`; _rc=$?
+            if [ "$_rc" -eq 0 ] && [ -z "$_err" ]; then
                 for _pf in /net/$_n.mibhigh.net/mnt/app /net/$_n/mnt/app /mnt/app; do
                     # The remount succeeded on the owning node; the probe
                     # must go through a view THIS node can actually address
@@ -90,10 +100,12 @@ app_mount_rw()
                     # when the owning node's mount just went rw).
                     if [ -d "$_pf" ] && app_probe_view "$_pf"; then
                         APP_RW="$_pf"; APP_LADDER_FORM="on -f $_n mount -uw /mnt/app (write view: $_pf)"
+                        APP_LADDER_OK="app: read-write via 'on -f $_n mount -uw /mnt/app' (view $_pf)"
                         APP_WRITABLE=1; return 0
                     fi
                 done
             fi
+            APP_LADDER_ERRORS="${APP_LADDER_ERRORS}on -f $_n mount -uw /mnt/app -> rc=$_rc: ${_err:-no message}$(echo)"
         done
     fi
     return 1
