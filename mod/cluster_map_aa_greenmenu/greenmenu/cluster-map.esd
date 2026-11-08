@@ -6,7 +6,7 @@
 # Main -> ClusterMap
 #
 # The entries run scripts straight from the SD card in slot 1:
-#   /net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/
+#   /net/mmx/fs/sda0/mod/cluster_aa/greenmenu/
 #
 # Screen design v2 (2026-11-06): EVERY entry routes through ONE script
 # (menus.sh). A partial card copy can then produce one "Script not found"
@@ -27,99 +27,99 @@ keyValue
     poll    0
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh status"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh status"
     label   "1. Status and compatibility check"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh install"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh install"
     label   "2. Install cluster map"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh arm"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh arm"
     label   "2b. Make the map LIVE (arm; reboot after)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh full_frame on"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh full_frame on"
     label   "Sharper map ON (full frame; reboot after)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh full_frame off"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh full_frame off"
     label   "Sharper map OFF (standard; reboot after)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh keep_map on"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh keep_map on"
     label   "Keep map ON (arbiter; fork)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh keep_map off"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh keep_map off"
     label   "Keep map OFF (standard; fork)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh verify"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh verify"
     label   "Verify installed files (fork)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh zoom off"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh zoom off"
     label   "Zoom 1.0 (off; standard map view)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh zoom 1.15"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh zoom 1.15"
     label   "Zoom 1.15 (crop-and-enlarge; live)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh zoom 1.35"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh zoom 1.35"
     label   "Zoom 1.35 (crop-and-enlarge; live)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh cardclear top"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh cardclear top"
     label   "Turn-card clear: TOP strip"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh cardclear sides"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh cardclear sides"
     label   "Turn-card clear: SIDES free"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh cardclear band"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh cardclear band"
     label   "Turn-card clear: middle BAND"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh cardclear off"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh cardclear off"
     label   "Turn-card clear: OFF (standard layout)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh navstrip on"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh navstrip on"
     label   "Turn info strip: ON (road | ETA | distance)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh navstrip off"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh navstrip off"
     label   "Turn info strip: OFF"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh remote on"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh remote on"
     label   "Cluster remote: ON (short OK = presets, long OK = strip)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh remote off"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh remote off"
     label   "Cluster remote: OFF"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh uninstall"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh uninstall"
     label   "Uninstall and restore original state"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh tbt"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh tbt"
     label   "Switch to turn-by-turn arrows instead (no map)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh logs"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh logs"
     label   "Save logs to SD"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh porting"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh porting"
     label   "Collect files for porting (quick)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/menus.sh portfull"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/menus.sh portfull"
     label   "Collect for porting, with Java image (55 MB, slow)"
 
 script

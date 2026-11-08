@@ -47,6 +47,11 @@ for f in $FILES; do
     #    argument inside the quotes: "…/keep_map.sh on" — strip it)
     for v in $(grep -o '"/net/mmx/fs/sda0/mod/[^"]*"' "$f" | tr -d '"' | sed 's/ .*//' | sort -u); do
         rel=${v#/net/mmx/fs/sda0/}
+        # the release renames the payload folder; in the repository it lives
+        # under the historical name, so resolve the release name first.
+        case "$rel" in
+            mod/cluster_aa/*) rel=${rel#mod/cluster_aa/}; rel=mod/cluster_map_aa_greenmenu/$rel ;;
+        esac
         if [ ! -f "$rel" ]; then
             echo "check_gem_esd: $f references missing file: $v"
             fail=1

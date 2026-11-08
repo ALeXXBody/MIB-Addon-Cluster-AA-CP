@@ -29,6 +29,13 @@ run_quiet() {
     trap '' 2
     sh "$_child" >$_log 2>&1
     sh "$HERE/console_summary.sh" "$_log"
+    # The owner's first sanity fact: WHICH payload is running. If this line
+    # still names an old version after a card refresh, the copy did not land.
+    if [ -r "$HERE/../VERSION" ]; then
+        _v=
+        read _v < "$HERE/../VERSION" 2>/dev/null
+        echo "payload on the card: $_v"
+    fi
     # -v: the collector prints where the bundle is and whether the card copy
     # really happened (a silent failure there is not evidence, it is a hunt).
     sh "$HERE/diag_collect.sh" append-run "$_log" -v

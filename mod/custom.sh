@@ -136,6 +136,11 @@ fi
 PAYLOAD_NAME=mod/cluster_aa
 [ -d "$SD/mod/cluster_aa" ] || PAYLOAD_NAME=mod/cluster_map_aa_greenmenu
 say "Mod payload found: $SD/$PAYLOAD_NAME"
+if [ -r "$SD/$PAYLOAD_NAME/VERSION" ]; then
+	_v=
+	read _v < "$SD/$PAYLOAD_NAME/VERSION" 2>/dev/null
+	say "payload version: $_v"
+fi
 say ""
 
 # 2. Register the screen on the unit: copy the mod's own emerald 'screen def'
@@ -270,7 +275,7 @@ else
 		exit 1
 	fi
 	GEN_PATH=/tmp/cluster-map.gen
-	sed "s|/net/mmx/fs/sda0/mod/cluster_map_aa_greenmenu/greenmenu/|$SD/$PAYLOAD_NAME/greenmenu/|g" \
+	sed "s|/net/mmx/fs/sda0/mod/[^/]*/greenmenu/|$SD/$PAYLOAD_NAME/greenmenu/|g" \
 		"$BUILT" > "$GEN_PATH"
 	BUILD_ERR=0
 	if [ ! -s "$GEN_PATH" ] || ! grep -q "screen ClusterMap" "$GEN_PATH"; then

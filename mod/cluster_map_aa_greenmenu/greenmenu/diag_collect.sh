@@ -91,6 +91,7 @@ section() { echo "" >> "$TMP"; echo "== $1" >> "$TMP"; }
 put "Cluster Map add-on diagnostic bundle"
 put "collected: `date 2>/dev/null`"
 put "payload: $PKG"
+[ -r "$PKG/VERSION" ] && put "payload version: `cat "$PKG/VERSION"`"
 
 # ---- 1. unit / train
 section "1 unit and firmware"
@@ -221,19 +222,19 @@ cat "$TMP" > "$OUT" 2>/dev/null || cp "$TMP" "$OUT" 2>/dev/null
 rm -f "$TMP" 2>/dev/null
 echo "$OUT" > /tmp/clustermap_diag/LAST_PATH 2>/dev/null
 
-# ONE copy onto the card, so the owner can pull a single file.
+# ONE copy onto the card, ANYWHERE it can be verified to land.
 #
-# Two hard lessons are baked in here:
-#  1. no silent failure. v0.4.21 shipped a `cp ... 2>/dev/null` that could
-#     fail while the console said nothing — the owner then hunted a file
-#     that was never written. The outcome is now REPORTED, and the tuning
-#     facts are printed when the card refuses, so a console photo still
-#     carries the numbers.
-#  2. the same folder can be reachable through several spellings and only
-#     ONE of them may accept writes (the app/system ladders taught us this).
-#     So probe every spelling of the payload folder and use the first that
-#     really takes the bytes, then verify the copy.
-CARDOUT=""
+# Hard lessons baked in here:
+#  1. no silent failure: the outcome (success path OR refusal) is narrated
+#     on the console; the tuning facts print when the card refuses so a
+#     screen photo replaces the file for a tuning round.
+#  2. no cp: shell redirection + checksum verify - the unit shells carry
+#     their own tool set, and a missing cp was a silent-failure mode.
+#  3. every spelling and every home is probed: the payload folder under
+#     each card view (/fs/sda0, /net/..., FQDN ~) AND, when all those
+#     refuse, the card ROOT of the spelling that can still be written.
+#     A file is only claimed after the bytes are confirmed back.
+CARDOUT=""; _WAS_REMOUNTED="0"
 if [ -d "$PKG" ]; then
     for _root in "$VOLUME" /fs/sda0 /fs/sdb0 /fs/sda1 /net/mmx/fs/sda0 \
                  /net/mmx/fs/sdb0 /net/mmx.mibhigh.net/fs/sda0 \
@@ -241,48 +242,49 @@ if [ -d "$PKG" ]; then
         [ -n "$_root" ] && [ -d "$_root" ] || continue
         # the payload layout under this spelling (same list find_card uses;
         # no string surgery, so this works in every sh the unit ships)
-        _h=""
+        _d=""
         for _rel in mod/cluster_aa mod/cluster_map_aa_greenmenu ClusterMap \
                     cluster_map_aa_greenmenu mod/ClusterMap; do
             if [ -f "$_root/$_rel/enable_hook.sh" ]; then
-                _h="$_root/$_rel"; break
+                _d="$_root/$_rel"; break
             fi
         done
-        [ -n "$_h" ] || continue
-        # writable HERE? (a probe that really writes, through this spelling)
-        # subshell form: dash ABORTS the whole shell when a special
-        # builtin's redirection fails, which made the run die at the probe.
-        if ! ( : > "$_h/.clustermap_card_probe" ) 2>/dev/null; then
-            continue
-        fi
-        rm -f "$_h/.clustermap_card_probe" 2>/dev/null
-        # write without depending on `cp`, with the shell's own redirection
-        if cat "$OUT" > "$_h/diag.txt" 2>/dev/null && [ -s "$_h/diag.txt" ]; then
-            # verified copy: same checksum when cksum exists, else non-empty
-            _ok=1
-            if command -v cksum >/dev/null 2>&1; then
-                _a=`cksum "$OUT" 2>/dev/null | awk '{print $1" "$2}'`
-                _b=`cksum "$_h/diag.txt" 2>/dev/null | awk '{print $1" "$2}'`
-                [ -n "$_a" ] && [ "$_a" = "$_b" ] || _ok=0
+        # homes to try, first choice first: payload folder, then card root
+        # (subshell probes: dash ABORTS the whole shell when a special
+        # builtin's redirection fails - that killed the run in v0.4.22)
+        for _h in "$_d" "$_root"; do
+            [ -n "$_h" ] && [ -d "$_h" ] || continue
+            # UNIT FACT (the owner's): the unit mounts the SD card READ-ONLY
+            # at boot. A write is only possible after ONE explicit remount
+            # (`mount -uw`); after the verified copy the card goes back
+            # read-only, so the RW window is exactly this one copy.
+            _remounted="0"
+            if ! ( : > "$_h/.clustermap_card_probe" ) 2>/dev/null; then
+                mount -uw "$_root" 2>/dev/null
+                _remounted="1"; _WAS_REMOUNTED="1"
+                ( : > "$_h/.clustermap_card_probe" ) 2>/dev/null || continue
             fi
-            if [ "$_ok" = 1 ]; then
-                CARDOUT="$_h/diag.txt"
-                [ -r "$OUT.prev" ] && cat "$OUT.prev" > "$_h/diag.txt.prev" 2>/dev/null
-                sync 2>/dev/null || true
-                break
+            rm -f "$_h/.clustermap_card_probe" 2>/dev/null
+            if cat "$OUT" > "$_h/diag.txt" 2>/dev/null && \
+               [ -s "$_h/diag.txt" ]; then
+                _ok=1
+                if command -v cksum >/dev/null 2>&1; then
+                    _a=`cksum "$OUT" 2>/dev/null | awk '{print $1" "$2}'`
+                    _b=`cksum "$_h/diag.txt" 2>/dev/null | awk '{print $1" "$2}'`
+                    [ -n "$_a" ] && [ "$_a" = "$_b" ] || _ok=0
+                fi
+                if [ "$_ok" = 1 ]; then
+                    CARDOUT="$_h/diag.txt"
+                    [ -r "$OUT.prev" ] && \
+                        cat "$OUT.prev" > "$_h/diag.txt.prev" 2>/dev/null
+                    sync 2>/dev/null || true
+                    [ "$_remounted" = 1 ] && mount -ur "$_root" 2>/dev/null
+                    break 2
+                fi
+                rm -f "$_h/diag.txt" 2>/dev/null
             fi
-            rm -f "$_h/diag.txt" 2>/dev/null
-        fi
+        done
     done
-fi
-
-if [ -n "$CARDOUT" ]; then
-    echo "$CARDOUT" > /tmp/clustermap_diag/LAST_CARD_PATH 2>/dev/null
-    rm -f /tmp/clustermap_diag/LAST_CARD_ERR 2>/dev/null
-else
-    rm -f /tmp/clustermap_diag/LAST_CARD_PATH 2>/dev/null
-    echo "the unit cannot write the card view (read-only FAT: unclean eject, or no writable spelling)" \
-        > /tmp/clustermap_diag/LAST_CARD_ERR 2>/dev/null
 fi
 
 # ---- the fine-tune facts (printed when the card refused the copy) -----------
@@ -296,10 +298,16 @@ facts() {
 
 if [ "$VERBOSE" = 1 ]; then
     echo "diag bundle: $OUT"
+    if [ "$_WAS_REMOUNTED" = 1 ]; then
+        echo "card note:    the card was read-only; remounted rw for this copy"
+    fi
     if [ -n "$CARDOUT" ]; then
         echo "card copy:   $CARDOUT"
     else
         echo "card copy:   NOT WRITTEN - the card is read-only to the unit."
+        if [ "$_WAS_REMOUNTED" = 1 ]; then
+            echo "             even after 'mount -uw' no card view took the write."
+        fi
         echo "             On a PC: eject the card safely (not just pull it),"
         echo "             then GEM -> ClusterMap -> \"10/11. Save logs\"."
         echo "             If you cannot, photograph these lines instead:"

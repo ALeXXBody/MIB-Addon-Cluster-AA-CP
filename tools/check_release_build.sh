@@ -23,6 +23,11 @@ if ! unzip -l "$ZIP" | grep -q "mod/cluster_aa/HOOK_ARMED$"; then
     echo "check_release_build: FAILED (zip does not ship HOOK_ARMED)"
     exit 1
 fi
+if ! unzip -p "$ZIP" "MIB-Addon-Cluster-AA-CP-mod/mod/cluster_aa/VERSION" \
+        2>/dev/null | grep -qx "$TAG"; then
+    echo "check_release_build: FAILED (zip VERSION does not name the tag)"
+    exit 1
+fi
 if [ -e mod/cluster_map_aa_greenmenu/HOOK_ARMED ]; then
     echo "check_release_build: FAILED (the REPOSITORY payload is armed)"
     exit 1

@@ -59,6 +59,9 @@ def test_card_read_only_is_said_out_loud_with_the_facts(car):
     _stage_payload(PKG, armed=True)
     shutil.copyfile(REPO_MOD / "custom.sh", "/fs/sda0/mod/custom.sh")
     _block_writes(PKG)
+    # the card ROOT refuses too (an entire read-only FAT volume)
+    (pathlib.Path("/fs/sda0") / ".clustermap_card_probe").mkdir(exist_ok=True)
+    (pathlib.Path("/fs/sda0") / "diag.txt").mkdir(exist_ok=True)
     p = car.run(["sh", "/fs/sda0/mod/custom.sh"], expect_rc=0)
     out = p.stdout + p.stderr
     assert "card copy:" in out, f"the console stayed silent about the card\n{out}"
@@ -108,3 +111,18 @@ def test_every_run_narrates_the_card_copy_on_success(car):
         assert pathlib.Path("/tmp/clustermap_diag/LAST_CARD_PATH"
                             ).read_text().strip() == \
             f"/fs/sda0/mod/cluster_aa/diag.txt"
+
+
+def test_blocked_payload_folder_falls_back_to_the_card_root(car):
+    """The card itself accept writes, but the payload folder refuses: the
+    copy may still land at the card ROOT, and the console must name IT."""
+    _stage_unit(car)
+    _stage_payload(PKG, armed=True)
+    shutil.copyfile(REPO_MOD / "custom.sh", "/fs/sda0/mod/custom.sh")
+    _block_writes(PKG)
+    p = car.run(["sh", "/fs/sda0/mod/custom.sh"], expect_rc=0)
+    out = p.stdout + p.stderr
+    assert "card copy:   /fs/sda0/diag.txt" in out, out
+    assert "NOT WRITTEN" not in out, out
+    root_copy = pathlib.Path("/fs/sda0", "diag.txt")
+    assert root_copy.is_file() and "1 unit and firmware" in root_copy.read_text()

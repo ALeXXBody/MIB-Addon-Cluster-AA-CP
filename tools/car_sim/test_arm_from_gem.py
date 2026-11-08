@@ -103,3 +103,32 @@ def test_every_screen_entry_has_a_dispatcher_verb():
     assert not missing, f"screen verbs with no menus.sh case: {sorted(missing)}"
     assert "arm" in verbs and "arm" in have, \
         "the GEM 'make the map live' entry is missing"
+
+
+
+def test_every_run_says_which_payload_is_running(car):
+    """Remote diagnosis starts with: WHICH payload is on the card. Every GEM
+    run names it; if it still shows an old version after a card refresh, the
+    copy of the new zip did not land (the answer to 'still no diag.txt')."""
+    import pathlib as _pl
+    import shutil as _sh
+    from conftest import APP_VIEWS, SYS_VIEWS
+    dst = _pl.Path(PKG)
+    dst.mkdir(parents=True, exist_ok=True)
+    _sh.copytree(PAYLOAD_SRC, dst, dirs_exist_ok=True,
+                 ignore=_sh.ignore_patterns("SHA256SUMS.txt", "LICENSE"))
+    (dst / "HOOK_ARMED").write_text("")
+    (dst / "VERSION").write_text("v-test-9")
+    car.mount_views(rw=[*APP_VIEWS, *SYS_VIEWS])
+    car.stage_jsonlint_all_app_views()
+    car.stage_version("rcc")
+    for v in APP_VIEWS:
+        car.stage(v, "navigation/stream-player", b"p")
+        car.stage(v, "eso/lib/libairplay.so", bytes(703688))
+    for v in SYS_VIEWS:
+        car.stage(v, "etc/eso/production/smartphone_integrator.json",
+                  '{\n "children": {\n  "gal": {\n   "envs":[]\n  }\n }\n}\n')
+    p = car.run(["sh", f"{PKG}/greenmenu/menus.sh", "status"], expect_rc=0)
+    out = p.stdout + p.stderr
+    assert "payload on the card: v-test-9" in out, (
+        f"the console does not name the payload version\n{out}")

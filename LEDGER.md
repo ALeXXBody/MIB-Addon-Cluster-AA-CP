@@ -596,3 +596,44 @@ aa is showing in cluster". Install worked (map live), card copy did not.
 **Instruction to the owner in the release HOW-TO:** if the screen says
 NOT WRITTEN, put the card in a PC and eject it properly (or chkdsk /f X:)
 once, then use GEM -> ClusterMap -> 10/11. Save logs — the file appears.
+
+---
+
+## 15. Round v0.4.23 — the car says "Script not found" on every entry (2026-11-08)
+
+**Report:** after the card refresh, every ClusterMap entry answers
+"Script not found"; earlier in the round, also "still no diag.txt".
+
+**Analysis (construction, not excuses):** the live GEM screen on the unit
+carries the WHOLE script path of the era that installed it. We renamed the
+payload folder in v0.4.20 (mod/cluster_map_aa_greenmenu → mod/cluster_aa,
+the owner's own "short folder" suggestion) but the rename made every
+pre-rename screen dead the moment the old folder left the card. The screen
+only regenerates on an ARMED custom.sh run, so a card update alone does not
+heal it. And with dead buttons there is also no new diag run — which is
+why "still no diag.txt" was the same single failure.
+
+**Fixes:**
+- **The payload path is frozen for good:** `mod/cluster_aa` is the one
+  canonical location from v0.4.23 onwards; build asserts, docs say so.
+- The shipped pre-built `greenmenu/cluster-map.esd` now names
+  `/net/mmx/fs/sda0/mod/cluster_aa/...` (the zip's own reality), not the
+  fork folder from a past era.
+- **VERSION stamp:** every release carries `mod/cluster_aa/VERSION`; every
+  run (custom.sh AND every GEM verb) prints `payload version/`"payload on
+  the card:"` — the card refresh question is answered by the unit itself.
+- **Second diag card home:** when the payload folder refuses the copy, the
+  card ROOT is probed the same honest way (`diag.txt` at the root);
+  success is named, refusal is spoken with the tuning facts.
+- install.md gets the "Script not found" section (2 clicks, no PC): rerun
+  Run /mod/custom.sh - the screen re-anchors to the LIVE card path.
+
+**The owner's unit fact, now the contract:** the unit mounts the SD card
+READ-ONLY at boot and a card write needs ONE explicit `mount -uw` first.
+v0.4.21-22 never remounted (add-on treated the card as permanently RO
+media - my overreaction to the phantom-RO incident), which is why the diag
+copy could fail UNLESS the card happened to be RW. v0.4.23: the diag copy
+probes first, remounts RW when refused (`mount -uw` on the winning view),
+writes, checksum-verifies, `sync`s, then rejoins RO (`mount -ur`) so the RW
+window is exactly the one copy. The console narrates the remount and, if
+even that fails, says NOT WRITTEN with the tuning facts.

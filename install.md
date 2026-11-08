@@ -47,6 +47,21 @@ GEM → new top-level screen **ClusterMap**:
 
 Then: phone on USB → Google Maps or Waze → cluster switched to map view.
 
+## "Script not found ..." on every ClusterMap entry
+
+That one line means: the GEM screen **installed on the unit** names a
+payload path that is no longer on the card (payload renamed or moved, or
+an old folder was deleted during an update). The menu cannot run anything
+until the screen is re-anchored once:
+
+1. put the CURRENT release's `mod/` onto the card (merge, keep the card in
+   SD slot 1),
+2. **M.I.B. → Advanced settings → "Run /mod/custom.sh from m.i.b. SD"** —
+   an armed run regenerates the screen with the card's live path (and the
+   `diag.txt` card copy is retried and narrated),
+3. reboot. The buttons are alive again; the console's first line names the
+   payload version that is REALLY on the card.
+
 ## If the screen does not appear in GEM after the reboot
 
 - Re-run “Run /mod/custom.sh”. (It is idempotent; it re-copies the screen file.)

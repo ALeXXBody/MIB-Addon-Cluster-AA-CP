@@ -37,6 +37,10 @@ cp LICENSE "$DIST/$NAME/MIB-Addon-Cluster-AA-CP-LICENSE.txt"
 # from the card if you want a stage-only run. The repository's own payload
 # stays UNARMED, so development/testing can never arm a unit by accident.
 : > "$DIST/$NAME/mod/cluster_aa/HOOK_ARMED"
+# The owner (and remote diagnosis) must be able to SEE which payload an
+# install is running: every GEM run prints this file's content. The tag
+# names it, the zip carries it, the GEM console shows it.
+echo "$TAG" > "$DIST/$NAME/mod/cluster_aa/VERSION"
 
 # generated so the tag name lands inside the file
 cat > "$DIST/$NAME/HOW-TO-INSTALL.txt" <<HTI
@@ -74,6 +78,20 @@ The steps (3 of them):
    That single run: validates and installs the GEM screen, installs the
    hook, backs up the unit's stock player, and makes the map live.
    Then reboot (power button ~10 s) - the map is on the cluster.
+
+IF EVERY CLUSTERMAP BUTTON SAYS "Script not found":
+   the screen on the unit names a payload path that is no longer on the
+   card (true for updates before v0.4.21 - the payload folder was renamed
+   from mod/cluster_map_aa_greenmenu to mod/cluster_aa). One rerun of
+   "Run /mod/custom.sh" re-anchors the screen, then reboot. The folder
+   name mod/cluster_aa is frozen from v0.4.23 onwards - future updates
+   never change it, so this cannot happen again.
+
+WHICH VERSION IS ON MY CARD?  every run in the GEM prints the payload
+   version on its console ("payload on the card: vX.Y.Z"). If that line
+   still names an older version after you copied a newer zip's mod/ onto
+   the card, the copy did NOT land - copy mod/ again (merge over it), or
+   the card is full / read-only and nothing could be written.
 
 First look at the new Cluster map page:
    Status (your unit's profile) -> the switches (Turn-card clear, Turn
@@ -120,11 +138,19 @@ fi
 # the repo's own payload MUST NOT (so tests/dev can never arm a unit).
 [ -f "$DIST/$NAME/mod/cluster_aa/HOOK_ARMED" ] || {
     echo "ERROR: HOOK_ARMED missing from the release payload" >&2; exit 1; }
+# ... and it must be a version the owner can see in the GEM:
+[ -s "$DIST/$NAME/mod/cluster_aa/VERSION" ] || {
+    echo "ERROR: VERSION missing from the release payload" >&2; exit 1; }
 [ -f "mod/cluster_map_aa_greenmenu/HOOK_ARMED" ] && {
     echo "ERROR: the REPOSITORY payload is armed; tests must stay unarmed" >&2
     exit 1; }
 unzip -l "$DIST/$NAME-$TAG.zip" 2>/dev/null | grep -q "mod/cluster_aa/HOOK_ARMED" || {
     echo "ERROR: HOOK_ARMED did not make it into the zip" >&2; exit 1; }
+grep -qx "$TAG" "$DIST/$NAME/mod/cluster_aa/VERSION" || {
+    echo "ERROR: VERSION does not name this tag" >&2; exit 1; }
+[ -f "mod/cluster_map_aa_greenmenu/VERSION" ] && {
+    echo "ERROR: the REPOSITORY payload carries a VERSION (stale marker)" >&2
+    exit 1; }
 
 (cd "$DIST" && sha256sum "$NAME-$TAG.zip" > "$NAME-$TAG.zip.sha256")
 
