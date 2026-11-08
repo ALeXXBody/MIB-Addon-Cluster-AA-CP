@@ -143,8 +143,37 @@ put "engdefs/cluster-map.esd: `([ -d "${APPVIEW%\\0}/eso/hmi/engdefs" ] && [ -f 
 
 # ---- 6. engdefs listing (names only; the GEM's own world, not read)
 section "6 engdefs listing (names)"
-[ -d "$APPVIEW/eso/hmi/engdefs" ] && \
-    ls "$APPVIEW/eso/hmi/engdefs" >> "$TMP" 2>/dev/null || put "(engdefs not reachable from this console view)"
+# the LIVE registration can live under ANY app view spelling (the install
+# writes through the alias that accepted its probe); search everywhere.
+_EDEFSLIVE=""
+for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
+    if [ -f "$_v/eso/hmi/engdefs/cluster-map.esd" ]; then
+        _EDEFSLIVE="$_v/eso/hmi/engdefs/cluster-map.esd"
+        ls "$_v/eso/hmi/engdefs" >> "$TMP" 2>/dev/null
+        break
+    fi
+done
+[ -n "$_EDEFSLIVE" ] || put "(engdefs cluster-map.esd not reachable from this console view)"
+
+# 6b. THE "Script not found" CHECK: read the LIVE screen file's script
+# values and tell, per entry, whether that path exists. This is the exact
+# assertion the GEM makes when a button is pressed; the diag therefore
+# answers a dead menu on its own.
+section "6b live screen script paths (the GEM's own resolution)"
+_live="${_EDEFSLIVE:-$APPVIEW/eso/hmi/engdefs/cluster-map.esd}"
+if [ -f "$_live" ]; then
+    sed -n 's,^.*"\(/net/[^"]*\.sh\)[^"]*".*,\1,p' "$_live" | while IFS= read -r _sp; do
+        _sp=${_sp%% *}
+        case "$_sp" in */esd/scripts/*) continue ;; esac
+        if [ -f "$_sp" ]; then
+            echo "  ok        $_sp"
+        else
+            echo "  MISSING   $_sp"
+        fi
+    done >> "$TMP" 2>/dev/null
+else
+    put "(no live screen file to check)"
+fi
 
 # ---- 7. installed settings (the fine-tune facts)
 section "7 installed settings (unit copy of gal_dualscreen.conf)"

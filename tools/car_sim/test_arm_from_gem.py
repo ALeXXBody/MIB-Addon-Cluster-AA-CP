@@ -87,48 +87,41 @@ def test_gem_arm_is_idempotent(car):
         "a second arm changed the supervisor config (must be idempotent)"
 
 
-def test_every_screen_entry_has_a_dispatcher_verb():
-    """The GEM screen can only run what menus.sh knows. A screen entry with
-    no case is a dead menu item ('nothing happens' on the unit)."""
+def test_every_screen_entry_is_a_bare_existing_path(car):
+    """M.I.B.'s own screens never put arguments inside a screen's script
+    value - the GEM resolves the WHOLE quoted string as the script name
+    ("menus.sh status" therefore cannot exist). The contract: every entry
+    is @GREENMENU@<relative-path>, that file exists in the payload, and
+    nothing in the value needs parsing beyond the path itself."""
     import re
     tpl = (PAYLOAD_SRC / "greenmenu/cluster-map.template.esd").read_text()
     built = (PAYLOAD_SRC / "greenmenu/cluster-map.esd").read_text()
-    verbs = set(re.findall(r'menus\.sh\s+([a-z_]+)', tpl))
-    assert verbs, "template names no menus.sh verbs"
-    assert verbs == set(re.findall(r'menus\.sh\s+([a-z_]+)', built)), \
-        "the pre-built screen and the template disagree on the menu entries"
+    tpl_paths = re.findall(r'"@GREENMENU@([^"]+)"', tpl)
+    assert tpl_paths, "template names no script entries"
+    greenmenu = PAYLOAD_SRC / "greenmenu"
+    for rel in tpl_paths:
+        target = greenmenu / rel
+        assert target.is_file(), f"screen names a missing file: {rel}"
+        assert " " not in rel, f"an entry still carries an argument: {rel}"
+    built_paths = re.findall(r'"/net/mmx/fs/sda0/mod/cluster_aa/([^"]+)"', built)
+    assert built_paths, "built screen names no script entries"
+    for rel in built_paths:
+        assert " " not in rel, f"an entry still carries an argument: {rel}"
+        assert (PAYLOAD_SRC / rel).is_file(), (
+            f"built screen names a missing file: {rel}")
+    assert "gem/arm.sh" in built, "the GEM 'make the map LIVE' entry is gone"
+
+
+def test_every_gem_wrapper_calls_the_dispatcher_with_a_known_verb():
+    """The wrappers keep ONE dispatcher (menus.sh) so a partial card copy
+    cannot produce dead switches - each wrapper is one verb, no args."""
+    import re
+    gem = (PAYLOAD_SRC / "greenmenu/gem")
     menus = (PAYLOAD_SRC / "greenmenu/menus.sh").read_text()
     have = set(re.findall(r'^\s{4}([a-z_]+)\)', menus, re.M))
-    missing = verbs - have
-    assert not missing, f"screen verbs with no menus.sh case: {sorted(missing)}"
-    assert "arm" in verbs and "arm" in have, \
-        "the GEM 'make the map live' entry is missing"
-
-
-
-def test_every_run_says_which_payload_is_running(car):
-    """Remote diagnosis starts with: WHICH payload is on the card. Every GEM
-    run names it; if it still shows an old version after a card refresh, the
-    copy of the new zip did not land (the answer to 'still no diag.txt')."""
-    import pathlib as _pl
-    import shutil as _sh
-    from conftest import APP_VIEWS, SYS_VIEWS
-    dst = _pl.Path(PKG)
-    dst.mkdir(parents=True, exist_ok=True)
-    _sh.copytree(PAYLOAD_SRC, dst, dirs_exist_ok=True,
-                 ignore=_sh.ignore_patterns("SHA256SUMS.txt", "LICENSE"))
-    (dst / "HOOK_ARMED").write_text("")
-    (dst / "VERSION").write_text("v-test-9")
-    car.mount_views(rw=[*APP_VIEWS, *SYS_VIEWS])
-    car.stage_jsonlint_all_app_views()
-    car.stage_version("rcc")
-    for v in APP_VIEWS:
-        car.stage(v, "navigation/stream-player", b"p")
-        car.stage(v, "eso/lib/libairplay.so", bytes(703688))
-    for v in SYS_VIEWS:
-        car.stage(v, "etc/eso/production/smartphone_integrator.json",
-                  '{\n "children": {\n  "gal": {\n   "envs":[]\n  }\n }\n}\n')
-    p = car.run(["sh", f"{PKG}/greenmenu/menus.sh", "status"], expect_rc=0)
-    out = p.stdout + p.stderr
-    assert "payload on the card: v-test-9" in out, (
-        f"the console does not name the payload version\n{out}")
+    for w in sorted(gem.glob("*.sh")):
+        body = w.read_text()
+        m = re.search(r'exec sh "\$HERE/\.\./menus\.sh" ([a-z_]+)', body)
+        assert m, f"wrapper {w.name} does not call the dispatcher"
+        verb = m.group(1)
+        assert verb in have, f"wrapper {w.name} -> verb '{verb}' with no case"

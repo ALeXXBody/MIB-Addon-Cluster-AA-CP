@@ -670,3 +670,59 @@ fallback — when /tmp disallows subdirectories the home becomes /tmp
 itself, backups land as flat files, the marker records HOME_MODE=flat,
 and the uninstaller resolves the original in BOTH homes. No folds, no
 code without a car-fact behind it.
+
+---
+
+## 17. Round v0.4.25 — "Script not found": TWO true causes this round (2026-11-08)
+
+**Report:** still every ClusterMap button answers "Script not found", even
+with v0.4.23/24 installed (the owner's diag from the same build proves the
+screen IS registered in engdefs and the hook is live).
+
+**Root cause, finally the true one:** the GEM screen we generate names the
+card spelling THAT CONSOLE saw (`/fs/sda0/...`, the view custom.sh used for
+its own reads). The GENERATOR is right from its own context — the CONSUMER
+is not: the GEM process (which parses engdefs and EXECUTES screen scripts)
+runs on the node whose slot-1 card is `/net/mmx/fs/sda0`, the exact prefix
+M.I.B.'s own screens have always used. A screen full of `/fs/sda0` paths
+compiles and installs; every press then fails inside the GEM's own exec.
+
+**The regression that hid this:** the generated screen's path validation
+only asserted paths that already start with `/net/` — so a `/fs/sda0`
+screen skipped the check completely and shipped broken. Two unit-truths
+bundled into the fix:
+
+1. **The spelling the GEM executes is the contract**: generation prefers
+   `/net/mmx/fs/sda0/<payload>/greenmenu/` (verified reachable from the
+   console), falls back to the founderview spelling only when that path is
+   not reachable. The pre-built screen keeps its (correct) GEM spelling
+   byte-exact in that case.
+2. **engdefs resolution**: the ladder now probes with a FILE WRITE
+   (`: >` inside a subshell — the same "units that refuse mkdir" truth from
+   round 16), creates missing dirs per candidate, and never invents an
+   alias (the owner diag's stray "cp: cannot create ...: No such file or
+   directory" was a fallback alias with no engdefs on it).
+
+**Instrumentation so the next round shows the cause itself:** the diag
+gains section 6b - it reads the LIVE engdefs screen file and gives, PER
+ENTRY, ok/MISSING for the path the GEM would execute. A dead menu is now
+self-explaining.
+
+Gate: 42 tests (new: GEM spelling used when reachable; fallback keeps the
+console view; diag 6b lists ok/MISSING per entry).
+
+**Second, and the bombshell (the Owner): M.I.B.'s pages never let the frame pass arguments to scripts.** M.I.B.'s own menus are written with **bare paths** in every `value` (verified against Launcher-sda0.esd line by line), because the unit runs the entire quoted string as a script name. Calling `menus.sh arm` makes the system look for a
+```
+value   sys 1 0x0100 "…/menus.sh arm"
+```
+that is not found. This format, which looked "natural", still doesn't even work even with perfect paths.
+
+**Final fix, in M.I.B. convention: `greenmenu/gem/` — one tiny wrapper file per menu entry**
+(`status.sh`, `install.sh`, `arm.sh`, `full_frame_on.sh` … `portfull.sh` — 24 of them, 4 lines each),
+which call the same dispatcher `menus.sh` (one target script for all, partial card copies cannot break the switches),
+and the screen itself references **bare paths** `@GREENMENU@gem/<name>.sh` — like any M.I.B. page.
+Template and built page regenerated; new tests: every screen entry = an existing file in the card WITHOUT arguments,
+each wrapper leads to a known dispatcher switch, the GEM-spelling is the one used when it is reachable,
+and diag section 6b gives ok/MISSING for each entry in the LIVE page — a dead menu explains itself.
+
+Gate: 42 tests.

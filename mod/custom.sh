@@ -171,21 +171,40 @@ if [ "$GEM_ARMED" = 1 ]; then
 # runs. So: try every spelling, and choose only the one that is REACHABLE
 # and WRITABLE (probed through the same spelling). Always print which one
 # won — the console photo then answers view questions on its own.
+# The probe is a FILE WRITE through the spelling we will write through
+# (the unit ALSO refuses `mkdir` where a file write succeeds - diag
+# 2026-11-08: "mkdir: /tmp/...: Function not implemented"), and engdefs
+# may itself be missing in one view but present in another.
 for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
-	[ -d "$_v/eso/hmi/engdefs" ] || continue
 	mount -uw "$_v" 2>/dev/null
-	if mkdir "$_v/eso/hmi/.clustermap_probe" 2>/dev/null; then
-		rmdir "$_v/eso/hmi/.clustermap_probe" 2>/dev/null
-		ENGDEFS=$_v/eso/hmi/engdefs
+	_edefs="$_v/eso/hmi/engdefs"
+	mkdir "$_edefs" 2>/dev/null
+	[ -d "$_edefs" ] || continue
+	if ( : > "$_edefs/.clustermap_probe" ) 2>/dev/null; then
+		rm -f "$_edefs/.clustermap_probe" 2>/dev/null
+		ENGDEFS="$_edefs"
 		say "engdefs: writable via '$_v'"
 		break
 	fi
 done
 if [ -z "$ENGDEFS" ]; then
-	ENGDEFS=/net/mmx.mibhigh.net/mnt/app/eso/hmi/engdefs
-	say "engdefs: NO view accepted writes (tried the FQDN, shorthand, rcc and"
-	say "local spellings of the app partition); the screen step will report"
-	say "exactly what failed below."
+	# No view passed the probe. Prefer an engdefs that actually EXISTS through
+	# any spelling (the owner's diag: the FQDN alias could exist while the
+	# registered file lived elsewhere - writes into a non-existent dir only
+	# confuse the diagnosis with "cp: No such file"). Never invent a path.
+	for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
+		if [ -d "$_v/eso/hmi/engdefs" ]; then
+			ENGDEFS="$_v/eso/hmi/engdefs"
+			break
+		fi
+	done
+	if [ -z "$ENGDEFS" ]; then
+		ENGDEFS=/net/mmx.mibhigh.net/mnt/app/eso/hmi/engdefs
+		mkdir "$ENGDEFS" 2>/dev/null
+	fi
+	say "engdefs: NO view accepted a write through the probe (tried the FQDN,"
+	say "shorthand, rcc and local spellings); trying the existing folder at"
+	say "$ENGDEFS - the copy below reports what actually fails."
 fi
 fi
 
@@ -201,12 +220,26 @@ fi
 # byte-for-byte on the rules below, and only then renamed in place. A
 # previous good copy is kept as cluster-map.esd.prev.
 if [ "$GEM_ARMED" = 1 ]; then
+# CAR FACT (owner, v0.4.24 diag): the GEM (the process that parses engdefs
+# and runs screen scripts) addresses the card in slot 1 as the QNET
+# spelling /net/mmx/fs/sda0 — exactly the prefix M.I.B.'s own screens use.
+# The console running us may see the same card as /fs/sda0; a screen with
+# THAT spelling parses fine but every button then answers "Script not
+# found" inside the GEM. So: the screen paths use the spelling the GEM can
+# EXECUTE, never merely a view the console can read.
+GEN_PREFIX="/net/mmx/fs/sda0/$PAYLOAD_NAME/greenmenu/"
+if [ -f "$GEN_PREFIX/menus.sh" ]; then
+	say "screen paths: GEM view (/net/mmx/fs/sda0)"
+else
+	GEN_PREFIX="$SD/$PAYLOAD_NAME/greenmenu/"
+	say "screen paths: the view this console found the payload under ($SD)"
+fi
 TPL="$SD/$PAYLOAD_NAME/greenmenu/cluster-map.template.esd"
 GEN_PATH=""
 if [ -f "$TPL" ]; then
 	GEN_PATH=/tmp/cluster-map.gen
 	GEN_ERR="0"
-	sed "s|@GREENMENU@|$SD/$PAYLOAD_NAME/greenmenu/|g" "$TPL" \
+	sed "s|@GREENMENU@|$GEN_PREFIX|g" "$TPL" \
 		> "$GEN_PATH"
 	# 1. non-empty
 	if [ ! -s "$GEN_PATH" ]; then
@@ -275,8 +308,13 @@ else
 		exit 1
 	fi
 	GEN_PATH=/tmp/cluster-map.gen
-	sed "s|/net/mmx/fs/sda0/mod/[^/]*/greenmenu/|$SD/$PAYLOAD_NAME/greenmenu/|g" \
-		"$BUILT" > "$GEN_PATH"
+	if [ "$GEN_PREFIX" = "/net/mmx/fs/sda0/$PAYLOAD_NAME/greenmenu/" ]; then
+		# the built prefix IS the GEM-canonical one: keep it byte-exact
+		cat "$BUILT" > "$GEN_PATH"
+	else
+		sed "s|/net/mmx/fs/sda0/mod/[^/]*/greenmenu/|$GEN_PREFIX|g" \
+			"$BUILT" > "$GEN_PATH"
+	fi
 	BUILD_ERR=0
 	if [ ! -s "$GEN_PATH" ] || ! grep -q "screen ClusterMap" "$GEN_PATH"; then
 		say "ERROR: the pre-built screen's rewrite failed; keeping the"
