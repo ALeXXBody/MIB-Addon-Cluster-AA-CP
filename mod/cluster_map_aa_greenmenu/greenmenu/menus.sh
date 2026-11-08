@@ -52,7 +52,11 @@ run_quiet() {
 case "$1" in
     diag)      sh "$HERE/diag_collect.sh" append-run "$2" -v
                sh "$HERE/run_verdict.sh" diag /dev/null ;;
-    logs)      run_quiet logs       "$HERE/savelogs.sh" ;;
+    # Save logs stays DIRECT even when the runner has a bad day: it prints
+    # its own Done: line and writes the bundle itself. Evidence must never
+    # depend on the mechanism being debugged.
+    logs)      sh "$HERE/savelogs.sh"
+               sh "$HERE/run_verdict.sh" logs /dev/null ;;
 
     install)   run_quiet install   "$HERE/install.sh" ;;
     # ARM = the one deliberate "make it live" action, reachable from the GEM

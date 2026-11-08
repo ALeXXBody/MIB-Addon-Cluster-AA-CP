@@ -6,7 +6,15 @@
 #   run_verdict.sh <verb> <run-log>
 VERB="$1"; LOG="$2"
 BAD=0
-[ -r "$LOG" ] && grep -qE '^(FAIL|ERROR|CRITICAL|MISSING)|INSTALL_FAILED|NOT SUPPORTED|Uninstall FAILED|Cannot ' "$LOG" && BAD=1
+# POSIX-safe failure sniff: no -E, no alternation (portable shells + the
+# unit's grep differ); each verdict keyword is its own probe.
+if [ -r "$LOG" ]; then
+    for _pat in "^FAIL" "^ERROR" "^CRITICAL" "^MISSING" \
+                "INSTALL_FAILED" "NOT SUPPORTED" "Uninstall FAILED" \
+                "Cannot remount" "Cannot write"; do
+        if grep -q "$_pat" "$LOG" 2>/dev/null; then BAD=1; break; fi
+    done
+fi
 case "$VERB" in
     logs)       BODY="take the SD card home and send me the file: mod/cluster_aa/diag.txt" ;;
     install)    BODY="reboot the unit (power button ~10 s), then switch the cockpit to the map view" ;;

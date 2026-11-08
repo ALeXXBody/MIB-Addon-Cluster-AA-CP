@@ -825,3 +825,29 @@ win over anything (re-press = new values recorded on the unit).
 The remaining "zoom" feel is the PHONE's map zoom (AA streams what Google
 Maps/Waze shows), not the add-on's geometry - the GEM Zoom entries are for
 fine correction only.
+
+---
+
+## 22. Round v0.4.30 — "scripts not working anymore... showing ..." (owner report)
+
+**Report from the car:** after the v0.4.28/29 card refresh, presses answer
+with just "..." - the GEM's empty-output marker. Nothing on that screen
+has ever been our text, so our chain ran but produced NOTHING that the
+story filter matched - child died early or the whole runner's prints fell
+over on the unit's shell. The diag bundle (written on EVERY run since
+v0.4.26) is therefore the deciding artifact; section 11/12 carry the full
+run log in both cases.
+
+**Two defences shipped NOW (correct regardless of which one is the
+breaker):**
+- run_verdict detects failures with plain `grep -q` probes instead of
+  `grep -qE` alternation - the ONE construct in the chain that a unit
+  grep may reject;
+- Save logs is back to a DIRECT path (savelogs.sh prints its own `Done:`
+  line) - the evidence chain must never depend on the mechanism being
+  debugged.
+
+**Also shipped as the fallback the owner can use while reporting: the
+v0.4.27 zip is still downloadable; that card state is the last measured
+working menu.** The dashboard of the add-on itself (hook, map) runs from
+the unit and is unaffected by card script states.
