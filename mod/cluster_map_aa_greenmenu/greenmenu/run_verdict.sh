@@ -5,6 +5,14 @@
 #   was never more than a guess from the story lines.
 #   run_verdict.sh <verb> <run-log>
 VERB="$1"; LOG="$2"
+# EXECUTION PROOF: this one line can only be printed by OUR chain. When
+# the GEM's console answers only "...", this line is the difference
+# between "our chain died before its first echo" and "the renderer hid
+# everything" - no more guessing from the seat (owner, 4.12st case).
+_v=
+HERE_V=`dirname "$0"`
+[ -r "$HERE_V/../VERSION" ] && read _v < "$HERE_V/../VERSION" 2>/dev/null
+echo "ClusterMap $VERB ran / payload on card: ${_v:-VERSION missing - re-copy the zip's mod/}"
 BAD=0
 # POSIX-safe failure sniff: no -E, no alternation (portable shells + the
 # unit's grep differ); each verdict keyword is its own probe.

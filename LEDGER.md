@@ -879,3 +879,24 @@ bundle keeps on the card for every run; Save logs stays a direct path.
 The defect itself is GEM's (fork v3.8.0 shell), the trigger avoidable by
 short clicks / Back between presses; nothing in our payload can repair
 the renderer, and M.I.B. has no defence for it either.
+
+---
+
+## 24. Round v0.4.32 — proof-of-execution line for the "..." console
+
+Owner still sees `...` on presses in the car (ScreenRenderer crash pages
+gone after re-entering GEM, but presses still print nothing readable).
+Two explanations remain, and from the seat they look identical:
+1. our chain never executes on the press (the GEM drops the exec), or
+2. it executes, and the 4.12st renderer hides everything we print.
+
+v0.4.32 makes those two distinguishable by eye: every press's first line
+is now execution-proof text -
+`ClusterMap <verb> ran / payload on card: vX.Y.Z` - which OUR chain is
+the only thing that can print. If a press shows just `...`: our code did
+not run. If it shows `ClusterMap zoom ran / payload on card: v0.4.32` +
+`== DONE / Next: ...`: it ran and only the renderer hid the rest.
+Either way the card's diag.txt (sections 11/12, written every run) is the
+authoritative measurement read of a press.
+
+Gate: 47 tests.

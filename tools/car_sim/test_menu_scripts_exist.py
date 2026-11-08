@@ -86,3 +86,12 @@ def test_every_entry_ends_with_an_outcome_and_next_instruction():
     # switches are grouped
     for grouped in ("full_frame*|zoom*|cardclear*|navstrip*|remote*|keep_map*",):
         assert grouped in viewer
+
+def test_every_press_carries_the_execution_proof_line():
+    """One line only our chain can print; when the GEM console shows just
+    "...", this tells the seat whether our code ran (`...` == it didn't)
+    versus the renderer hiding real output."""
+    body = (GREENMENU / "run_verdict.sh").read_text()
+    assert 'LaneMap' not in body
+    assert 'echo "ClusterMap $VERB ran / payload on card:' in body
+    pass  # the VERSION file is a zip-only artifact
