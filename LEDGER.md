@@ -726,3 +726,32 @@ each wrapper leads to a known dispatcher switch, the GEM-spelling is the one use
 and diag section 6b gives ok/MISSING for each entry in the LIVE page — a dead menu explains itself.
 
 Gate: 42 tests.
+
+---
+
+## 18. Round v0.4.26 — the switch scripts' source line + full_frame + diag for every entry
+
+**Owner report (v0.4.25 in the car):**
+- "Sharper map" searched for `full_frame.sh`; the card carries
+  `full_frame_on.sh` / `full_frame_off.sh` — the dispatcher named a file
+  that does not exist. Fixed: the full_frame verb takes the argument into
+  its dispatch (on/off -> the real scripts).
+- "Cluster remote" printed `.: .../lib_app[...]` and nothing else — the
+  SOURCE bug class from round 13 again: five switch scripts
+  (cluster_remote, navstrip, card_clear, keep_map, zoom) sourced
+  `greenmenu/lib_app_mount.sh`, which never exists there (the shared lib
+  is `<payload>/scripts/lib_app_mount.sh`); a failing `.` ABORTS the
+  shell, so the switch did nothing and said almost nothing. All five now
+  source through the guarded, existing path.
+
+**Owner question answered as a feature: "does diag.txt record these
+errors?" — it now must.** The direct verbs (zoom, navstrip, cardclear,
+remote, keep_map, verify, porting, portfull, full_frame on/off, tbt) ran
+their child script straight into the GEM console with no capture, so photo
+was the only evidence. Every verb now runs through the same runner:
+full log captured, curated console, the diag bundle rebuilt, and the card
+copy attempted + narrated on every entry. The console photo above is
+therefore the LAST time a screenshot is the evidence chain.
+
+Gate: 45 tests (new: dispatcher scripts all exist; wrappers resolve to
+existing files; per-verb file names audited against the card).

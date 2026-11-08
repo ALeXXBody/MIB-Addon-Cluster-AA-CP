@@ -10,7 +10,16 @@
 #   keep_map.sh on|off
 # Exit 0: switched (takes effect on the next connect/reboot). 3: nothing to change.
 HERE=`dirname "$0"`
-. "$HERE/lib_app_mount.sh"
+# the shared lib lives in the payload's scripts/ folder (round-13 class
+# bug: a missing source line ABORTS the shell - guard it explicitly)
+if [ -r "$HERE/../scripts/lib_app_mount.sh" ]; then
+    . "$HERE/../scripts/lib_app_mount.sh"
+elif [ -r "$HERE/lib_app_mount.sh" ]; then
+    . "$HERE/lib_app_mount.sh"
+else
+    echo "lib_app_mount.sh missing on the card (re-copy the zip's mod/)" >&2
+    exit 1
+fi
 CONF="$PRELOAD_WRITE_DIR/gal_dualscreen.conf"
 
 case "$1" in

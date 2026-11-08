@@ -27,7 +27,12 @@ run_quiet() {
     _log=/tmp/cm_menu_$1.log
     trap 2
     trap '' 2
-    sh "$_child" >$_log 2>&1
+    # optional child argument ($3): zoom up/down, keep_map on/off ...
+    if [ -n "$3" ]; then
+        sh "$_child" "$3" >$_log 2>&1
+    else
+        sh "$_child" >$_log 2>&1
+    fi
     sh "$HERE/console_summary.sh" "$_log"
     # The owner's first sanity fact: WHICH payload is running. If this line
     # still names an old version after a card refresh, the copy did not land.
@@ -53,14 +58,21 @@ case "$1" in
     status)    run_quiet status    "$HERE/status.sh" ;;
     logs)      sh "$HERE/savelogs.sh" ;;
     tbt)       run_quiet tbt       "$HERE/switch_to_turn_by_turn.sh" ;;
-    zoom)      sh "$HERE/zoom.sh" "$2" ;;
-    navstrip)  sh "$HERE/navstrip.sh" "$2" ;;
-    cardclear) sh "$HERE/card_clear.sh" "$2" ;;
-    remote)    sh "$HERE/cluster_remote.sh" "$2" ;;
-    keep_map)  sh "$HERE/keep_map.sh" "$2" ;;
-    full_frame) sh "$HERE/full_frame.sh" "$2" ;;
-    verify)    sh "$HERE/verify.sh" ;;
-    porting)   sh "$HERE/collect_for_porting.sh" ;;
-    portfull)  sh "$HERE/collect_for_porting_full.sh" ;;
+    zoom)      run_quiet zoom      "$HERE/zoom.sh" "$2" ;;
+    navstrip)  run_quiet navstrip  "$HERE/navstrip.sh" "$2" ;;
+    cardclear) run_quiet cardclear "$HERE/card_clear.sh" "$2" ;;
+    remote)    run_quiet remote    "$HERE/cluster_remote.sh" "$2" ;;
+    keep_map)  run_quiet keep_map  "$HERE/keep_map.sh" "$2" ;;
+    # two real scripts (on/off), not one script with an argument - the
+    # payload carries full_frame_on.sh / full_frame_off.sh and nothing
+    # must ever name a file that is not on the card.
+    full_frame) case "$2" in
+        off)   run_quiet full_frame_off "$HERE/full_frame_off.sh" ;;
+        *)     run_quiet full_frame_on  "$HERE/full_frame_on.sh" ;;
+    esac ;;
+
+    verify)    run_quiet verify    "$HERE/verify.sh" ;;
+    porting)   run_quiet porting   "$HERE/collect_for_porting.sh" ;;
+    portfull)  run_quiet portfull  "$HERE/collect_for_porting_full.sh" ;;
     *) echo "menus.sh: unknown verb: $1" >&2; exit 64 ;;
 esac
