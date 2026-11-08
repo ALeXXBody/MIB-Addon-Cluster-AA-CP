@@ -290,6 +290,34 @@ What was done to make the split real and stable:
 | engdefs/ screen file (not launcher edit) | M.I.B.'s own registration pattern; symlink into engdefs happens at M.I.B. install anyway |
 | Sibling-fork repo (this fork repo) | License independence + upstream parity: fork keeps the AA oncology; upstream keeps broad compatibility |
 
+### 2026-11-08 round — the owner's rules ARE the constitution, enforced offline (v0.4.19)
+
+RULE 1 (do not break the unit firmware) — enforced:
+- an unarmed install writes NOTHING into gal's supervisor config
+  (byte-identical asserted in the sim), replaces no firmware file, never
+  edits lsd.sh;
+- an armed install keeps the stock stream-player BESIDE the live one
+  (.aacluster-original) and the uninstall restores the stock bytes
+  exactly (asserted);
+- added zip-wide: arm-aware verification tokens (LD_PRELOAD expected only
+  after arming).
+
+RULE 2 (do not mess with the GEM) — enforced:
+- the install's GEM registration is default-OFF; the GEM's engdefs is
+  only touched in the same explicit armed step (HOOK_ARMED marker),
+  with verify-stage-rename + .prev;
+- z_Launcher-sda0.esd (M.I.B.'s own launcher symlink) is NEVER touched.
+
+NEW CONVENTIONS from the owner:
+- ONE diagnostic file on the card: mod/cluster_map_aa_greenmenu/diag.txt,
+  written by every run; diag.txt.prev holds the previous bundle. It
+  carries: unit/train facts, payload cksums, card + unit view state, arm
+  state, engdefs listing (names), installed settings (window/dpi/insets/
+  aspect/zoom/full-frame), supervisor env KEY names, hook log tail,
+  backup-home record, and the FULL last-run log.
+- the GEM console is quiet by default: ~15 curated story lines via
+  console_summary.sh; the pages go into diag.txt section 12.
+
 ### 2026-11-07 round 2 — the unit-stuck round's answer (v0.4.18)
 
 Symptom root: the FIRST install that ever completed far enough to inject

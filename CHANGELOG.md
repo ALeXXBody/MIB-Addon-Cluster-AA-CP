@@ -1,5 +1,41 @@
 # Changelog
 
+### v0.4.19: one file to send (diag.txt) + the quiet GEM console (2026-11-08)
+
+Two owner requests, now the default behavior of every install/uninstall and
+settings run:
+
+- **One diagnostic file** - mod/cluster_map_aa_greenmenu/diag.txt - written
+  automatically by every run (also by the M.I.B. "Run /mod/custom.sh"
+  flow, no extra click). Contents: unit/train facts, checked payload
+  checksums, card and unit views, arm state, the engdefs LISTING (the
+  GEM world, enumerated but not touched), the installed map settings
+  (window/DPI/Insets/aspect/zoom/full-frame), the supervisor env KEY
+  NAMES for gal (values kept off-card where they do not belong), the
+  hook log tail, the backup home record, and the FULL last-run log.
+  diag.txt.prev keeps the previous bundle, so a bad run cannot destroy
+  the last good evidence.
+- **The GEM console is quiet by default.** The child output goes into
+  diag.txt; the console shows the curated story (~15 lines): the outcome
+  and warnings only (CLUSTERMAP_ markers, failures, view names, the
+  staged/restored facts, `unit files:` line, `Map install: DONE/FAILED`).
+  Both custom.sh and the ClusterMap screens (install/uninstall/status,
+  switch screens) ship this. console_summary.sh is the single filter.
+
+Also this round (per the owner's rules, now enforced in tests):
+- unarmed installs stage the hook files but write NOTHING to gal's
+  supervisor config, replace nothing, and never edit lsd.sh;
+- armed installs back up the unit's stream-player AS IS
+  (stream-player.aacluster-original) and the uninstall restores those
+  stock bytes;
+- GEM registration stays default-off; it only happens in the same
+  deliberate armed step (HOOK_ARMED on the card).
+
+Offline gate: 28 tests, including the new diag-bundle contract and the
+two-rules rules (byte-identical config untouched unarmed, player backup +
+exact restore, GEM untouched unarmed).
+
+
 ### v0.4.18: the surgical revert + the hook can no longer go live from an install alone (2026-11-07)
 
 Owner's car: unit stuck at "green menu starting..." after the first install

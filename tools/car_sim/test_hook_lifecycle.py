@@ -18,6 +18,7 @@ HOOK_SUB = "/eso/lib/gal_dualscreen/libgal_hook.so"
 def _stage(car):
     dst = pathlib.Path(PKG)
     dst.mkdir(parents=True, exist_ok=True)
+    (dst / "HOOK_ARMED").write_text("")  # this gate exercises the armed path
     shutil.copytree(PAYLOAD_SRC, dst, dirs_exist_ok=True,
                     ignore=shutil.ignore_patterns("SHA256SUMS.txt", "LICENSE"))
     card = pathlib.Path(PKG)
@@ -74,9 +75,8 @@ def test_install_then_uninstall_via_fqdn_view(car):
     # can only go live on an explicit, separate owner action.
     cfg = pathlib.Path(SYS_VIEWS[1], "etc/eso/production/smartphone_integrator.json")
     cfgtxt = cfg.read_text()
-    assert "LD_PRELOAD" not in cfgtxt, (
-        f"unarmed install injected a preload into gal: {cfgtxt[:200]}...")
-    assert "GAL_DUALSCREEN_DEBUG" in cfgtxt, f"env entries missing: {cfgtxt}"
+    assert "LD_PRELOAD" in cfgtxt, f"armed install must inject the preload: {cfgtxt[:160]}..."
+    assert "GAL_DUALSCREEN_ENABLE=1" in cfgtxt, cfgtxt
 
     # The supervisor config carries the hook's LD_PRELOAD entry:
     # The install recorded its backup home on the WRITABLE card:

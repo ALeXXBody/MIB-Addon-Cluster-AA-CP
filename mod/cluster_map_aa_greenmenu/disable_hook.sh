@@ -189,15 +189,35 @@ echo "  restored from: $RESTORE_SOURCE"
 # writable window on the internal system partition on a run that has
 # nothing to clean up (a disable without a prior enable, or a second
 # disable in a row).
+# Find the armed install's stock-player sidecar through whichever app view
+# resolves it; remember the view so the restore lands on the same place.
+PLAYER_ORIG=""
+PLAYER_ORIG_DIR=""
+for _pv in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+    [ -d "$_pv/navigation" ] || continue
+    if [ -r "$_pv/navigation/stream-player.aacluster-original" ]; then
+        PLAYER_ORIG="$_pv/navigation/stream-player.aacluster-original"
+        PLAYER_ORIG_DIR="$_pv/navigation"
+        break
+    fi
+done
 if [ -d "$PRELOAD_WRITE_DIR" ] || [ -f "$APP_MOUNT/eso/lib/libdmdt_flush.so" ] ||
-   [ -f "$APP_MOUNT/navigation/stream-player" ]; then
+   [ -f "$APP_MOUNT/navigation/stream-player" ] || [ -r "$PLAYER_ORIG" ]; then
     if mount -uw "$APP_MOUNT" 2>/dev/null; then
         APP_WRITABLE=1
         rm -f "$APP_MOUNT/eso/lib/libdmdt_flush.so" 2>/dev/null || true
         # The CarPlay map's safe area, read only by its hook.
         rm -f "$APP_MOUNT/root/mibr-carplay111-safearea.conf" 2>/dev/null || true
-        # enable_hook.sh put the player here; nothing else on the unit uses it.
-        if rm -f "$APP_MOUNT/navigation/stream-player" 2>/dev/null; then
+        # Rule 1's undo: the armed install kept the unit's stock player
+        # BESIDE the live one; restore it (byte-identical stock file), then
+        # drop the sidecar only. Without the sidecar, remove our copy
+        # entirely (nothing else on the unit uses it).
+        if [ -n "$PLAYER_ORIG" ] && [ -d "$PLAYER_ORIG_DIR" ]; then
+            cp -p "$PLAYER_ORIG" "$PLAYER_ORIG_DIR/stream-player" 2>/dev/null \
+                && echo "Unit's stock stream-player restored from the install's backup."
+            rm -f /mnt/app/navigation/stream-player.aacluster-original 2>/dev/null || true
+            rm -f /net/mmx.mibhigh.net/mnt/app/navigation/stream-player.aacluster-original 2>/dev/null || true
+        elif rm -f "$APP_MOUNT/navigation/stream-player" 2>/dev/null; then
             echo "  removed player: $APP_MOUNT/navigation/stream-player"
         fi
         if [ -d "$PRELOAD_WRITE_DIR" ]; then

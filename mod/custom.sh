@@ -77,6 +77,26 @@ echo ""
 #    does for its own menu file, and what the sshd mod does). It survives
 #    reboots; the fork's uninstall removes it again.
 #
+# RULE — DO NOT MESS WITH GEM BY DEFAULT: a screen registration is exactly
+# the write that can hang the engineering menu's next boot, with no undo
+# available from the card. So the install DOES NOT touch engdefs unless the
+# owner explicitly armed it: an empty file named HOOK_ARMED inside
+# mod/cluster_map_aa_greenmenu/ on the card. Arming registers the screen
+# AND lights the hook up in one known, deliberate step; without it the
+# install stages files only, writes unit settings nowhere, and the GEM's
+# own files stay byte-identical.
+GEM_ARMED=0
+[ -f "$SD/mod/cluster_map_aa_greenmenu/HOOK_ARMED" ] && GEM_ARMED=1
+if [ "$GEM_ARMED" = 0 ]; then
+	echo "GEM screen: NOT registered (the unit's GEM stays untouched by"
+	echo "           default). To register it AND arm the map hook in one"
+	echo "           deliberate step: on a PC, create an empty file named"
+	echo "           HOOK_ARMED inside mod/cluster_map_aa_greenmenu/ on the"
+	echo "           card, then run this screen again. The hook goes live"
+	echo "           with the same step; nothing else is written."
+fi
+ENGDEFS=""
+if [ "$GEM_ARMED" = 1 ]; then
 # WHICH VIEW the unit's engdefs lives under, per console node: MHI2 mounts
 # print as /net/mmx.mibhigh.net/dev/... — a console node may address the app
 # partition ONLY through that FQDN spelling; the /net/mmx/... shorthand and
@@ -84,7 +104,6 @@ echo ""
 # runs. So: try every spelling, and choose only the one that is REACHABLE
 # and WRITABLE (probed through the same spelling). Always print which one
 # won — the console photo then answers view questions on its own.
-ENGDEFS=""
 for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
 	[ -d "$_v/eso/hmi/engdefs" ] || continue
 	mount -uw "$_v" 2>/dev/null
@@ -101,6 +120,8 @@ if [ -z "$ENGDEFS" ]; then
 	echo "local spellings of the app partition); the screen step will report"
 	echo "exactly what failed below."
 fi
+fi
+
 # Generate the screen file FROM FIND_CARD'S RESULT: every GEM item's script
 # path must name the card view this console actually sees — hardcoding
 # /net/mmx/fs/sda0/... made the buttons break whenever the card's view
@@ -227,7 +248,7 @@ else
 		trap 2
 		exit 1
 	fi
-fi
+fi   # GEM_ARMED
 echo "GEM screen installed on the unit: $ENGDEFS/cluster-map.esd"
 echo ""
 
@@ -272,30 +293,24 @@ for _view in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt
 	done
 done
 if [ "$okcount" -ge 4 ]; then
-	echo "  self-check: the unit files are in place (seen through one or"
-	echo "  more of the app-partition views)."
+	echo "unit files: present across the unit's views (detail in diag.txt)."
 else
-	echo "  self-check: the unit files are NOT in place yet. That means the"
-	echo "  app/system partitions could not be remounted read-write from"
-	echo "  this console context. The mount ladder inside the installer"
-	echo "  tries every form (plain /net on -f mmx/rcc). If the files stay"
-	echo "  absent, send this photo - the hook will stay stock until the"
-	echo "  files exist."
+	echo "unit files: NOT found on the unit yet (the hook stays stock;"
+	echo "           reasons in the summary above and in diag.txt)."
 fi
 echo ""
 if grep -q -e "CLUSTERMAP_INSTALL_OK" -e "CLUSTERMAP_TURN_BY_TURN_OK" $OUT; then
-	echo "Install finished. Reboot the unit (hold the power button for 10"
-	echo "seconds), then open the Green Engineering Menu again: the new"
-	echo "'ClusterMap' screen is at the top level of the menu."
+	echo "Map install: DONE. Reboot the unit (power button ~10 s), reconnect"
+	echo "the phone, and the map is on the cluster."
 else
-	echo "Install did NOT finish (see the messages above). The most"
-	echo "common causes are named there; if a 'read-only' note points at"
-	echo "the card, unlock the card's LOCK slider / reformat FAT32 / run"
-	echo "chkdsk /f on the card. The install itself no longer stops on a"
-	echo "read-only card: backups/logs then go to /tmp and are only kept"
-	echo "until the next reboot, so fix the card and re-run this screen."
+	echo "Map install: FAILED - the reason is in the summary above; every"
+	echo "detail is on the card in mod/cluster_map_aa_greenmenu/diag.txt."
 fi
 echo ""
+
+# The diag bundle: the unit's state + the FULL run log, one file to send me.
+sh "$SD/mod/cluster_map_aa_greenmenu/greenmenu/diag_collect.sh" append-run "$OUT"
+echo "Everything from the unit in one file: mod/cluster_map_aa_greenmenu/diag.txt"
 
 trap 2
 exit $RESULT

@@ -11,12 +11,29 @@
 HERE=`dirname "$0"`
 . "$HERE/lib_app_mount.sh" 2>/dev/null || . "$HERE/lib_app_mount.sh"
 
+# QUIET GEM CONSOLE (owner rule): what the console shows is the curated
+# "story" of the run (about a dozen lines); the whole output goes into the
+# card's diag bundle (diag.txt). Verbs that print a couple of lines by
+# design (switches, porting) keep direct output.
+run_quiet() {
+    _child=$2
+    _log=/tmp/cm_menu_$1.log
+    trap 2
+    trap '' 2
+    sh "$_child" >$_log 2>&1
+    sh "$HERE/console_summary.sh" "$_log"
+    echo "(full log on the card: mod/cluster_map_aa_greenmenu/diag.txt)"
+    sh "$HERE/diag_collect.sh" append-run "$_log"
+    echo "(the diag bundle holds the full run and the unit state)"
+}
+
 case "$1" in
-    install)   sh "$HERE/install.sh" ;;
-    uninstall) sh "$HERE/uninstall.sh" ;;
-    status)    sh "$HERE/status.sh" ;;
+    diag)      sh "$HERE/diag_collect.sh" append-run "$2"; echo "diag bundle written: mod/cluster_map_aa_greenmenu/diag.txt"; ;;
+    install)   run_quiet install   "$HERE/install.sh" ;;
+    uninstall) run_quiet uninstall "$HERE/uninstall.sh" ;;
+    status)    run_quiet status    "$HERE/status.sh" ;;
     logs)      sh "$HERE/savelogs.sh" ;;
-    tbt)       sh "$HERE/switch_to_turn_by_turn.sh" ;;
+    tbt)       run_quiet tbt       "$HERE/switch_to_turn_by_turn.sh" ;;
     zoom)      sh "$HERE/zoom.sh" "$2" ;;
     navstrip)  sh "$HERE/navstrip.sh" "$2" ;;
     cardclear) sh "$HERE/card_clear.sh" "$2" ;;

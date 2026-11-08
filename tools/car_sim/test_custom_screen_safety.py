@@ -22,6 +22,7 @@ def _stage(car):
     # card content: the mod payload AND the repo's mod/custom.sh at the card root
     dst = pathlib.Path("/fs/sda0/mod/cluster_map_aa_greenmenu")
     dst.mkdir(parents=True, exist_ok=True)
+    (dst / "HOOK_ARMED").write_text("")  # armed: registration + hook in one step
     src = pathlib.Path(PAYLOAD_SRC / "mod/cluster_map_aa_greenmenu")
     shutil.copytree(src, dst, dirs_exist_ok=True,
                     ignore=shutil.ignore_patterns("SHA256SUMS.txt", "LICENSE"))
@@ -69,7 +70,9 @@ def test_screen_write_never_truncates_live_file(car):
     assert not (ENGDEFS / ".cluster-map.new").exists()
     assert not (pathlib.Path(PKG, "greenmenu/.cluster-map.gen")).exists()
     # the installer ran and reached the end through the FQDN view
-    assert "CLUSTERMAP_INSTALL_OK" in out, f"--stdout--\n{out}\n--stderr--\n{p.stderr}"
+    assert "Map install: DONE" in out, f"--stdout--\n{out}\n--stderr--\n{p.stderr}"
+    assert "diag_collect" not in out  # never leaked an error line about the bundle
+    assert pathlib.Path(PKG, "diag.txt").exists(), out
 
 
 def test_bad_generation_leaves_live_file_alone(car):
@@ -95,4 +98,5 @@ def test_missing_template_uses_prebuilt_and_still_keeps_prev(car):
     out = p.stdout
     assert "screen ClusterMap" in LIVE.read_text(), f"--stdout--\n{out}"
     assert PREV.exists() and PREV.read_text() == PREV_GOOD
-    assert "CLUSTERMAP_INSTALL_OK" in out, f"--stdout--\n{out}\n--stderr--\n{p.stderr}"
+    assert "Map install: DONE" in out, f"--stdout--\n{out}\n--stderr--\n{p.stderr}"
+    assert pathlib.Path(PKG, "diag.txt").exists()

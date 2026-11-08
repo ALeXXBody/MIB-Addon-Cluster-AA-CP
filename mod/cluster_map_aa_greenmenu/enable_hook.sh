@@ -132,6 +132,26 @@ if [ "$_SYSV" != "$SYSTEM_MOUNT" ]; then
     echo "system partition: readable view '$_SYSV'"
 fi
 
+# M.I.B. contract, boot-safety form: an install must NEVER be able to
+# take the whole gal process down. The hook is staged in-line (so a later
+# enable is one click) but its PRIMARY switch stays OFF until the owner
+# turns it on explicitly:
+#   * at install time: a file named HOOK_ARMED in the payload folder, or
+#     CLUSTERMAP_HOOK_ARMED=1 in the environment (--enables the map at
+#     the same install), or
+#   * afterwards: the ClusterMap screen's own "Enable the map" entry (the
+#     persistent gal_dualscreen.conf's GAL_DUALSCREEN_ENABLE, written by
+#     greenmenu/map_on_off.sh).
+# A hook that never switches anything on cannot break gal at boot; the GEM
+# stays green and the recovery is then one click inside the menu.
+HOOK_ARMED=0
+if [ "${CLUSTERMAP_HOOK_ARMED:-0}" = 1 ]; then
+    HOOK_ARMED=1
+fi
+if [ -f "$CARD_ROOT/HOOK_ARMED" ]; then
+    HOOK_ARMED=1
+fi
+
 # One protocol per cluster: M.I.B.'s own CarPlay Maps VC payload
 # (omonob / carplaymaps) uses the same mechanism on the same gal. If it is
 # already configured, refuse an install on it and DON'T modify anything.
@@ -718,8 +738,16 @@ esac
 # Install stream-player to /mnt/app/navigation
 # Through a new file and a rename: copying over the old player fails while it
 # runs, and would leave the old one in place.
-if [ -x "$CARD_ROOT/stream-player" ]; then
+# RULE: the stream-player is a firmware component. An install that does not
+# arm the hook never replaces it; even an armed run keeps the stock copy
+# BESIDE the live one (.aacluster-original) so the uninstall can restore it
+# without flashing anything.
+if [ -x "$CARD_ROOT/stream-player" ] && [ "$HOOK_ARMED" = 1 ]; then
     PLAYER_DST="$APP_WR/navigation/stream-player"
+    if [ -r "$PLAYER_DST" ] && [ ! -r "$PLAYER_DST.aacluster-original" ]; then
+        cp -p "$PLAYER_DST" "$PLAYER_DST.aacluster-original" \
+            && echo "Backed up the unit's stream-player to $PLAYER_DST.aacluster-original"
+    fi
     if cp "$CARD_ROOT/stream-player" "$PLAYER_DST.new" 2>/dev/null && \
        [ "`wc -c < $CARD_ROOT/stream-player`" = "`wc -c < $PLAYER_DST.new`" ] && \
        chmod 755 "$PLAYER_DST.new" && mv "$PLAYER_DST.new" "$PLAYER_DST"; then
@@ -728,6 +756,8 @@ if [ -x "$CARD_ROOT/stream-player" ]; then
         rm -f "$PLAYER_DST.new"
         echo "WARNING: could not install stream-player to $PLAYER_DST; the previous player, if any, stays." >&2
     fi
+elif [ -x "$CARD_ROOT/stream-player" ]; then
+    echo "stream-player: NOT replaced (the hook is not armed; the unit's player stays)."
 fi
 
 # The CarPlay map, when this unit's CarPlay library is the one the hook knows.
@@ -911,6 +941,19 @@ if grep -q 'libgal_hook.so' "$TARGET_CONFIG" 2>/dev/null; then
     TARGET_IS_HOOKED=1
 fi
 
+# RULE (do not break the firmware): the supervisor config is gal's own
+# boot contract. An install that did not arm the hook writes NOTHING into
+# it: the hook files are staged beside gal_dualscreen.conf, nothing loads
+# them, and the unit's GEM keeps parsing its own world unchanged.
+if [ "$HOOK_ARMED" != 1 ]; then
+    echo "Supervisor config: NOT modified (the hook is not armed)."
+    echo "The hook files are staged and inert; arm the hook (create"
+    echo "HOOK_ARMED inside the payload folder on the card and re-run"
+    echo "Install) and the map goes live in one deliberate step."
+    finish
+    exit 0
+fi
+
 # Never label an already-injected file as the original. This matters when a
 # different/new SD card is inserted while the persistent hook is still active.
 if [ ! -r "$ORIGINAL" ]; then
@@ -938,33 +981,12 @@ LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$ORIGINAL" || {
 
 # A repeated install is rebuilt from the first untouched backup. This avoids
 # accumulating duplicate LD_PRELOAD/environment entries.
-head -8 "$TARGET_CONFIG" 2>/dev/null || true
 SOURCE="$TARGET_CONFIG"
 if [ "$TARGET_IS_HOOKED" -eq 1 ]; then
     SOURCE="$ORIGINAL"
 fi
 
 TEMP="$LOG_DIR/smartphone_integrator.json.new.$$"
-
-# M.I.B. contract, boot-safety form: an install must NEVER be able to
-# take the whole gal process down. The hook is staged in-line (so a later
-# enable is one click) but its PRIMARY switch stays OFF until the owner
-# turns it on explicitly:
-#   * at install time: a file named HOOK_ARMED in the payload folder, or
-#     CLUSTERMAP_HOOK_ARMED=1 in the environment (--enables the map at
-#     the same install), or
-#   * afterwards: the ClusterMap screen's own "Enable the map" entry (the
-#     persistent gal_dualscreen.conf's GAL_DUALSCREEN_ENABLE, written by
-#     greenmenu/map_on_off.sh).
-# A hook that never switches anything on cannot break gal at boot; the GEM
-# stays green and the recovery is then one click inside the menu.
-HOOK_ARMED=0
-if [ "${CLUSTERMAP_HOOK_ARMED:-0}" = 1 ]; then
-    HOOK_ARMED=1
-fi
-if [ -f "$CARD_ROOT/HOOK_ARMED" ]; then
-    HOOK_ARMED=1
-fi
 
 # Point the hook at the SD-card log path. The SD card is writable right
 # now (this script required it), and stays writable across a GAL restart
@@ -1339,7 +1361,12 @@ else
         fi
         if [ "$NAV_OK" -eq 1 ]; then
             echo "Java check: NavActiveIgnore is not loaded; adding it ($NAV_WHY)."
-            if sh "$CARD_ROOT/lsd_jar.sh" add NavActiveIgnore.jar "$CARD_ROOT/thirdparty/NavActiveIgnore.jar"; then
+            if [ "$HOOK_ARMED" != 1 ]; then
+                echo "Java check: NOT ADDED - the install does not arm lsd.sh" >&2
+                echo "            (no firmware-level edits without arming)." >&2
+                echo "            Arm the hook (HOOK_ARMED / CLUSTERMAP_HOOK_ARMED=1)" >&2
+                echo "            and install again to have it added." >&2
+            elif sh "$CARD_ROOT/lsd_jar.sh" add NavActiveIgnore.jar "$CARD_ROOT/thirdparty/NavActiveIgnore.jar"; then
                 mount -uw "${APP_WR:-/mnt/app}" 2>/dev/null && { : > "$NAVIGNORE_MARKER"; mount -ur "${APP_WR:-/mnt/app}" 2>/dev/null || true; }
             else
                 echo "WARNING: could not add NavActiveIgnore; lsd.sh is unchanged." >&2
@@ -1361,7 +1388,10 @@ else
     if [ "$WITH_ARROWS" -eq 1 ] && ! sh "$CARD_ROOT/lsd_jar.sh" loaded VCAndroidAuto.jar; then
         if [ "$TBT_OK" -eq 1 ]; then
             echo "Java check: adding VCAndroidAuto.jar beside the map (CLUSTERMAP_KEEP_ARROWS=1)."
-            if sh "$CARD_ROOT/lsd_jar.sh" add VCAndroidAuto.jar "$CARD_ROOT/thirdparty/VCAndroidAuto.jar"; then
+            if [ "$HOOK_ARMED" != 1 ]; then
+                echo "Java check: NOT ADDED - the install does not arm lsd.sh" >&2
+                echo "            (Rule 1: no firmware-level edits without arming)." >&2
+            elif sh "$CARD_ROOT/lsd_jar.sh" add VCAndroidAuto.jar "$CARD_ROOT/thirdparty/VCAndroidAuto.jar"; then
                 mount -uw "${APP_WR:-/mnt/app}" 2>/dev/null && { : > "${APP_WR:-/mnt/app}/eso/hmi/lsd/.aacluster_tbt_added"; mount -ur "${APP_WR:-/mnt/app}" 2>/dev/null || true; }
             else
                 echo "WARNING: could not add VCAndroidAuto.jar; lsd.sh is unchanged." >&2
