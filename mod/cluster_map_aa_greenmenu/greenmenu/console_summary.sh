@@ -32,6 +32,13 @@ sed -n \
     -e '/^ok: /p' \
     -e '/^unit files:/p' \
     -e '/^self-check:/p' \
+    -e '/^Done:/p' \
+    -e '/^Switched/p' \
+    -e '/^Keep-map/p' \
+    -e '/^Clearing/p' \
+    -e '/^Nothing to/p' \
+    -e '/^Porting bundle/p' \
+
     -e '/^Install finished/p' \
     -e '/^Uninstall finished/p' \
     -e '/^Sharper map/p' \

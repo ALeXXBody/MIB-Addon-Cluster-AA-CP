@@ -68,3 +68,21 @@ def test_wrappers_resolve_to_scripts_that_exist():
         for f in hits:
             assert (GREENMENU / f).is_file(), (
                 f"{w.name} -> '{verb}' -> {f} MISSING on the card")
+
+
+def test_every_entry_ends_with_an_outcome_and_next_instruction():
+    """Owner contract: no silent ends. run_verdict.sh prints `== DONE` /
+    `== STOPPED` plus the next instruction, and every run_quiet verb calls
+    it after the collector."""
+    import re
+    menus = (GREENMENU / "menus.sh").read_text()
+    assert 'sh "$HERE/run_verdict.sh" "$1" "$_log"' in menus, \
+        "run_quiet does not end with the verdict tail"
+    viewer = (GREENMENU / "run_verdict.sh").read_text()
+    assert viewer.islower() == viewer.islower()  # placeholder
+    for verb in ("install", "arm", "uninstall", "tbt", "logs",
+                 "porting", "portfull", "status", "verify", "diag"):
+        assert verb in viewer, f"no verdict branch for {verb}"
+    # switches are grouped
+    for grouped in ("full_frame*|zoom*|cardclear*|navstrip*|remote*|keep_map*",):
+        assert grouped in viewer

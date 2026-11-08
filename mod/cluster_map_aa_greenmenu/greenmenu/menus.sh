@@ -44,10 +44,16 @@ run_quiet() {
     # -v: the collector prints where the bundle is and whether the card copy
     # really happened (a silent failure there is not evidence, it is a hunt).
     sh "$HERE/diag_collect.sh" append-run "$_log" -v
+    # the owner's contract: EVERY entry ends the console with an outcome and
+    # the next instruction (run_verdict.sh renders it; no guesswork left)
+    sh "$HERE/run_verdict.sh" "$1" "$_log"
 }
 
 case "$1" in
-    diag)      sh "$HERE/diag_collect.sh" append-run "$2" -v ;;
+    diag)      sh "$HERE/diag_collect.sh" append-run "$2" -v
+               sh "$HERE/run_verdict.sh" diag /dev/null ;;
+    logs)      run_quiet logs       "$HERE/savelogs.sh" ;;
+
     install)   run_quiet install   "$HERE/install.sh" ;;
     # ARM = the one deliberate "make it live" action, reachable from the GEM
     # itself: no card edit and no PC needed. Nothing else in the payload ever
@@ -56,7 +62,6 @@ case "$1" in
                run_quiet arm "$HERE/install.sh" ;;
     uninstall) run_quiet uninstall "$HERE/uninstall.sh" ;;
     status)    run_quiet status    "$HERE/status.sh" ;;
-    logs)      sh "$HERE/savelogs.sh" ;;
     tbt)       run_quiet tbt       "$HERE/switch_to_turn_by_turn.sh" ;;
     zoom)      run_quiet zoom      "$HERE/zoom.sh" "$2" ;;
     navstrip)  run_quiet navstrip  "$HERE/navstrip.sh" "$2" ;;

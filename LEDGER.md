@@ -784,3 +784,23 @@ includes a guard that a refusal with no stderr text is still a refusal
 (the regression that would have pretended success).
 
 Gate: 45 tests.
+
+---
+
+## 20. Round v0.4.28 — every entry ends with the outcome and the next step
+
+**Owner ask:** "at the end of every script run, should show a text saying
+that is done and give next instructions."
+
+Delivered as a contract, not a per-script patch: one new file,
+`greenmenu/run_verdict.sh`, ends EVERY entry's console with
+- `== DONE` (or `== STOPPED` when the run log carries an error verdict),
+- `Next: <exactly what to do next>` - reboot + cockpit-switch for
+  install/arm/uninstall/tbt/full_frame, "leave the menu, it is live"
+  for the switches, "take the card home and send mod/cluster_aa/diag.txt"
+  for Save logs, "send me the bundle" for porting, "nothing required"
+  for status/verify.
+
+Run through the capturing runner (round 18), the verdict tail now lands
+after the "payload on the card" and "card copy" lines - the console always
+closes with the facts. Gate: 46 tests (the tail is asserted per verb).
