@@ -36,7 +36,7 @@ else
     echo "lib_app_mount.sh missing on the card (re-copy the zip's mod/)" >&2
     exit 1
 fi
-CONF="$PRELOAD_WRITE_DIR/gal_dualscreen.conf"
+CONF_READ="$APP_MOUNT/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 
 case "$1" in
     on)  WANT=1  ;;
@@ -44,15 +44,26 @@ case "$1" in
     *) echo "usage: $0 on|off" >&2; exit 2 ;;
 esac
 
-if [ ! -r "$CONF" ]; then
+if [ ! -r "$CONF_READ" ]; then
     echo "The cluster map is not installed: install it first."
     exit 1
 fi
 
-mount -uw "$APP_MOUNT" 2>/dev/null || { echo "Cannot remount $APP_MOUNT read-write. Nothing changed."; exit 1; }
+# Shared LADDER (the switch-audit fix): the single local spelling is not
+# enough on cars whose console only remounts app via another view form
+# (owner diag: "Cannot remount /mnt/app" killed EVERY switch silently).
+# Write through the alias that actually took the remount.
+if ! app_mount_rw; then
+    echo "Cannot remount the app partition read-write - every form failed:" >&2
+    echo "$APP_LADDER_ERRORS" >&2
+    echo "Nothing changed." >&2
+    exit 1
+fi
+CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
+echo "app: read-write via '$APP_LADDER_FORM'"
 
-strip_now=`sed -n 's/^GAL_NAV_INFO_STRIP=//p' "$CONF" | tail -1`
-file_now=`sed -n 's/^GAL_NAV_INFO_FILE=//p' "$CONF" | tail -1`
+strip_now=`sed -n 's/^GAL_NAV_INFO_STRIP=//p' "$CONF_READ" | tail -1`
+file_now=`sed -n 's/^GAL_NAV_INFO_FILE=//p' "$CONF_READ" | tail -1`
 if [ "$strip_now" = "$WANT" ] && [ "$file_now" = "$WANT" ]; then
     echo "Turn info strip is already $([ "$WANT" = 1 ] && echo ON || echo OFF). Nothing changed."
     exit 3

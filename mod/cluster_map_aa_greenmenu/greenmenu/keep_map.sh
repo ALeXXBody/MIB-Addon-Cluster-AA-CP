@@ -20,7 +20,7 @@ else
     echo "lib_app_mount.sh missing on the card (re-copy the zip's mod/)" >&2
     exit 1
 fi
-CONF="$PRELOAD_WRITE_DIR/gal_dualscreen.conf"
+CONF_READ="$APP_MOUNT/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 
 case "$1" in
     on)  WANT="phone" ;;
@@ -28,7 +28,7 @@ case "$1" in
     *)   echo "usage: $0 on|off" >&2; exit 2 ;;
 esac
 
-if [ ! -r "$CONF" ]; then
+if [ ! -r "$CONF_READ" ]; then
     echo "The cluster map is not installed: install it first."
     exit 1
 fi
@@ -44,11 +44,22 @@ if [ ! -r "$PLAYER" ] || ! grep -q "GAL_KEEP_MAP" "$PLAYER" 2>/dev/null; then
     exit 3
 fi
 # POSIX-safe rewrite through a new file and rename, like lib_cluster_frame.sh.
-mount -uw "$APP_MOUNT" 2>/dev/null || { echo "Cannot remount $APP_MOUNT read-write. Nothing changed."; exit 1; }
+# Shared LADDER (the switch-audit fix): the single local spelling is not
+# enough on cars whose console only remounts app via another view form
+# (owner diag: "Cannot remount /mnt/app" killed EVERY switch silently).
+# Write through the alias that actually took the remount.
+if ! app_mount_rw; then
+    echo "Cannot remount the app partition read-write - every form failed:" >&2
+    echo "$APP_LADDER_ERRORS" >&2
+    echo "Nothing changed." >&2
+    exit 1
+fi
+CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
+echo "app: read-write via '$APP_LADDER_FORM'"
 APP_WRITABLE=1
 trap app_mount_finish 0 1 2 15
 
-if grep -q "^GAL_KEEP_MAP=" "$CONF"; then
+if grep -q "^GAL_KEEP_MAP=" "$CONF_READ"; then
     sed "s/^GAL_KEEP_MAP=.*/GAL_KEEP_MAP=$WANT/" "$CONF" > "$CONF.new" 2>/dev/null &&
     mv "$CONF.new" "$CONF" 2>/dev/null || {
         echo "Could not rewrite GAL_KEEP_MAP in $CONF. Nothing changed."; rm -f "$CONF.new"; exit 1; }

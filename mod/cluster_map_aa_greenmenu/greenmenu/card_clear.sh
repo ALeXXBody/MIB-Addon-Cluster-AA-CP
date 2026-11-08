@@ -40,7 +40,7 @@ else
     echo "lib_app_mount.sh missing on the card (re-copy the zip's mod/)" >&2
     exit 1
 fi
-CONF="$PRELOAD_WRITE_DIR/gal_dualscreen.conf"
+CONF_READ="$APP_MOUNT/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 
 case "$1" in
     off)   HEX="" ;;
@@ -50,7 +50,7 @@ case "$1" in
     *) echo "usage: $0 off|top|sides|band" >&2; exit 2 ;;
 esac
 
-if [ ! -r "$CONF" ]; then
+if [ ! -r "$CONF_READ" ]; then
     echo "The cluster map is not installed: install it first."
     exit 1
 fi
@@ -59,10 +59,21 @@ fi
 # change this behaviour. Nothing to check here besides a Settings file.
 
 # Mount rw for the settings rewrite.
-mount -uw "$APP_MOUNT" 2>/dev/null || { echo "Cannot remount $APP_MOUNT read-write. Nothing changed."; exit 1; }
+# Shared LADDER (the switch-audit fix): the single local spelling is not
+# enough on cars whose console only remounts app via another view form
+# (owner diag: "Cannot remount /mnt/app" killed EVERY switch silently).
+# Write through the alias that actually took the remount.
+if ! app_mount_rw; then
+    echo "Cannot remount the app partition read-write - every form failed:" >&2
+    echo "$APP_LADDER_ERRORS" >&2
+    echo "Nothing changed." >&2
+    exit 1
+fi
+CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
+echo "app: read-write via '$APP_LADDER_FORM'"
 
 # Read the currently set value (empty when not present).
-NOW=`sed -n 's/^GAL_SECONDARY_UI_CONFIG_HEX=//p' "$CONF" | tail -1`
+NOW=`sed -n 's/^GAL_SECONDARY_UI_CONFIG_HEX=//p' "$CONF_READ" | tail -1`
 
 if [ "$HEX" != "" ] && [ "$NOW" = "$HEX" ]; then
     echo "Turn-card clear ($1) already set. Nothing changed."

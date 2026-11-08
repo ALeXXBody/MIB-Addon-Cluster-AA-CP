@@ -13,7 +13,7 @@
 HERE=`dirname "$0"`
 . "$HERE/lib_app_mount.sh"
 . "$HERE/lib_cluster_frame.sh"
-CONF="$PRELOAD_WRITE_DIR/gal_dualscreen.conf"
+CONF_READ="$APP_MOUNT/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 
 case "$1" in
     on)  WANT=1 ;;
@@ -21,7 +21,7 @@ case "$1" in
     *)   echo "usage: $0 on|off" >&2; exit 2 ;;
 esac
 
-if [ ! -r "$CONF" ]; then
+if [ ! -r "$CONF_READ" ]; then
     echo "The cluster map is not installed: install it first."
     exit 1
 fi
@@ -55,7 +55,18 @@ if [ "$NOW" = "$WANT" ]; then
     exit 3
 fi
 
-mount -uw "$APP_MOUNT" 2>/dev/null || { echo "Cannot remount $APP_MOUNT read-write. Nothing changed."; exit 1; }
+# Shared LADDER (the switch-audit fix): the single local spelling is not
+# enough on cars whose console only remounts app via another view form
+# (owner diag: "Cannot remount /mnt/app" killed EVERY switch silently).
+# Write through the alias that actually took the remount.
+if ! app_mount_rw; then
+    echo "Cannot remount the app partition read-write - every form failed:" >&2
+    echo "$APP_LADDER_ERRORS" >&2
+    echo "Nothing changed." >&2
+    exit 1
+fi
+CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
+echo "app: read-write via '$APP_LADDER_FORM'"
 APP_WRITABLE=1
 trap app_mount_finish 0 1 2 15
 if ! frame_write_conf "$CONF" $MAP_W $MAP_H $WANT; then

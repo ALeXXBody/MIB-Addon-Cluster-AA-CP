@@ -33,12 +33,16 @@ sed -n \
     -e '/^unit files:/p' \
     -e '/^self-check:/p' \
     -e '/^Done:/p' \
+    -e '/^Cannot /p' \
+    -e '/^Nothing changed/p' \
     -e '/^Switched/p' \
-    -e '/^Keep-map/p' \
+    -e '/^Keep[ -]map/p' \
     -e '/^Clearing/p' \
+    -e '/^Cluster remote/p' \
+    -e '/^Turn info strip:/p' \
+    -e '/^Turn-card clear:/p' \
     -e '/^Nothing to/p' \
     -e '/^Porting bundle/p' \
-
     -e '/^Install finished/p' \
     -e '/^Uninstall finished/p' \
     -e '/^Sharper map/p' \

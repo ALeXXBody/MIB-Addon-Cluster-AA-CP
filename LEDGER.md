@@ -934,3 +934,42 @@ source/spelling/mount/save path):**
    (no writes outside the diag copy + owner-invoked Save logs); the
    mount/unmount pairs balance; the diag bundle covers every entry; the
    release contract still asserts the one-click zip.
+
+---
+
+## 26. Round v0.5.1 — the deeper script audit: WHY the switches showed "..."
+
+**Owner: "audit mostly the script side, cluster remote is not doing
+anything - check all of them." Deeper go found THREE real script-side
+bugs, one of them the actual breaker:**
+
+1. **console_summary.sh had blank lines INSIDE its sed argument list.**
+   `sh -n` accepts them (a blank line is valid shell), but at runtime the
+   line after the blank became a NEW command - `-e: not found` - and
+   every curated story pattern after it silently STOPPED working. That
+   regression shipped with the v0.4.28 story blocks; it is exactly when
+   presses started answering "..." in the car. Fixed; the offline gate
+   now runs the whole curated-story chain against every pattern (the
+   runtime bar, not shell -n) - 51 tests.
+2. **Bigger: switches hard-wired ONE remount form.** cluster_remote,
+   navstrip, card_clear, zoom, keep_map and scripts/full_frame did
+   `mount -uw "$APP_MOUNT" ... || exit` - the exact form the owner's
+   earlier diag recorded refusing ("Cannot remount the app partition
+   read-write"), so on that car cluster remote/navstrip/etc. could do
+   nothing at all. All now run the shared ladder (`app_mount_rw` from
+   lib_app_mount.sh) and write through `$APP_RW` - the alias that took
+   the remount - with the winner announced
+   (`app: read-write via '...'`) and all-refusals named per form in the
+   bundle. Regression: a press must WRITE through the working spelling,
+   must announce the winner, and must report == STOPPED (never fake
+   done) when every form is refused.
+3. The curated story patterns missed the switches' real output lines
+   ("Cluster remote (...)", "Turn info strip:", "Turn-card clear:",
+   "Keep map:" spelt both ways) - even a healthy run would have shown
+   nothing for them. Now all in, matched by the new runtime-curation
+   test.
+
+**Also re-verified:** the switch scripts keep writing only to the unit
+settings copy; Save logs remains a direct path; the release contract and
+manifest stay green; the payload affected files: 6 switch scripts,
+console_summary, run_verdict (exit code), menus (floor).

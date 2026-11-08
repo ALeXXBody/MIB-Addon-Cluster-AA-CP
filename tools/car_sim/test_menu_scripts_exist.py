@@ -109,3 +109,40 @@ def test_settings_snapshot_ships():
     assert (payload / "scripts/lib_keep_settings.sh").is_file()
     conf = (payload / "gal_dualscreen.conf").read_text()
     assert "CLUSTERMAP_KEEP_SETTINGS=1" in conf
+
+
+def test_console_summary_has_no_broken_arg_list():
+    """v0.4.31 shipped console_summary.sh with blank lines INSIDE the sed
+    argument list: every pattern after them became a separate command
+    ("-e: not found"), silently dropping the curated story of switches -
+    the actual car symptom the first round of '...' pressed on. The
+    runtime bar: every curated story line of every verb must really
+    reach the printout."""
+    import subprocess, tempfile, os
+    summary = GREENMENU / "console_summary.sh"
+    lines = [
+        "Phone map on the digital cluster: install",
+        "Head unit: Harman MIB2 / MIB2.5 High (MHI2)",
+        "Compatibility: tested firmware",
+        "ERROR: could not remount the app partition",
+        "Cannot remount the app partition read-write",
+        "Nothing changed.",
+        "Done: ClusterMap/run_logs/latest. Wait a few seconds.",
+        "Switched", "Keep map: ON (the player re-asserts)",
+        "Turn info strip: OFF.", "Turn-card clear: sides",
+        "Cluster remote (OK press on the cluster): ON",
+        "Porting bundle written",
+        "Install finished", "Uninstall finished", "Sharper map: OFF.",
+        "Zoom: 1.15. The player crops the phone's picture",
+        "Hook: installed", "WARNING: cannot check the Java interface",
+    ]
+    with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False) as f:
+        f.write("\n".join(lines) + "\n")
+        log = f.name
+    p = subprocess.run(["sh", str(summary), log], capture_output=True, text=True)
+    os.unlink(log)
+    for want in lines:
+        assert want in p.stdout, (
+            f"the curated line '{want}' is lost (the story chain broke)\n"
+            f"--stdout--\n{p.stdout}\n--stderr--\n{p.stderr}")
+    assert not p.stderr, p.stderr
