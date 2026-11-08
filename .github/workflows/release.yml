@@ -12,6 +12,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # the release body is read from the tag's own commit message
+          fetch-depth: 0
+
+      - name: Release body = what this round shipped (the tag commit's message)
+        id: notes
+        run: |
+          {
+            echo "body<<GHR_BODY"
+            git log -1 --format=%B "$GITHUB_REF_NAME"
+            echo GHR_BODY
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build the mod zip (same flow as the repo checks)
         run: tools/build_release.sh "$GITHUB_REF_NAME"
@@ -22,4 +34,5 @@ jobs:
           files: |
             dist/*.zip
             dist/*.zip.sha256
+          body: ${{ steps.notes.outputs.body }}
           generate_release_notes: true
