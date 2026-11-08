@@ -33,20 +33,19 @@ run_quiet() {
     else
         sh "$_child" >$_log 2>&1
     fi
-    sh "$HERE/console_summary.sh" "$_log"
-    # The owner's first sanity fact: WHICH payload is running. If this line
-    # still names an old version after a card refresh, the copy did not land.
-    if [ -r "$HERE/../VERSION" ]; then
-        _v=
-        read _v < "$HERE/../VERSION" 2>/dev/null
-        echo "payload on the card: $_v"
-    fi
-    # -v: the collector prints where the bundle is and whether the card copy
-    # really happened (a silent failure there is not evidence, it is a hunt).
+    # FLOOR THE PRESS. Your GEM 4.12st's console screen breaks on re-entry
+    # (owner photo: de.audi.gem.?.?.ScreenRenderer "Thread is already
+    # started") and shows only "...". Every extra printed line is display
+    # work for a broken renderer - so a press now carries THE MINIMUM:
+    # where the bundle is, the outcome, the next instruction - and, only
+    # when something went wrong, the ERROR lines. The full story is in
+    # diag.txt (sections 11/12), on the card, on every run.
     sh "$HERE/diag_collect.sh" append-run "$_log" -v
-    # the owner's contract: EVERY entry ends the console with an outcome and
-    # the next instruction (run_verdict.sh renders it; no guesswork left)
     sh "$HERE/run_verdict.sh" "$1" "$_log"
+    if [ $? -ne 0 ]; then
+        echo "-- the run's ERROR lines:"
+        sh "$HERE/console_summary.sh" "$_log"
+    fi
 }
 
 case "$1" in

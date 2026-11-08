@@ -30,10 +30,11 @@ case "$VERB" in
     *)          BODY="leave the menu (Back)" ;;
 esac
 if [ "$BAD" = 1 ]; then
-    echo "== STOPPED - the reason is in the ERROR lines above ^"
+    echo "== STOPPED - the reason follows (run log: diag.txt)"
     echo "Next: send me the diag file (Save logs -> mod/cluster_aa/diag.txt)"
 else
     echo "== DONE"
     echo "Next: $BODY"
 fi
-exit 0
+# the exit code is the runner's switch for showing the failure story
+exit ${BAD}

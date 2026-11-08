@@ -851,3 +851,31 @@ breaker):**
 v0.4.27 zip is still downloadable; that card state is the last measured
 working menu.** The dashboard of the add-on itself (hook, map) runs from
 the unit and is unaffected by card script states.
+
+---
+
+## 23. Round v0.4.31 — the GEM 4.12st console bug identified (owner photo)
+
+The owner's photo settled the "...": the error is in the unit's own GEM -
+`de.audi.gem.` stack, `ScreenRenderer().enterConsoleScreen()`,
+`IllegalThreadStateException: Thread is already started`, on GEM 4.12st -
+the console screen BREAKS on re-entry, shows "...", and throws BEFORE our
+script is called. Consequences, measured against our own rules:
+
+- a run at that point leaves NO diag from us - there was no process to
+  capture (this is GEM's renderer, not our chain);
+- the earlier "Sharper map ON"/"Cluster remote ON" stage changes in the
+  bundles PROVE the presses ran when the console was healthy - the
+  display bug masked them afterwards;
+- the stack also shows the entry path came through a LONG press
+  (handleLongPress -> TouchController.touchGestureReceived -> ...).
+
+**v0.4.31 defence - floor every press:** the console now carries the
+MINIMUM per press (bundle paths, `== DONE / Next: ...`, and the ERROR
+lines only on failure). Every extra render line is work for a broken
+renderer. The full story remains in diag.txt sections 11/12, which the
+bundle keeps on the card for every run; Save logs stays a direct path.
+
+The defect itself is GEM's (fork v3.8.0 shell), the trigger avoidable by
+short clicks / Back between presses; nothing in our payload can repair
+the renderer, and M.I.B. has no defence for it either.
