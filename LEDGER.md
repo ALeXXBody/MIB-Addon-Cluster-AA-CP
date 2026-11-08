@@ -804,3 +804,24 @@ Delivered as a contract, not a per-script patch: one new file,
 Run through the capturing runner (round 18), the verdict tail now lands
 after the "payload on the card" and "card copy" lines - the console always
 closes with the facts. Gate: 46 tests (the tail is asserted per verb).
+
+---
+
+## 21. Round v0.4.29 — the picture is tuned: the owner's photo is the evidence
+
+The owner sent the cluster photo with FULL FRAME on:
+
+  window 1010x376, DPI 125, insets 40,40,127,127,
+  FULL_FRAME=1, PAR=1.6117, MARGINS=0x0.
+
+Photo reads correct: straight circles, crisp street labels ("towards First
+Ave", "First Ave", "Porthill Bank") - no visible stretch, HUD (P/position/speed)
+sits on the black band, no overlay on map content. The tuned geometry is
+Pinned in the shipped card config (gal_dualscreen.conf), so a fresh card
+re-install lands on THIS look instead of reverting to the band view;
+deleting the three lines returns to stock geometry. In-car switches still
+win over anything (re-press = new values recorded on the unit).
+
+The remaining "zoom" feel is the PHONE's map zoom (AA streams what Google
+Maps/Waze shows), not the add-on's geometry - the GEM Zoom entries are for
+fine correction only.
