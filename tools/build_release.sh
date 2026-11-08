@@ -66,6 +66,24 @@ First look at the new Cluster map page:
    Status (your unit's profile) -> the switches (Turn-card clear, Turn
    info strip, Zoom, Cluster remote) -> Uninstall and Save logs.
 
+THE MAP STAYS STOCK UNTIL YOU ARM IT (deliberate, v0.4.20 default):
+   the run stages the files only. To make the map live, put an empty file
+   named HOOK_ARMED (or ARMNOW.TXT) into mod/cluster_aa/ on the card and
+   run the same "Run /mod/custom.sh" entry once more.
+   If you had an older version: delete mod/cluster_map_aa_greenmenu/ from
+   the card afterwards (the new folder is mod/cluster_aa; both are found,
+   but only one is needed).
+
+ONE FILE TO SEND IF ANYTHING LOOKS WRONG:
+   every run writes a diagnostic file and prints its name on the GEM
+   screen. It is /tmp/clustermap_diag/diag.txt on the unit and is also
+   copied to the card as mod/cluster_aa/diag.txt. Send that single file
+   (plus a photo of the cluster if the map is the issue) - it carries the
+   unit/train facts, the installed map settings and the full run log, so
+   the add-on can be diagnosed and the picture tuned from it. Nothing on
+   the card is written during a normal run (that was what made the card
+   look read-only); the card gets only that one copy, best-effort.
+
 Full docs (photos, troubleshooting, updates): the repository README
 https://github.com/ALeXXBody/MIB-Addon-Cluster-AA-CP
 and the release page of this version ("what's new").

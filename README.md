@@ -17,9 +17,29 @@
 4. **One click:** hold MENU → **Testmode** → GEM → **M.I.B. → Advanced Settings → “Run /mod/custom.sh from m.i.b. SD”**.
    This:
    - puts the mod's **`ClusterMap`** screen on the unit (one file into the GEM screen folder, the same mechanism M.I.B. itself uses for its own menu),
-   - then runs the mod's installer straight away (status/profile check → hook + player install).
-5. **Reboot the unit** (hold the power button ~10 s). Back in GEM you now have a new **top-level `ClusterMap` screen**: Status / Install / Uninstall / Keep-map / Verify / logs.
-6. **Use it:** plug your phone into USB, open Google Maps or Waze, switch the cluster to map view. Done.
+   - then runs the mod's installer straight away (status/profile check → hook + player install),
+   - and writes **one diagnostic file** (`diag.txt`, see below) whatever the outcome.
+5. **Arm the map** (v0.4.20 default: the map stays stock until you arm it — the files are staged, nothing is live yet). Put an empty file named `HOOK_ARMED` (or `ARMNOW.TXT`) into `mod/cluster_aa/` on the card and run the same “Run /mod/custom.sh” entry once more. An armed run backs up the unit's stock player as `stream-player.aacluster-original`, so Uninstall restores it byte-for-byte.
+6. **Reboot the unit** (hold the power button ~10 s). Back in GEM you now have a new **top-level `ClusterMap` screen**: Status / Install / Uninstall / Keep-map / Verify / logs.
+7. **Use it:** plug your phone into USB, open Google Maps or Waze, switch the cluster to map view. Done.
+
+## One file to send if anything looks wrong
+
+Every install/uninstall/settings run writes a single diagnostic file and
+prints its name on the GEM screen:
+
+- `/tmp/clustermap_diag/diag.txt` on the unit (RAM, always, authoritative),
+- copied best-effort to `mod/cluster_aa/diag.txt` on the card.
+
+Send that one file (plus a cluster photo if the picture is the issue). It
+carries the unit/train facts, the card and unit views, the arm state, the
+installed map settings (window / DPI / insets / aspect / zoom / full-frame),
+the hook log tail and the full run log — enough to diagnose a failure and to
+tune the picture without another round-trip. `diag.txt.prev` keeps one
+previous bundle.
+
+The card is **never written during normal operation** — only that single
+best-effort copy. See the troubleshooting note below for why.
 
 ## Card layout after step 2 (yours exactly)
 
@@ -30,7 +50,7 @@ M.I.B. SD card root/
 ├── … (M.I.B.'s own mod/ folder, incl. its mod/carplay_maps_vc/)
 └── mod/                       ← merged: M.I.B.'s mods + this Addon's
     ├── custom.sh                      ← this repo (the one-click hook)
-    └── cluster_map_aa_greenmenu/      ← this repo (the mod payload)
+    └── cluster_aa/                    ← this repo (the mod payload)
         ├── greenmenu/cluster-map.esd  ← the GEM screen that gets copied to the unit
         ├── greenmenu/{install,status,uninstall,verify,keep_map,…}.sh
         ├── enable_hook.sh  disable_hook.sh  collect_logs.sh
@@ -38,6 +58,10 @@ M.I.B. SD card root/
         ├── profiles.conf  gal_dualscreen.conf  lsd_jar.sh  turn_by_turn.sh
         └── thirdparty/{NavActiveIgnore.jar, VCAndroidAuto.jar} + SHA256SUMS
 ```
+
+Older releases used `mod/cluster_map_aa_greenmenu/`; every locator still
+finds it (it is preferred second), so an existing card keeps working —
+delete the old folder once `mod/cluster_aa/` is on the card.
 
 ## What it looks like
 
@@ -65,19 +89,31 @@ changes it.
 
 Sharper map, Keep map and Zoom change the **unit's installed settings**, not your card. They survive reboots (Zoom's live file applies within seconds of clicking). A fresh **Install from the card resets them** — after a re-install re-click your preferred value; see `install.md` for the details.
 
-## Troubleshooting — “Read-only file system” / `CLUSTERMAP_INSTALL_FAILED`
+## Troubleshooting — the card and “Read-only file system”
 
-The installer prefers `backups/` and `logs/` on the SD card, but since
-v0.4.14 a read-only card is announced, not fatal: those folders fall back
-to `/tmp/clustermap_unit` on the unit (RAM: kept only until the next
-reboot), and the install continues. The three usual causes for the card
-being read-only, in order:
+**Fixed for good in v0.4.20: the add-on no longer writes the card during
+normal operation.** Backups, logs, staging and probes all live on the unit's
+RAM (`/tmp/clustermap_unit`, `/tmp/gal_dualscreen.log`); the persistent
+recovery copy that Uninstall needs is kept beside the unit's supervisor
+config. This matters because our own earlier writes to the FAT card set its
+dirty bit, and QNX then mounted the card **read-only on the next boot** —
+which is what produced every “the SD card is read-only” report. The add-on
+was blaming the card for its own writes.
 
-1. **The LOCK slider on the SD adapter is on.** MicroSD→SD adapters are shipped with it slid down (locked). Move it to the up/unlocked position, re-insert, run the screen again.
-2. **The card is not FAT32.** exFAT/NTFS cards normally mount read-only on the unit. Reformat FAT32 and re-copy M.I.B. + this repo's `mod/`.
-3. **The card has the volume-dirty flag set** (typically after it was pulled while the unit was writing). The unit then mounts it read-only until the flag is cleared: run `chkdsk /f X:` (Windows) on the card from a PC, re-insert, run again.
+If a card still mounts read-only on the unit (for example one written by an
+older release), clear it once on a PC and it is done:
 
-The Green Engineering Menu console says explicitly when the card is read-only, with these same three steps — and the install tells you where its backups went.
+1. Run `chkdsk /f X:` on the card (Windows) — clears the volume-dirty flag.
+2. Make sure the card is **FAT32** (exFAT/NTFS cards mount read-only on the unit).
+3. Check the **LOCK slider** on the microSD→SD adapter is up/unlocked.
+
+Old logs written by an older release are safe to delete: `mod/cluster_map_aa_greenmenu/logs/`,
+`mod/cluster_map_aa_greenmenu/backups/`, `mod/cluster_map_aa_greenmenu/last_install_paths.txt`.
+
+## Troubleshooting — `CLUSTERMAP_INSTALL_FAILED`
+
+The console shows the outcome in a few lines; the full reason is in the
+diagnostic file named on screen (see above). Send that file.
 
 ## Android Auto capabilities research
 

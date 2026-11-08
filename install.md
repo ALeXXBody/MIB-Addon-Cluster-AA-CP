@@ -9,7 +9,7 @@
    card `mod/` now contains:
    - everything M.I.B. shipped there (unchanged),
    - `custom.sh`
-   - `cluster_map_aa_greenmenu/`
+   - `cluster_aa/`
 3. That's the whole "installation" on the PC side.
 
 ## 2. In the car
@@ -20,7 +20,12 @@
    Output confirms both steps:
    - `GEM screen installed on the unit: /net/mmx/mnt/app/eso/hmi/engdefs/cluster-map.esd`
    - the mod's installer output (profile check + hook install).
-4. **Reboot** (hold the power button ~10 s).
+   It ends with the name of the ONE diagnostic file to keep (`diag.txt`).
+4. **Arm the map** (v0.4.20 default: staged only, nothing live yet). Put an
+   empty file named `HOOK_ARMED` (or `ARMNOW.TXT`) into `mod/cluster_aa/` on
+   the card, run “Run /mod/custom.sh” once more. The console then says
+   `Map install: DONE`.
+5. **Reboot** (hold the power button ~10 s).
 
 ## 3. Use
 
@@ -35,7 +40,7 @@ GEM → new top-level screen **ClusterMap**:
 | 7. Verify installed files | checksum check of the installed payload |
 | 8. Uninstall | restores stock, removes the menu screen too |
 | 9. Switch to turn-by-turn | trains without a map profile, using `VCAndroidAuto.jar` arrows |
-| 10/11. Save logs / collect | diagnostic bundle to the card |
+| 10/11. Save logs / collect | rebuilds the diagnostic bundle (`diag.txt`) |
 
 Then: phone on USB → Google Maps or Waze → cluster switched to map view.
 
@@ -58,25 +63,33 @@ map). The GEM console's **Last hook events** tells you which of these:
 
 | Log line | Meaning | Fix |
 |---|---|---|
-| `firmware.profiles result=missing` / `firmware.verify … no_profile` | the unit has **no profile table** — the install that copies it never ran (or ran from an old payload) | re-copy the zip's **whole `mod/` folder** onto the card, then Run /mod/custom.sh **again**, then reconnect the phone. `custom.sh` now prints an **install self-check** that shows the unit files (profile table, hook, conf, player) all as `ok:` lines — a `MISSING:` line is the instruction to re-run |
+| `firmware.profiles result=missing` / `firmware.verify … no_profile` | the unit has **no profile table** — the install that copies it never ran (or ran from an old payload) | re-copy the zip's **whole `mod/` folder** onto the card, then Run /mod/custom.sh **again**, then reconnect the phone. `custom.sh` now prints a one-line **unit files:** verdict (the full `ok:` list is in `diag.txt`) — `not present on the unit yet` is the instruction to re-run |
 | `firmware.verify … profile_check` | the table is there but your train's AA files differ | send the Save-logs bundle; do not edit the table |
 
 So: map not showing after an update is almost always the **install not
 re-run** rather than the unit breaking. The self-check makes that state
 visible at install time.
 
-## If the console says the SD card is READ-ONLY to the unit
+## The card is never written (since v0.4.20)
 
-Since v0.4.14 a read-only card **no longer stops the install**: the
-installer only reads the payload from the card; its `backups/` and `logs/`
-then go to `/tmp/clustermap_unit` on the unit instead, and Uninstall finds
-them from the recorded install (`last_install_paths.txt` / the unit's
-`/tmp/clustermap_last_paths`). Backups in RAM are lost on every reboot, so
-still fix the card when you can:
+The add-on treats the SD card as **read-only media**. Backups, logs and
+staging all live on the unit's RAM (`/tmp/clustermap_unit`, `/tmp`);
+Uninstall's recovery copy is kept beside the unit's supervisor config, so it
+survives reboots. The only card write left is ONE best-effort copy of the
+diagnostic bundle (`mod/cluster_aa/diag.txt`), and a card that refuses it
+changes nothing (the RAM copy stays authoritative).
 
-1. SD adapter **LOCK slider** → unlock, re-insert, run the screen again.
+Why this matters: our own earlier writes to the FAT card set its dirty bit,
+and QNX then mounted the card read-only on the **next boot** — the source of
+every “SD card is READ-ONLY” report since the first release. That diagnosis
+was wrong.
+
+A card written by an **older release** may still carry the dirty flag; clear
+it once on a PC and it is done for good:
+
+1. `chkdsk /f X:` on the card (Windows) — clears the dirty bit.
 2. Card must be **FAT32** (exFAT/NTFS mounts read-only on the unit).
-3. Otherwise run **`chkdsk /f`** on the card from a PC — the dirty-volume bit makes the unit mount it read-only.
+3. SD adapter **LOCK slider** → unlocked.
 
 ## Where the in-car switches live (and when they reset)
 
