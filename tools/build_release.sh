@@ -31,6 +31,13 @@ cp -r mod/cluster_map_aa_greenmenu "$DIST/$NAME/mod/cluster_aa"
 cp mod/custom.sh "$DIST/$NAME/mod/"
 cp LICENSE "$DIST/$NAME/MIB-Addon-Cluster-AA-CP-LICENSE.txt"
 
+# ONE CLICK BY DEFAULT: the shipped payload carries the arm marker, so the
+# single "Run /mod/custom.sh" both registers the GEM screen and makes the
+# map live (screen file is validated first, then the hook). Delete this file
+# from the card if you want a stage-only run. The repository's own payload
+# stays UNARMED, so development/testing can never arm a unit by accident.
+: > "$DIST/$NAME/mod/cluster_aa/HOOK_ARMED"
+
 # generated so the tag name lands inside the file
 cat > "$DIST/$NAME/HOW-TO-INSTALL.txt" <<HTI
 HOW TO INSTALL — M.I.B. Addon: Cluster AA/CP  (archive $TAG, MOD ONLY)
@@ -42,6 +49,10 @@ This zip contains ONLY the files that go on your M.I.B. SD card:
     mod/cluster_aa/...                     - the payload; every switch lives
                                              in M.I.B.'s GEM under
                                              "Cluster map" after install
+    mod/cluster_aa/HOOK_ARMED              - makes the one click install the
+                                             map LIVE (validated screen first,
+                                             then the hook). Delete it if you
+                                             want a stage-only, no-change run
     MIB-Addon-Cluster-AA-CP-LICENSE.txt    - the GPL-3.0 licence text
                                              (keep on your PC; do not copy
                                              onto the card - M.I.B. has its
@@ -60,16 +71,18 @@ The steps (3 of them):
 
 3. ONE CLICK: SD1 in the unit; open M.I.B.'s GEM
    (M.I.B. -> Advanced settings -> "Run /mod/custom.sh from m.i.b. SD").
-   The "Cluster map" page appears in the GEM menu at the next boot.
+   That single run: validates and installs the GEM screen, installs the
+   hook, backs up the unit's stock player, and makes the map live.
+   Then reboot (power button ~10 s) - the map is on the cluster.
 
 First look at the new Cluster map page:
    Status (your unit's profile) -> the switches (Turn-card clear, Turn
    info strip, Zoom, Cluster remote) -> Uninstall and Save logs.
 
-THE MAP STAYS STOCK UNTIL YOU ARM IT (deliberate, v0.4.20 default):
-   the run stages the files only. To make the map live, put an empty file
-   named HOOK_ARMED (or ARMNOW.TXT) into mod/cluster_aa/ on the card and
-   run the same "Run /mod/custom.sh" entry once more.
+IF THE MAP DOES NOT APPEAR (or you want to go step by step):
+   put the card back in a PC, delete mod/cluster_aa/HOOK_ARMED, and run the
+   same "Run /mod/custom.sh" entry again - that stages the files only and
+   changes nothing on the unit. Re-add the file when you want it live.
    If you had an older version: delete mod/cluster_map_aa_greenmenu/ from
    the card afterwards (the new folder is mod/cluster_aa; both are found,
    but only one is needed).
@@ -94,6 +107,17 @@ if ! command -v zip >/dev/null 2>&1; then
     exit 1
 fi
 (cd "$DIST" && zip -qr "$NAME-$TAG.zip" "$NAME")
+
+# The one-click contract: the shipped payload MUST carry the arm marker, and
+# the repo's own payload MUST NOT (so tests/dev can never arm a unit).
+[ -f "$DIST/$NAME/mod/cluster_aa/HOOK_ARMED" ] || {
+    echo "ERROR: HOOK_ARMED missing from the release payload" >&2; exit 1; }
+[ -f "mod/cluster_map_aa_greenmenu/HOOK_ARMED" ] && {
+    echo "ERROR: the REPOSITORY payload is armed; tests must stay unarmed" >&2
+    exit 1; }
+unzip -l "$DIST/$NAME-$TAG.zip" 2>/dev/null | grep -q "mod/cluster_aa/HOOK_ARMED" || {
+    echo "ERROR: HOOK_ARMED did not make it into the zip" >&2; exit 1; }
+
 (cd "$DIST" && sha256sum "$NAME-$TAG.zip" > "$NAME-$TAG.zip.sha256")
 
 echo "Release artifacts in $DIST/:"

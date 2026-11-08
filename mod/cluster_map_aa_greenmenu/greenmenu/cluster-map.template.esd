@@ -35,6 +35,10 @@ script
     label   "2. Install cluster map"
 
 script
+    value   sys 1 0x0100 "@GREENMENU@menus.sh arm"
+    label   "2b. Make the map LIVE (arm; reboot after)"
+
+script
     value   sys 1 0x0100 "@GREENMENU@menus.sh full_frame on"
     label   "Sharper map ON (full frame; reboot after)"
 

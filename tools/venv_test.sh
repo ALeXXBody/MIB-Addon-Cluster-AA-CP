@@ -25,6 +25,7 @@ tools/check_manifest.sh
 tools/check_gem_esd.sh
 tools/find_card_test.sh
 tools/gem_portable_check.sh
+tools/check_release_build.sh
 for f in $(find mod tools -name '*.sh') tools/car_sim/*.sh; do
     sh -n "$f"
 done

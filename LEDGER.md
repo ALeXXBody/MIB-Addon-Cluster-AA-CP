@@ -508,3 +508,50 @@ was self-inflicted. Established fact: **a payload must never write the card.**
 never written (`test_write_homes.py`), early-failure diag + reason,
 no-payload diag, already-live verdict, `mod/cluster_aa` discovery. Also green:
 `check_manifest`, `check_gem_esd`, `gem_portable_check`, `find_card_test`.
+
+---
+
+## 13. Round v0.4.21 — one click: install + arm + screen + diag (2026-11-08)
+
+**Owner ask:** "can you not automate 3/4?" — the arm step and the diag fetch
+must not be manual. Answer delivered as a release-level contract:
+
+- **The ZIP is armed; the REPOSITORY is not.** `tools/build_release.sh`
+  creates `mod/cluster_aa/HOOK_ARMED` in the shipped tree only, and now
+  FAILS the build if that marker is missing from the zip or if the repo's
+  payload carries it. Consequences: the owner's single "Run /mod/custom.sh"
+  = validated screen + armed hook + player backup + diag; and every offline
+  test keeps exercising the unarmed path, so a test can never arm a unit.
+  `tools/check_release_build.sh` asserts the contract on a real build and is
+  part of `tools/venv_test.sh`.
+- **GEM `2b. Make the map LIVE`** (`menus.sh arm` → `CLUSTERMAP_HOOK_ARMED=1
+  install.sh`): the explicit arm action is now reachable from the GEM, so the
+  stage-only mode (delete `HOOK_ARMED` on the card) needs no card edit and no
+  PC. Arming stays a deliberate action; nothing arms silently.
+- **Ordering rule (safety):** screen validation + write happen BEFORE the
+  installer runs; any screen failure exits first, so a broken engdefs file
+  can never coexist with a live hook. Unchanged: `.prev`, persistent
+  supervisor backup, rescue_revert.sh.
+- **BUG FOUND AND FIXED (v0.4.19/v0.4.20 shipped it): every ClusterMap GEM
+  entry did nothing.** `menus.sh` began with `. "$HERE/lib_app_mount.sh"`;
+  that file lives in `scripts/`, not `greenmenu/`, so the unreadable source
+  line terminated the dispatcher (dash exits rc 2) before any verb ran. The
+  dispatcher now loads the real path and a missing copy cannot kill the menu.
+  New regression test parses the screen file, asserts every `menus.sh <verb>`
+  has a case, and that the template and the pre-built `.esd` agree on the
+  entry set — the class of bug (screen calls a verb the dispatcher lacks) is
+  now impossible to ship.
+- Console paths in `menus.sh` no longer name the old payload folder.
+
+**Offline proof:** 34 tests green; `check_manifest`, `check_gem_esd`,
+`gem_portable_check`, `find_card_test`, `check_release_build` green.
+
+**Residual risk, recorded honestly:** an armed install puts
+`libgal_hook.so` into gal's supervisor config in the same run that
+registers the screen. If the hook itself is bad on this unit, the next boot
+hangs the GEM (gal draws it) and only the serial console / firmware SD can
+recover — that is the exact incident from 2026-11-07. The owner chose
+one-click; the mitigations are the validated screen-before-hook ordering,
+`.prev`, the persistent config backup, `rescue_revert.sh`, and the fact that
+the diag bundle is written BEFORE the reboot, so evidence survives even a
+hung GEM.

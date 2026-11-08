@@ -17,15 +17,17 @@
 1. Card into **SD slot 1**, unit on.
 2. Hold **MENU → Testmode** → GEM.
 3. **M.I.B. → Advanced Settings → “Run /mod/custom.sh from m.i.b. SD”**.
-   Output confirms both steps:
-   - `GEM screen installed on the unit: /net/mmx/mnt/app/eso/hmi/engdefs/cluster-map.esd`
-   - the mod's installer output (profile check + hook install).
-   It ends with the name of the ONE diagnostic file to keep (`diag.txt`).
-4. **Arm the map** (v0.4.20 default: staged only, nothing live yet). Put an
-   empty file named `HOOK_ARMED` (or `ARMNOW.TXT`) into `mod/cluster_aa/` on
-   the card, run “Run /mod/custom.sh” once more. The console then says
-   `Map install: DONE`.
-5. **Reboot** (hold the power button ~10 s).
+   That one run does everything:
+   - validates the screen file and installs the GEM screen
+     (`GEM screen installed on the unit: …/engdefs/cluster-map.esd`),
+   - stages **and arms** the hook (the shipped payload carries `HOOK_ARMED`)
+     and backs up the unit's stock player,
+   - writes the ONE diagnostic file to keep and prints its name.
+4. **Reboot** (hold the power button ~10 s). The map is on the cluster.
+
+**Stage-only instead of live:** delete `mod/cluster_aa/HOOK_ARMED` from the
+card before step 3 — nothing live is touched. Arm later from the GEM
+(**ClusterMap → 2b. Make the map LIVE**), no card edit and no PC needed.
 
 ## 3. Use
 
@@ -35,6 +37,7 @@ GEM → new top-level screen **ClusterMap**:
 |---|---|
 | 1. Status and compatibility check | unit train, gal fingerprint vs `profiles.conf`, hook/jar state |
 | 2. Install cluster map | the Android Auto → VC install (this is also what `custom.sh` already ran) |
+| 2b. Make the map LIVE | arms the hook from the GEM (reboot after) — for a stage-only install |
 | 3/4. Sharper map ON/OFF | full-frame vs standard cluster frame |
 | 5/6. Keep map ON/OFF | cockpit source arbiter (map stays when other sources connect) |
 | 7. Verify installed files | checksum check of the installed payload |

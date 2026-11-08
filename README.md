@@ -15,13 +15,14 @@
    - unpack this ZIP and copy its **`mod/` folder onto the card as well** — it merges next to M.I.B.'s own `mod/` folder (nothing in M.I.B. is touched or overwritten).
 3. **In the car (SD slot 1): boot** with the card. If M.I.B. is not installed on the unit yet, do the M.I.B. install the usual way (metainfo2 → Updater). If it already is, nothing to do here.
 4. **One click:** hold MENU → **Testmode** → GEM → **M.I.B. → Advanced Settings → “Run /mod/custom.sh from m.i.b. SD”**.
-   This:
-   - puts the mod's **`ClusterMap`** screen on the unit (one file into the GEM screen folder, the same mechanism M.I.B. itself uses for its own menu),
-   - then runs the mod's installer straight away (status/profile check → hook + player install),
-   - and writes **one diagnostic file** (`diag.txt`, see below) whatever the outcome.
-5. **Arm the map** (v0.4.20 default: the map stays stock until you arm it — the files are staged, nothing is live yet). Put an empty file named `HOOK_ARMED` (or `ARMNOW.TXT`) into `mod/cluster_aa/` on the card and run the same “Run /mod/custom.sh” entry once more. An armed run backs up the unit's stock player as `stream-player.aacluster-original`, so Uninstall restores it byte-for-byte.
-6. **Reboot the unit** (hold the power button ~10 s). Back in GEM you now have a new **top-level `ClusterMap` screen**: Status / Install / Uninstall / Keep-map / Verify / logs.
-7. **Use it:** plug your phone into USB, open Google Maps or Waze, switch the cluster to map view. Done.
+   That single run:
+   - validates the screen file, then puts the mod's **`ClusterMap`** screen on the unit (the same mechanism M.I.B. itself uses for its own menu),
+   - stages and **arms** the hook (the shipped payload carries the `HOOK_ARMED` marker), backing up the unit's stock player as `stream-player.aacluster-original`,
+   - writes **one diagnostic file** (`diag.txt`, see below) whatever the outcome.
+5. **Reboot the unit** (hold the power button ~10 s). Back in GEM you now have a new **top-level `ClusterMap` screen**: Status / Install / Make live / Uninstall / Keep-map / Verify / logs. The map is on the cluster.
+6. **Use it:** plug your phone into USB, open Google Maps or Waze, switch the cluster to map view. Done.
+
+**Want it staged but not live?** Delete `mod/cluster_aa/HOOK_ARMED` from the card before step 4. The run then touches nothing live, and the GEM's **“2b. Make the map LIVE”** entry arms it later — no card edit, no PC.
 
 ## One file to send if anything looks wrong
 

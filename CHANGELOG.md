@@ -1,5 +1,39 @@
 # Changelog
 
+### v0.4.21: one click = install + arm + GEM screen + diag (2026-11-08)
+
+The owner asked for the two manual steps (arm the map, fetch the diag) to
+disappear. They are now automatic:
+
+- **The release zip ships ARMED** (`mod/cluster_aa/HOOK_ARMED` is in the
+  zip, created by `tools/build_release.sh`). One "Run /mod/custom.sh"
+  validates + installs the GEM screen, stages **and arms** the hook, backs
+  up the stock player, and writes the diagnostic file. Then reboot; the map
+  is on the cluster. The repository's own payload stays unarmed and the
+  build fails if that ever flips, so tests/dev can never arm a unit by
+  accident. `tools/check_release_build.sh` (now part of the gate) asserts
+  the whole one-click contract on a real build.
+- **GEM "2b. Make the map LIVE"** — new ClusterMap entry that arms the hook
+  from the GEM itself (`menus.sh arm`), so the stage-only path needs no card
+  edit and no PC. To go stage-only, delete `HOOK_ARMED` from the card.
+- **Ordering kept as a safety rule:** the screen file is validated and
+  written FIRST; any failure there stops before the installer, so a broken
+  screen can never meet a live hook. `.prev` and the persistent supervisor
+  backup are unchanged.
+- **Fixed: every ClusterMap menu entry was dead.** `menus.sh` sourced
+  `greenmenu/lib_app_mount.sh`, which does not exist in the payload — the
+  unreadable source line exited the dispatcher with rc 2, so clicking any
+  item did nothing. It now loads the real `scripts/lib_app_mount.sh` and a
+  missing copy can never kill the menu. Regression test parses the screen
+  file and asserts every `menus.sh <verb>` has a dispatcher case (and that
+  the template and the pre-built screen agree).
+- Stale console paths removed from the dispatcher messages (they still named
+  `mod/cluster_map_aa_greenmenu/diag.txt`).
+
+Offline gate: **34 tests** (added: GEM arm makes a staged install live,
+arm is idempotent, dispatcher covers every screen verb, release-zip
+one-click contract).
+
 ### v0.4.20: the card is never written + a diag file on EVERY exit (2026-11-08)
 
 Root cause of the recurring "the SD card is READ-ONLY" reports: **our own

@@ -5,15 +5,22 @@
 # gone in this design; this file + status.sh (classic) are the entry points).
 #
 #   menus.sh <verb> [arg]
-#     install | uninstall | logs | status
+#     install | arm | uninstall | logs | status
 #     zoom|navstrip|cardclear|remote|tbt <argument>
 #     (the plain upstream screens keep their own scripts too)
 HERE=`dirname "$0"`
-. "$HERE/lib_app_mount.sh" 2>/dev/null || . "$HERE/lib_app_mount.sh"
+# The shared view/remount helpers live in the payload's scripts/ folder. The
+# dispatcher does not strictly need them, so a missing copy must NEVER kill
+# the menu (an unreadable source line exits the whole script: every screen
+# entry would silently do nothing).
+for _l in "$HERE/lib_app_mount.sh" "$HERE/../scripts/lib_app_mount.sh"; do
+    if [ -r "$_l" ]; then . "$_l"; break; fi
+done
+unset _l
 
 # QUIET GEM CONSOLE (owner rule): what the console shows is the curated
-# "story" of the run (about a dozen lines); the whole output goes into the
-# card's diag bundle (diag.txt). Verbs that print a couple of lines by
+# "story" of the run (about a dozen lines); the whole output goes into
+# the diag bundle (diag.txt). Verbs that print a couple of lines by
 # design (switches, porting) keep direct output.
 run_quiet() {
     _child=$2
@@ -22,14 +29,19 @@ run_quiet() {
     trap '' 2
     sh "$_child" >$_log 2>&1
     sh "$HERE/console_summary.sh" "$_log"
-    echo "(full log on the card: mod/cluster_map_aa_greenmenu/diag.txt)"
+    echo "(full log: diag.txt next to this card folder)"
     sh "$HERE/diag_collect.sh" append-run "$_log"
     echo "(the diag bundle holds the full run and the unit state)"
 }
 
 case "$1" in
-    diag)      sh "$HERE/diag_collect.sh" append-run "$2"; echo "diag bundle written: mod/cluster_map_aa_greenmenu/diag.txt"; ;;
+    diag)      sh "$HERE/diag_collect.sh" append-run "$2"; echo "diag bundle written (diag.txt next to this card folder)"; ;;
     install)   run_quiet install   "$HERE/install.sh" ;;
+    # ARM = the one deliberate "make it live" action, reachable from the GEM
+    # itself: no card edit and no PC needed. Nothing else in the payload ever
+    # arms the hook on its own.
+    arm)       CLUSTERMAP_HOOK_ARMED=1; export CLUSTERMAP_HOOK_ARMED
+               run_quiet arm "$HERE/install.sh" ;;
     uninstall) run_quiet uninstall "$HERE/uninstall.sh" ;;
     status)    run_quiet status    "$HERE/status.sh" ;;
     logs)      sh "$HERE/savelogs.sh" ;;
