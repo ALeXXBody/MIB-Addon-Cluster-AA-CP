@@ -82,6 +82,13 @@ survives reboots. The only card write left is ONE best-effort copy of the
 diagnostic bundle (`mod/cluster_aa/diag.txt`), and a card that refuses it
 changes nothing (the RAM copy stays authoritative).
 
+**Why the card copy may be absent (the usual cause):** the unit mounts a FAT
+card **read-only** when the volume's dirty bit is set — which happens after a
+card is pulled from the PC without a proper eject. The run still installs and
+the map still works, but `diag.txt` never lands on the card and the GEM
+screen says so: `card copy: NOT WRITTEN`. On the next run the screen also
+prints the picture-tuning facts, so send the photo while you fix the card.
+
 Why this matters: our own earlier writes to the FAT card set its dirty bit,
 and QNX then mounted the card read-only on the **next boot** — the source of
 every “SD card is READ-ONLY” report since the first release. That diagnosis

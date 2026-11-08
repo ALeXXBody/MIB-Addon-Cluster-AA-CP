@@ -29,13 +29,13 @@ run_quiet() {
     trap '' 2
     sh "$_child" >$_log 2>&1
     sh "$HERE/console_summary.sh" "$_log"
-    echo "(full log: diag.txt next to this card folder)"
-    sh "$HERE/diag_collect.sh" append-run "$_log"
-    echo "(the diag bundle holds the full run and the unit state)"
+    # -v: the collector prints where the bundle is and whether the card copy
+    # really happened (a silent failure there is not evidence, it is a hunt).
+    sh "$HERE/diag_collect.sh" append-run "$_log" -v
 }
 
 case "$1" in
-    diag)      sh "$HERE/diag_collect.sh" append-run "$2"; echo "diag bundle written (diag.txt next to this card folder)"; ;;
+    diag)      sh "$HERE/diag_collect.sh" append-run "$2" -v ;;
     install)   run_quiet install   "$HERE/install.sh" ;;
     # ARM = the one deliberate "make it live" action, reachable from the GEM
     # itself: no card edit and no PC needed. Nothing else in the payload ever

@@ -30,7 +30,16 @@ Every install/uninstall/settings run writes a single diagnostic file and
 prints its name on the GEM screen:
 
 - `/tmp/clustermap_diag/diag.txt` on the unit (RAM, always, authoritative),
-- copied best-effort to `mod/cluster_aa/diag.txt` on the card.
+- copied **and verified** onto the card at `mod/cluster_aa/diag.txt`, through
+  the first card view spelling that actually accepts a write.
+
+**The console tells the truth about the card copy.** Since v0.4.22 every run
+ends with `card copy: <path>` when the copy landed, or
+`card copy: NOT WRITTEN - the card is read-only to the unit` when it did not
+— plus the tuning facts right there on the screen, so a photo of the GEM
+screen is enough to fine-tune even with no card copy. (v0.4.21 failed that
+copy silently, which is why a card could show no diag.txt at all while the
+map worked.)
 
 Send that one file (plus a cluster photo if the picture is the issue). It
 carries the unit/train facts, the card and unit views, the arm state, the

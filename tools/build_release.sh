@@ -87,6 +87,14 @@ IF THE MAP DOES NOT APPEAR (or you want to go step by step):
    the card afterwards (the new folder is mod/cluster_aa; both are found,
    but only one is needed).
 
+IF THE SCREEN SAYS "card copy: NOT WRITTEN":
+   the map still installs (that is read-side, which always works), but the
+   card is mounted read-only by the unit - almost always because the card
+   was pulled from a PC without a proper eject. Fix on the PC: put the card
+   back and eject it properly (or chkdsk /f X: once), then use the GEM's
+   "10/11. Save logs" entry and the diag.txt appears on the card. Until
+   then, photograph the screen: it prints the tuning facts right below.
+
 ONE FILE TO SEND IF ANYTHING LOOKS WRONG:
    every run writes a diagnostic file and prints its name on the GEM
    screen. It is /tmp/clustermap_diag/diag.txt on the unit and is also

@@ -41,7 +41,7 @@ unset LD_PRELOAD
 CM_DIAG_DIR=/tmp/clustermap_diag
 mkdir -p "$CM_DIAG_DIR" 2>/dev/null
 CM_CONSOLE_LOG="$CM_DIAG_DIR/console.log"
-: > "$CM_CONSOLE_LOG" 2>/dev/null
+( : > "$CM_CONSOLE_LOG" ) 2>/dev/null   # subshell: dash exits the WHOLE script when a special builtin's redirect fails
 say() { echo "$@"; echo "$@" >> "$CM_CONSOLE_LOG" 2>/dev/null; }
 OUT=""
 SD=""
@@ -71,7 +71,10 @@ finish() {
 			cat "$CM_CONSOLE_LOG" 2>/dev/null
 		} > "$_CMB" 2>/dev/null
 		if [ -n "$_DC" ]; then
-			sh "$_DC" append-run "$_CMB" >/dev/null 2>&1
+			# -v: the collector narrates the delivery on the console — the
+			# bundle path, and the TRUTH about the card copy (silence there
+			# is how a missing diag.txt became a mystery in v0.4.21).
+			sh "$_DC" append-run "$_CMB" -v
 		else
 			# No payload reachable: still leave a file on the unit.
 			mkdir -p "$CM_DIAG_DIR" 2>/dev/null
@@ -82,11 +85,9 @@ finish() {
 				cat "$CM_CONSOLE_LOG" 2>/dev/null
 			} > "$CM_DIAG_DIR/diag.txt" 2>/dev/null
 		fi
-		_DV="$CM_DIAG_DIR/diag.txt"
-		[ -r "$CM_DIAG_DIR/LAST_PATH" ] && _DV=`cat "$CM_DIAG_DIR/LAST_PATH"`
-		say "Send me this ONE file: $_DV"
-		[ -r "$CM_DIAG_DIR/LAST_CARD_PATH" ] && \
-			say "  (copy on the card: `cat "$CM_DIAG_DIR/LAST_CARD_PATH"`)"
+		if [ -z "$_DC" ]; then
+			say "Send me this ONE file: $CM_DIAG_DIR/diag.txt"
+		fi
 	fi
 	trap 2
 	exit $_rc

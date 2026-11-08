@@ -555,3 +555,44 @@ one-click; the mitigations are the validated screen-before-hook ordering,
 `.prev`, the persistent config backup, `rescue_revert.sh`, and the fact that
 the diag bundle is written BEFORE the reboot, so evidence survives even a
 hung GEM.
+
+---
+
+## 14. Round v0.4.22 — why there was NO diag.txt on the card (2026-11-08)
+
+**Report:** "there is no diag.txt file on the card after the addon install…
+aa is showing in cluster". Install worked (map live), card copy did not.
+
+**Root cause chain, by construction:**
+1. v0.4.21's collector delivered the card copy as `cp ... 2>/dev/null`
+   inside the exit trap — every failure mode invisible;
+2. the unit mounts a FAT card **read-only** when the dirty bit is set
+   (unclean eject on a PC -- our own 2026 diagnostic, round ~12), so an
+   owner who copied freely and pulled the card gets a read-only card whose
+   read side is fine: installs work, downloads work, the map runs;
+3. the GEM console then said NOTHING about the card at all (the card line
+   only printed on success), so "no diag.txt" was indistinguishable from
+   "the run never wrote the bundle".
+
+**Fixes (no symptom patches):**
+- `/tmp` stays authoritative, and the card copy is now a **real operation
+  with a contract**: probe each spelling of the payload folder with an
+  actual 0-byte write (only one may accept writes on a QNET unit), copy via
+  redirection (no `cp` dependency), checksum-verify, `sync`, and narrate the
+  outcome either way. On refusal the console prints `NOT WRITTEN - the card
+  is read-only to the unit`, the PC fix (proper eject / chkdsk), and the
+  six tuning facts so a screen photo replaces the file for tuning round.
+- **Found while testing:** POSIX shells (dash) EXIT when a special builtin's
+  redirection fails, so `: > probe` would kill the whole delivery script
+  exactly in the read-only case — the one case it exists for. All three
+  `: >` redirections (custom.sh console log, bundle scratch, card probe) are
+  now subshell-isolated. This class of bug is why "the foul fall must be
+  tested on the map we don't control": the sim emulated read-only card views
+  and caught it immediately.
+- Tests: read-only card → spoken aloud + facts printed + no bogus claim;
+  blocked first spelling → falls through to the writable spelling and NAMES
+  it; happy path → the copy line is always there.
+
+**Instruction to the owner in the release HOW-TO:** if the screen says
+NOT WRITTEN, put the card in a PC and eject it properly (or chkdsk /f X:)
+once, then use GEM -> ClusterMap -> 10/11. Save logs — the file appears.

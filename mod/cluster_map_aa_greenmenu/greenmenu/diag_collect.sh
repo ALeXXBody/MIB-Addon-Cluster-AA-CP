@@ -26,7 +26,19 @@
 
 HERE=`dirname "$0"`
 PKG=`cd "$HERE/.." && pwd`
-VERBOSE=${1:--}
+
+# Arguments, in any order (callers use both "[-v]" and "[append-run] [log]"):
+#   append-run   append the 11/12 sections (the curated + full run log)
+#   <log file>   the log to append
+#   -v           narrate the delivery on stdout (the GEM console)
+MODE=""; RUNLOG=""; VERBOSE=0
+for _a in "$@"; do
+    case "$_a" in
+        -v)         VERBOSE=1 ;;
+        append-run) MODE=append-run ;;
+        *)          [ -f "$_a" ] && RUNLOG="$_a" ;;
+    esac
+done
 
 # Portable helpers (the unit shell again: no printf/tr/diff bashisms).
 # RULE — THE CARD IS NEVER WRITTEN during normal operation. The bundle is
@@ -36,7 +48,7 @@ VERBOSE=${1:--}
 # the /tmp file remains the source of truth and the console names it.
 mkdir -p /tmp/clustermap_diag 2>/dev/null
 TMP=/tmp/clustermap_diag/diag.tmp.$$
-: > "$TMP" || { echo "diag_collect: cannot write /tmp/clustermap_diag" >&2; exit 1; }
+( : > "$TMP" ) 2>/dev/null || { echo "diag_collect: cannot write /tmp/clustermap_diag" >&2; exit 1; }
 OUT=/tmp/clustermap_diag/diag.txt
 
 SRC=`dirname "$0"`
@@ -189,36 +201,109 @@ section "10 install home record"
 
 # ---- 11. last run summary (appended by custom.sh / menus.sh)
 section "11 last run summary (curated result lines)"
-if [ "$1" = append-run ] && [ -r "$2" ] && [ -n "$2" ]; then
-    "$HERE/console_summary.sh" "$2" >> "$TMP" 2>/dev/null
+if [ "$MODE" = append-run ] && [ -r "$RUNLOG" ] && [ -n "$RUNLOG" ]; then
+    "$HERE/console_summary.sh" "$RUNLOG" >> "$TMP" 2>/dev/null
 fi
 # (the caller appends after us)
 
 # ---- 12. full log of the last operation (the pages the console used to)
 section "12 full log of the last operation (capped at 400 lines)"
-if [ "$1" = append-run ] && [ -r "$2" ] && [ -n "$2" ]; then
-    head -400 "$2" >> "$TMP" 2>/dev/null
+if [ "$MODE" = append-run ] && [ -r "$RUNLOG" ] && [ -n "$RUNLOG" ]; then
+    head -400 "$RUNLOG" >> "$TMP" 2>/dev/null
 fi
 
 # ---- deliver ----------------------------------------------------------------
-# The guaranteed home is /tmp. Keep the newest bundle plus one previous copy
-# (so a run that went bad does not destroy the last good evidence):
-[ -r "$OUT" ] && cp "$OUT" "$OUT.prev" 2>/dev/null
+# The guaranteed home is on the unit (/tmp). Keep the newest bundle plus one
+# previous copy (a run that went bad must not destroy the last good evidence).
+[ -r "$OUT" ] && cat "$OUT" > "$OUT.prev" 2>/dev/null
 [ -s "$TMP" ] || echo "(empty bundle)" >> "$TMP"
-mv "$TMP" "$OUT" 2>/dev/null || { cat "$TMP" >> "$OUT" 2>/dev/null; rm -f "$TMP"; }
-# ONE best-effort copy onto the card, so the owner can pull a single file.
-# Failure here is silent and harmless: the /tmp bundle stays authoritative.
-CARDOUT=""
-if [ -d "$PKG" ] && cp "$OUT" "$PKG/diag.txt" 2>/dev/null; then
-    CARDOUT="$PKG/diag.txt"
-    [ -r "$OUT.prev" ] && cp "$OUT.prev" "$PKG/diag.txt.prev" 2>/dev/null
-    sync 2>/dev/null || true
-fi
+cat "$TMP" > "$OUT" 2>/dev/null || cp "$TMP" "$OUT" 2>/dev/null
+rm -f "$TMP" 2>/dev/null
 echo "$OUT" > /tmp/clustermap_diag/LAST_PATH 2>/dev/null
-[ -n "$CARDOUT" ] && echo "$CARDOUT" > /tmp/clustermap_diag/LAST_CARD_PATH 2>/dev/null
 
-if [ "$VERBOSE" = "-v" ]; then
-    echo "diag bundle written: $OUT"
-    [ -n "$CARDOUT" ] && echo "copy on the card:   $CARDOUT"
+# ONE copy onto the card, so the owner can pull a single file.
+#
+# Two hard lessons are baked in here:
+#  1. no silent failure. v0.4.21 shipped a `cp ... 2>/dev/null` that could
+#     fail while the console said nothing — the owner then hunted a file
+#     that was never written. The outcome is now REPORTED, and the tuning
+#     facts are printed when the card refuses, so a console photo still
+#     carries the numbers.
+#  2. the same folder can be reachable through several spellings and only
+#     ONE of them may accept writes (the app/system ladders taught us this).
+#     So probe every spelling of the payload folder and use the first that
+#     really takes the bytes, then verify the copy.
+CARDOUT=""
+if [ -d "$PKG" ]; then
+    for _root in "$VOLUME" /fs/sda0 /fs/sdb0 /fs/sda1 /net/mmx/fs/sda0 \
+                 /net/mmx/fs/sdb0 /net/mmx.mibhigh.net/fs/sda0 \
+                 /net/mmx.mibhigh.net/fs/sdb0; do
+        [ -n "$_root" ] && [ -d "$_root" ] || continue
+        # the payload layout under this spelling (same list find_card uses;
+        # no string surgery, so this works in every sh the unit ships)
+        _h=""
+        for _rel in mod/cluster_aa mod/cluster_map_aa_greenmenu ClusterMap \
+                    cluster_map_aa_greenmenu mod/ClusterMap; do
+            if [ -f "$_root/$_rel/enable_hook.sh" ]; then
+                _h="$_root/$_rel"; break
+            fi
+        done
+        [ -n "$_h" ] || continue
+        # writable HERE? (a probe that really writes, through this spelling)
+        # subshell form: dash ABORTS the whole shell when a special
+        # builtin's redirection fails, which made the run die at the probe.
+        if ! ( : > "$_h/.clustermap_card_probe" ) 2>/dev/null; then
+            continue
+        fi
+        rm -f "$_h/.clustermap_card_probe" 2>/dev/null
+        # write without depending on `cp`, with the shell's own redirection
+        if cat "$OUT" > "$_h/diag.txt" 2>/dev/null && [ -s "$_h/diag.txt" ]; then
+            # verified copy: same checksum when cksum exists, else non-empty
+            _ok=1
+            if command -v cksum >/dev/null 2>&1; then
+                _a=`cksum "$OUT" 2>/dev/null | awk '{print $1" "$2}'`
+                _b=`cksum "$_h/diag.txt" 2>/dev/null | awk '{print $1" "$2}'`
+                [ -n "$_a" ] && [ "$_a" = "$_b" ] || _ok=0
+            fi
+            if [ "$_ok" = 1 ]; then
+                CARDOUT="$_h/diag.txt"
+                [ -r "$OUT.prev" ] && cat "$OUT.prev" > "$_h/diag.txt.prev" 2>/dev/null
+                sync 2>/dev/null || true
+                break
+            fi
+            rm -f "$_h/diag.txt" 2>/dev/null
+        fi
+    done
+fi
+
+if [ -n "$CARDOUT" ]; then
+    echo "$CARDOUT" > /tmp/clustermap_diag/LAST_CARD_PATH 2>/dev/null
+    rm -f /tmp/clustermap_diag/LAST_CARD_ERR 2>/dev/null
+else
+    rm -f /tmp/clustermap_diag/LAST_CARD_PATH 2>/dev/null
+    echo "the unit cannot write the card view (read-only FAT: unclean eject, or no writable spelling)" \
+        > /tmp/clustermap_diag/LAST_CARD_ERR 2>/dev/null
+fi
+
+# ---- the fine-tune facts (printed when the card refused the copy) -----------
+facts() {
+    for _k in GAL_PLAYER_WINDOW GAL_SECONDARY_DPI GAL_SECONDARY_INSETS \
+              GAL_SECONDARY_MARGINS GAL_PLAYER_ZOOM_E4 CLUSTERMAP_FULL_FRAME; do
+        _l=`grep "^$_k" "$CONF" 2>/dev/null | head -1`
+        [ -n "$_l" ] && echo "  $_l"
+    done
+}
+
+if [ "$VERBOSE" = 1 ]; then
+    echo "diag bundle: $OUT"
+    if [ -n "$CARDOUT" ]; then
+        echo "card copy:   $CARDOUT"
+    else
+        echo "card copy:   NOT WRITTEN - the card is read-only to the unit."
+        echo "             On a PC: eject the card safely (not just pull it),"
+        echo "             then GEM -> ClusterMap -> \"10/11. Save logs\"."
+        echo "             If you cannot, photograph these lines instead:"
+        facts
+    fi
 fi
 exit 0

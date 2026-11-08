@@ -1,5 +1,40 @@
 # Changelog
 
+### v0.4.22: the card copy of diag.txt is verified and spoken aloud (2026-11-08)
+
+The report that started this round: "there is no diag.txt file on the card
+after the addon install… aa is showing in cluster". The map installed fine;
+the card copy had failed **silently** — v0.4.21's collector did
+`cp ... 2>/dev/null` inside its exit trap, so a card the unit cannot write
+(read-only FAT from an unsafe eject — the known QNX dirty-bit behaviour)
+looked like "nothing".
+
+- The delivery is now **verified and spoken**: the console always prints
+  `diag bundle: /tmp/…` and either `card copy: <path>` (a checksum-verified
+  copy) or `card copy: NOT WRITTEN - the card is read-only to the unit`,
+  followed by the PC fix and the picture-tuning facts (`GAL_PLAYER_WINDOW`,
+  `GAL_SECONDARY_DPI`, `GAL_SECONDARY_INSETS`, zoom, full-frame) printed
+  right on the GEM screen — a photo of the screen is enough to fine-tune
+  even with no card copy.
+- **Write-without-cp**: the copy uses shell redirection (`cat > file`) and a
+  checksum check instead of `cp` — the unit shells bundle their own tools,
+  and a missing `cp` was one of the ways the copy could silently fail.
+- **Every card spelling is probed**: the payload folder is reachable under
+  several views (`/fs/sda0`, `/net/mmx/...`, FQDN ~) and only SOME accept
+  writes; the collector probes each with a real 0-byte write and copies
+  through the first that takes bytes, then verifies.
+- **Real bug found by the offline suite in the process:** writing the
+  writability probe as `: > file` can ABORT the whole shell (POSIX: a
+  redirection error on a special builtin exits — dash does exactly that).
+  All three such redirections in the add-on (console log, bundle scratch
+  file, card probe) are now subshell-isolated.
+- Same truthful narration on every path: the one-click installer (`custom.sh`
+  exit trap) and every GEM menu verb (`menus.sh run_quiet`, `diag` verb).
+
+Offline gate: **37 tests** (new: card read-only is said out loud with the
+tuning facts; the copy falls through to a writable spelling and is named;
+every run narrates the card copy on success).
+
 ### v0.4.21: one click = install + arm + GEM screen + diag (2026-11-08)
 
 The owner asked for the two manual steps (arm the map, fetch the diag) to
