@@ -54,6 +54,9 @@ case "$VERB" in
     hiresen)
         BODY="reboot the unit (power button ~10 s); the trial key lands at the next gal start; press Hi-res OFF to undo"
         ;;
+    idrpump)
+        BODY="reboot the unit (power button ~10 s); the pump lands at the next gal start; press Sharpness pump OFF to undo"
+        ;;
     status)
         BODY="nothing required - stay or leave (Back), your call"
         ;;

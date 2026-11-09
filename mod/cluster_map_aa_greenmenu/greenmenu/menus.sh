@@ -68,6 +68,7 @@ case "$1" in
     tbt)       run_quiet tbt       "$HERE/switch_to_turn_by_turn.sh" ;;
     position)  run_quiet position  "$HERE/position.sh" "$2" ;;
     hiresen)   run_quiet hiresen   "$HERE/hiresen.sh" "$2" ;;
+    idrpump)   run_quiet idrpump   "$HERE/idrpump.sh" "$2" ;;
     zoom)      run_quiet zoom      "$HERE/zoom.sh" "$2" ;;
     navstrip)  run_quiet navstrip  "$HERE/navstrip.sh" "$2" ;;
     cardclear) run_quiet cardclear "$HERE/card_clear.sh" "$2" ;;

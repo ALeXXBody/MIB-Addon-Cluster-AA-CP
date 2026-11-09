@@ -1124,3 +1124,28 @@ the switch is inert for an older hook). **On the wire, honestly:**
 higher-coded frames need more bitrate than the phone's default cluster
 stream; if the encoder starves, configure the phone or remove the key
 and reboot.
+
+---
+
+## 32. Round v0.6.1 - the IDR pump: the sharpener between the phone's own 60 s key frames
+
+**What it does:** a steady streaming session re-keys only at the phone's
+own ~60 s GOP; text drifts softer toward each gap (the owner's last
+"texture is not clear" feeling). The pump deliberately bounces the
+secondary's video focus for ~1.5 s every N seconds - the controller's own
+loss path (mode 2, player KEPT, back to grant), so the phone re-opens the
+stream with a fresh IDR. Net effect: every gap between sharp frames
+stays well below the phone's own cadence, at the cost of a brief blink
+per respin (at the 10-20 fps cap that is 1-2 frames).
+
+**The rules it lives under (insides of focus_ctl.c):**
+- opt-in only: GAL_IDR_PUMP=SECONDS (>= 10, <= 300; anything else logs
+  off); OFF is byte-identical to v0.6.0;
+- the pump fires ONLY behind the controller's own health gate
+  (FC_HEALTHY_MS + recent ACK): it cannot fire on a sick session, while
+  the mailbox holds an intent, or during teardown;
+- every grant resets the countdown, so the pump never overlaps its own
+  recovery; the log carries `event=idr.pump action=respin` +
+  `event=focus.loss reason=idr_pump player=kept`;
+- the player is never killed in the pump (stop_player = 0), so no backoff
+  and no re-spawn: the on-car cost is only the blink.
