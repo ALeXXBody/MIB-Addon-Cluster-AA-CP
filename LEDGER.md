@@ -1250,3 +1250,48 @@ GAL_CLUSTER_REMOTE (this boot's switches wrote other lines over an
 install whose engine copy wasn't refreshed?): the same press, after the
 fixed probe lands, re-applies it (ClusterMap -> Cluster remote ON).
 The hook is v0.6.1's binary and consumes it at the next gal start.
+
+---
+
+## 37. Round v0.7.0 - the in-cluster menu (no GEM trip while driving)
+
+**Owner ask:** "recreate the GEM menu visible in the cluster when AA is
+activated, to activate/deactivate functions without going in GEM."
+
+**Delivered, using both halves the fork already had (the cluster-remote
+wheel key injection + the player's overlay renderer):**
+
+- **Hook (rebuilt, build id v0.7.0):** with `GAL_CLUSTER_MENU=1` (a
+  plain line in gal_dualscreen.conf) the hook routes the wheel into the
+  player's menu instead of acting itself: SHORT OK opens the menu (and
+  applies the chosen row as "sel"), the ROTARY navigates (up/down
+  forwarded), LONG OK keeps the strip toggle (owner's muscle memory).
+  The gestures reach the player as one-line events in
+  /tmp/stream-player.menu.
+- **Player (rebuilt):** player/menu.h: a 6-row overlay over the map,
+  drawn luma-only (the same 5x7 font and backing bar as the strip; no
+  extra GL state), rows with their live values, chosen row indented and
+  brighter, auto-close after 8 s of inactivity:
+    Zoom (live via /tmp/stream-player.zoom)
+    Strip (live via /tmp/stream-player.navstrip)
+    Card (LIVE-cycle of the ETA-card pose via /tmp/gal_uiconfig -
+          the hook's ui-config sender puts it on the wire immediately)
+    Pump (live via /tmp/gal_idr_pump - the focus controller polls it
+          1x/s while healthy)
+    Hi-res (next phone session via /tmp/gal_hires; the hook reads it
+          when it builds the session)
+    Exit
+- **Runtime rereads** so the menu rows are honest: the pump period polls
+  the file per respin decision; Hi-res is read per session build (next
+  session; no gal restart needed).
+- **GEM:** ClusterMap gains Cluster menu ON/OFF (the same audited write
+  path, verdict tail, copy-the-key flow). OFF = exactly the previous
+  wheel behaviour (short OK cycles the ETA card).
+- The menu is a library-level feature: inert for an older hook
+  (nothing reads the key) and requires the cluster-remote channel
+  (v0.6.4's Cluster remote ON press) for the wheel input.
+
+**On the build:** both binaries rebuilt with the recorded toolchain
+(hook v0.7.0, stream-player relinked against the existing ffmpeg-mini
+static libs); the wheel channel itself was ALREADY proven on this car
+(the route through 0x8001 that the owner's earlier presses used).

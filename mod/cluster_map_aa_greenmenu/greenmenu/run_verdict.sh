@@ -57,6 +57,9 @@ case "$VERB" in
     idrpump)
         BODY="reboot the unit (power button ~10 s); the pump lands at the next gal start; press Sharpness pump OFF to undo"
         ;;
+    clustermenu)
+        BODY="reboot the unit (power button ~10 s); then SHORT OK opens the menu on the cluster, rotary applies, LONG OK stays the strip toggle"
+        ;;
     etacard)
         BODY="reconnect the phone: the card takes its new edge; stamp the look with a photo + Save logs"
         ;;

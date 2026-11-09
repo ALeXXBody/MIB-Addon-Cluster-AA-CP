@@ -70,6 +70,7 @@ case "$1" in
     hiresen)   run_quiet hiresen   "$HERE/hiresen.sh" "$2" ;;
     idrpump)   run_quiet idrpump   "$HERE/idrpump.sh" "$2" ;;
     etacard)   run_quiet etacard   "$HERE/etacard.sh" "$2" ;;
+    clustermenu) run_quiet clustermenu "$HERE/clustermenu.sh" "$2" ;;
     zoom)      run_quiet zoom      "$HERE/zoom.sh" "$2" ;;
     navstrip)  run_quiet navstrip  "$HERE/navstrip.sh" "$2" ;;
     cardclear) run_quiet cardclear "$HERE/card_clear.sh" "$2" ;;

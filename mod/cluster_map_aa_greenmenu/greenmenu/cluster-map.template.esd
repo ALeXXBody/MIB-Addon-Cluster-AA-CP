@@ -108,6 +108,14 @@ script
     label   "Sharpness pump: OFF (reboot after)"
 
 script
+    value   sys 1 0x0100 "@GREENMENU@gem/clustermenu_on.sh"
+    label   "Cluster menu: ON (wheel-operated overlay; reboot after)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@gem/clustermenu_off.sh"
+    label   "Cluster menu: OFF (reboot after)"
+
+script
     value   sys 1 0x0100 "@GREENMENU@gem/etacard_top.sh"
     label   "ETA card: TOP strip (the shipped pose)"
 
