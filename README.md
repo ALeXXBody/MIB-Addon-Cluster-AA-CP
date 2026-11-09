@@ -1,5 +1,8 @@
 # M.I.B. Add-on — Cluster AA/CP
 
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ffdd00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/ALeXXBody)
+
+
 **Android Auto map on the Virtual Cockpit (digital instrument cluster)** on Volkswagen MQB-platform cars with the Harman MHI2 (MIB2.5 High) head unit — packaged as an **M.I.B. mod**.
 
 **Install = copy & paste only. You never edit any file.** The mod ships with M.I.B.'s own documented hook (`mod/custom.sh`): one click in M.I.B.'s GEM installs everything; M.I.B.'s `Launcher-sda0.esd` is never touched.
