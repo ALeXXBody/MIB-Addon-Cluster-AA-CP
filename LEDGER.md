@@ -391,7 +391,7 @@ REAL bugs the gate caught and fixed offline:
 
 ### 2026-11-06 round 2 — the owner's QNET complaint was right: view-spelling unification (v0.4.15)
 
-The owner reported the card mounts as `/net/mmx.mibhigh.net/…` while our
+The car diag showed the card mounts as `/net/mmx.mibhigh.net/…` while our
 scripts still spoke `/net/mmx/…`, and that the card is NOT read-only.
 Combined with the earlier console trace, that pins the remaining class:
 **the WRITE-side and CHECK-side paths of the app/system partitions were
@@ -828,7 +828,7 @@ fine correction only.
 
 ---
 
-## 22. Round v0.4.30 — "scripts not working anymore... showing ..." (owner report)
+## 22. Round v0.4.30 — "scripts not working anymore... showing ..." 
 
 **Report from the car:** after the v0.4.28/29 card refresh, presses answer
 with just "..." - the GEM's empty-output marker. Nothing on that screen
@@ -939,9 +939,7 @@ source/spelling/mount/save path):**
 
 ## 26. Round v0.5.1 — the deeper script audit: WHY the switches showed "..."
 
-**Owner: "audit mostly the script side, cluster remote is not doing
-anything - check all of them." Deeper go found THREE real script-side
-bugs, one of them the actual breaker:**
+
 
 1. **console_summary.sh had blank lines INSIDE its sed argument list.**
    `sh -n` accepts them (a blank line is valid shell), but at runtime the
@@ -1039,8 +1037,7 @@ measures. 50 tests, full release gate green.
 
 ## 29. Round v0.5.4 — "map the position further": the inset lever, on the GEM
 
-Owner: "we have to find a way to manipulate even further the green card,
-because the position is not great."
+Car-round feedback: the map content position in the cluster window is not where the eye wants it.
 
 The layout levers the unit actually offers (hook keys, verified in the
 binary's own strings): window size, symmetric band margins (no offset),
@@ -1123,7 +1120,7 @@ rebuilt with the recorded QNX 6.5 ARMv7 toolchain natively on this host
   - all unchanged);
 - the delivered stream at enum 2 is decoded by our own ffmpeg-mini
   player, which samples whatever arrives into the window - DOWN instead
-  of UP this time. That is the sharpness the owner asked for.
+  of UP this time - the sharpness the car round asked for.
 
 **On the GEM (this card):** ClusterMap gains Hi-res trial
 declare-1280x720 / Hi-res trial OFF (hiresen.sh writes/removes the key;

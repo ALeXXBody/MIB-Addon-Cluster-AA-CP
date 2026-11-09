@@ -37,8 +37,7 @@ every run narrates the card copy on success).
 
 ### v0.4.21: one click = install + arm + GEM screen + diag (2026-11-08)
 
-The owner asked for the two manual steps (arm the map, fetch the diag) to
-disappear. They are now automatic:
+Car-round feedback asked for the two manual steps (arm the map, fetch the diag) to disappear. They are now automatic:
 
 - **The release zip ships ARMED** (`mod/cluster_aa/HOOK_ARMED` is in the
   zip, created by `tools/build_release.sh`). One "Run /mod/custom.sh"

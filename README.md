@@ -164,3 +164,10 @@ before touching anything; update it when you learn something new.
 ## Licence
 
 Same upstream licence: GPL-3.0. See `LICENSE` and the per-file licence notes (`thirdparty/*.LICENSE`).
+
+
+## Support this project
+
+If this mod helps you with your Virtual Cockpit, consider buying me a coffee:
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ffdd00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/ALeXXBody)
