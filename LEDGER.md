@@ -1034,3 +1034,35 @@ remount grants on every qnx/boot layout observed. The offline gate's
 read-only emulation switched from "pre-existing file" to "directory at
 the probe name" (EISDIR blocks `: >`) so the tests measure what the unit
 measures. 50 tests, full release gate green.
+
+---
+
+## 29. Round v0.5.4 — "map the position further": the inset lever, on the GEM
+
+Owner: "we have to find a way to manipulate even further the green card,
+because the position is not great."
+
+The layout levers the unit actually offers (hook keys, verified in the
+binary's own strings): window size, symmetric band margins (no offset),
+zoom (centre-crop), and the FOUR content insets
+(GAL_SECONDARY_INSETS top,bottom,left,right in the 800x480 frame) - the
+phone's safe area, which moves the content box (turn card, labels, speed
+limit) INSIDE the map window. That is the position lever; the window
+origin itself belongs to the GEM/kombi window 33 (not touchable from a
+card honestly).
+
+v0.5.4 ships Position presets as first-class GEM entries, same contract
+as every switch (shared remount ladder, write through the winning alias,
+POSIX-safe rewrite through a rename, story in the bundle, DONE/Next
+tail, exit contract):
+- Content UP / DOWN - moves the content box a step up/down (8 px, repeat as wanted)
+- Content WIDER / NARROWER - box width steps
+- back to the shipped look - restores 40,40,127,127
+Every value lands at the NEXT phone session; a photo + Save logs locks
+the chosen values for the porting map. 52 tests (position: content up
+writes the insets through a working view; standard restores the shipped
+90... shipped values).
+
+Writing shipped through all shells' parsing: position.sh done single-level
+substitutions only (the nested-backtick round-27 class again pasted by
+this author's own tooling; caught by the 52-test gate before release).

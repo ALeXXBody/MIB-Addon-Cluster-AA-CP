@@ -48,6 +48,9 @@ case "$VERB" in
     portfull)
         BODY="send me the full porting bundle (mod/cluster_aa/porting/, named above)"
         ;;
+    position)
+        BODY="reconnect the phone: the content box sits at the new insets (step shown above); stamp the look with a photo + Save logs"
+        ;;
     status)
         BODY="nothing required - stay or leave (Back), your call"
         ;;

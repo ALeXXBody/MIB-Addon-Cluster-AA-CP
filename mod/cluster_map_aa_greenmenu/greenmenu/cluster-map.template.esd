@@ -71,6 +71,26 @@ script
     label   "Zoom 1.35 (crop-and-enlarge; live)"
 
 script
+script
+    value   sys 1 0x0100 "@GREENMENU@gem/position_higher.sh"
+    label   "Position: content UP a step (next phone session)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@gem/position_lower.sh"
+    label   "Position: content DOWN a step (next phone session)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@gem/position_wider.sh"
+    label   "Position: content WIDER (less side margin)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@gem/position_narrower.sh"
+    label   "Position: content NARROWER (more side margin)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@gem/position_standard.sh"
+    label   "Position: back to the shipped look"
+
     value   sys 1 0x0100 "@GREENMENU@gem/cardclear_top.sh"
     label   "Turn-card clear: TOP strip"
 

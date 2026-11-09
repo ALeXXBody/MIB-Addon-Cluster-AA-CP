@@ -87,3 +87,40 @@ def test_remote_report_verdict_when_nothing_can_be_remounted(car):
         f"the refusal is not measured in the bundle:\n"
         "== sections 11/12 ==\n"
         + "\n".join(bundle.splitlines()[-14:]))
+
+
+def test_position_preset_writes_insets_through_a_working_view(car):
+    """Position = the inset lever (content box placement), same contract
+    as every switch: probe-blocked local view cannot stop it, the write
+    lands through the spelling that took the remount, and the console
+    verdict says what happens next."""
+    _stage(car)
+    car.stage(LOCAL_APP, PROBE, b"")
+    p = car.run(["sh", "/fs/sda0/mod/cluster_aa/greenmenu/gem/position_higher.sh"],
+                expect_rc=0)
+    childlog = car.run(["cat", "/tmp/cm_menu_position.log"])
+    written = None
+    for v in APP_VIEWS:
+        f = pathlib.Path(v, "eso/lib/gal_dualscreen/gal_dualscreen.conf")
+        if f.is_file() and "GAL_SECONDARY_INSETS=32,48,127,127" in f.read_text():
+            written = f
+    assert written is not None, (
+        f"no position write landed\n{p.stdout}\n{p.stderr}\n"
+        f"--child log--\n{childlog.stdout}{childlog.stderr}")
+    bundle = pathlib.Path("/tmp/clustermap_diag/diag.txt").read_text()
+    assert "Position: higher" in bundle, bundle
+
+
+def test_position_standard_restores_the_shipped_insets(car):
+    _stage(car)
+    for v in APP_VIEWS:
+        f = pathlib.Path(v, "eso/lib/gal_dualscreen/gal_dualscreen.conf")
+        f.write_text("GAL_SECONDARY_INSETS=32,48,90,100\n")
+    car.run(["sh", "/fs/sda0/mod/cluster_aa/greenmenu/gem/position_standard.sh"],
+            expect_rc=0)
+    hit = False
+    for v in APP_VIEWS:
+        f = pathlib.Path(v, "eso/lib/gal_dualscreen/gal_dualscreen.conf")
+        if "GAL_SECONDARY_INSETS=40,40,127,127" in f.read_text():
+            hit = True
+    assert hit, "standard did not restore the shipped insets"
