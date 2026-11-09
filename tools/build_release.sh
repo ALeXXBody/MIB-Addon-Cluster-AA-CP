@@ -127,6 +127,16 @@ Full docs (photos, troubleshooting, updates): the repository README
 https://github.com/ALeXXBody/MIB-Addon-Cluster-AA-CP
 and the release page of this version ("what's new").
 HTI
+# The APPLY section (card update? one more GEM click? reboot?) is computed
+# from the real diff between the previous tag and THIS tag and appended to
+# the shipped HOW-TO (nothing here needs the release's own regime decisions).
+PREV_TAG=$(git tag --sort=-creatordate | grep -v "^$TAG$" | head -1)
+{ echo
+  if [ -n "$PREV_TAG" ]; then
+      sh tools/release_guide.sh "$PREV_TAG" "$TAG" 2>/dev/null || true
+  else
+      echo "(first release: the full install flow is the HOW-TO above)"
+  fi; } >> "$DIST/$NAME/HOW-TO-INSTALL.txt"
 
 if ! command -v zip >/dev/null 2>&1; then
     echo "ERROR: 'zip' not found" >&2

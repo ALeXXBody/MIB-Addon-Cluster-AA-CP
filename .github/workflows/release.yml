@@ -16,17 +16,29 @@ jobs:
           # the release body is read from the tag's own commit message
           fetch-depth: 0
 
-      - name: Release body = what this round shipped (the tag commit's message)
-        id: notes
-        run: |
-          {
-            echo "body<<GHR_BODY"
-            git log -1 --format=%B "$GITHUB_REF_NAME"
-            echo GHR_BODY
-          } >> "$GITHUB_OUTPUT"
-
       - name: Build the mod zip (same flow as the repo checks)
         run: tools/build_release.sh "$GITHUB_REF_NAME"
+
+      - name: The release body = what this round shipped (the tag commit's)
+        run: |
+          git log -1 --format=%B "$GITHUB_REF_NAME" > "dist/notes-base.md"
+
+      - name: Compute the APPLY guide from the real diff (previous tag .. this)
+        id: apply_guide
+        run: |
+          PREV=$(git tag --sort=-creatordate | grep -v "^$GITHUB_REF_NAME$" | head -1 || true)
+          {
+            echo "__GUIDE_START__"
+            sh tools/release_guide.sh "${PREV:-}" "$GITHUB_REF_NAME" || true
+            echo "__GUIDE_END__"
+          } > "dist/apply-guide.md"
+
+      - name: Assemble the release notes (what shipped + how to apply it)
+        run: |
+          : > "dist/release-notes.md"
+          cat "dist/notes-base.md" >> "dist/release-notes.md" 2>/dev/null || true
+          sed -n '/__GUIDE_START__/,/__GUIDE_END__/p' "dist/apply-guide.md" |
+              grep -v "__GUIDE_" >> "dist/release-notes.md" 2>/dev/null || true
 
       - name: Publish a GitHub release with the zip
         uses: softprops/action-gh-release@v2
@@ -34,5 +46,5 @@ jobs:
           files: |
             dist/*.zip
             dist/*.zip.sha256
-          body: ${{ steps.notes.outputs.body }}
+          body_path: dist/release-notes.md
           generate_release_notes: true
