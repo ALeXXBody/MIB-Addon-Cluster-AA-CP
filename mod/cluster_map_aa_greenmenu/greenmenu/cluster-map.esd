@@ -73,51 +73,51 @@ script
 script
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/position_higher.sh"
-    label   "Position: content UP a step (next phone session)"
+    label   "Position: content UP a step (LIVE on the wire)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/position_lower.sh"
-    label   "Position: content DOWN a step (next phone session)"
+    label   "Position: content DOWN a step (LIVE on the wire)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/position_wider.sh"
-    label   "Position: content WIDER (less side margin)"
+    label   "Position: content WIDER (LIVE on the wire)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/position_narrower.sh"
-    label   "Position: content NARROWER (more side margin)"
+    label   "Position: content NARROWER (LIVE on the wire)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/position_standard.sh"
-    label   "Position: back to the shipped look"
+    label   "Position: back to the shipped look (LIVE on the wire)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/hiresen_on.sh"
-    label   "Hi-res trial: declare 1280x720 (reboot after)"
+    label   "Hi-res trial: declare 1280x720 (next phone session)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/hiresen_off.sh"
-    label   "Hi-res trial: OFF (stock 800x480; reboot after)"
+    label   "Hi-res trial: OFF (stock 800x480; next session)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/idrpump_on.sh"
-    label   "Sharpness pump: fresh keyframes every 25 s (reboot after)"
+    label   "Sharpness pump: fresh keyframes every 25 s (LIVE)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/idrpump_off.sh"
-    label   "Sharpness pump: OFF (reboot after)"
+    label   "Sharpness pump: OFF (LIVE)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/clustermenu_on.sh"
-    label   "Cluster menu: ON (wheel-operated overlay; reboot after)"
+    label   "Cluster menu: ON (wheel overlay; the next OK press applies)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/clustermenu_off.sh"
-    label   "Cluster menu: OFF (reboot after)"
+    label   "Cluster menu: OFF (the next OK press applies)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_top.sh"
-    label   "ETA card: TOP strip (the shipped pose)"
+    label   "ETA card: TOP strip (LIVE; wheel cycle too)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_bottom.sh"

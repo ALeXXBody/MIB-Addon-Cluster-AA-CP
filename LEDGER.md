@@ -1295,3 +1295,38 @@ wheel key injection + the player's overlay renderer):**
 (hook v0.7.0, stream-player relinked against the existing ffmpeg-mini
 static libs); the wheel channel itself was ALREADY proven on this car
 (the route through 0x8001 that the owner's earlier presses used).
+
+---
+
+## 38. Round v0.7.1 - "can the reboot be avoided?" the honest re-tier
+
+**Owner ask:** avoid the reboot; change settings without it. The
+re-timing analysis ends with: a full unit reboot is needed ONLY for the
+install/uninstall of the hook itself (the LD_PRELOAD chain is read by
+the supervisor once) and for a GEM-screen button change (the file with
+the buttons is parsed by GEM when GEM renders it). EVERYTHING ELSE has a
+live path:
+
+- **live on the wire** (the fork's ui-config sender):
+  Position presets and the ETA-card pose presets now ALSO write
+  /tmp/gal_uiconfig, which the hook turns into an immediate
+  UpdateUiConfigRequest to the phone - v0.7.1: the written insets and
+  the poses apply while the map runs (the phone accepts them on the
+  wire; on software that drops the update it lands at the next session),
+- **live locally** (files the fork processes poll): Cluster menu
+  (the hook reads /tmp/gal_cluster_menu at every wheel gesture - the
+  very next press enters or leaves the menu), Sharpness pump
+  (the focus controller polls the period file 1x/s while the session
+  is healthy), Zoom/Strip (already live),
+- **next phone session** (unplug/replug the USB, or cycle phone AA):
+  Hi-res 720 (the hook reads the file when it builds the next
+  session) and sharper-map/margins/geometry (they sit inside the
+  AddConfiguration the phone takes at session setup),
+- **full reboot**: only the installer/uninstaller and GEM screen button
+  changes (the wheel/one-click flow, since the older pipes for the
+  hook/site copy are read by the supervisor once at gal start).
+
+GEM texts corrected everywhere the "reboot" wording had crept in
+(install-screen labels and Next: instructions now name phone-session
+tiers). No new GEM entries; four switch scripts + the hook binary
+(v0.7.1 build) changed.

@@ -31,7 +31,7 @@ case "$VERB" in
         BODY="take the SD card home and send me the file: mod/cluster_aa/diag.txt"
         ;;
     install)
-        BODY="reboot the unit (power button ~10 s), then switch the cockpit to the map view"
+        BODY="reboot ONLY if fresh files were staged; existing: geometry already live, next phone session"
         ;;
     arm)
         BODY="reboot the unit (power button ~10 s); the map goes live"
@@ -49,16 +49,16 @@ case "$VERB" in
         BODY="send me the full porting bundle (mod/cluster_aa/porting/, named above)"
         ;;
     position)
-        BODY="reconnect the phone: the content box sits at the new insets (step shown above); stamp the look with a photo + Save logs"
+        BODY="sent LIVE on the wire; look at the cluster; stamp the look with a photo + Save logs"
         ;;
     hiresen)
-        BODY="reboot the unit (power button ~10 s); the trial key lands at the next gal start; press Hi-res OFF to undo"
+        BODY="armed for the NEXT PHONE SESSION (unplug/replug the USB or cycle the phone's AA); no reboot"
         ;;
     idrpump)
-        BODY="reboot the unit (power button ~10 s); the pump lands at the next gal start; press Sharpness pump OFF to undo"
+        BODY="LIVE - pulsing starts or stops within a second; no reboot"
         ;;
     clustermenu)
-        BODY="reboot the unit (power button ~10 s); then SHORT OK opens the menu on the cluster, rotary applies, LONG OK stays the strip toggle"
+        BODY="LIVE - the very next steering wheel press enters/leaves the menu; no reboot"
         ;;
     etacard)
         BODY="reconnect the phone: the card takes its new edge; stamp the look with a photo + Save logs"
@@ -73,10 +73,10 @@ case "$VERB" in
         BODY="nothing required - stay or leave (Back), your call"
         ;;
     full_frame_on)
-        BODY="reboot the unit (power button ~10 s) - the sharper-map switch lands then"
+        BODY="lands when the phone re-streams (replug the USB); the std look reaches back with sharper-map OFF"
         ;;
     full_frame_off)
-        BODY="reboot the unit (power button ~10 s) - the sharper-map switch lands then"
+        BODY="lands when the phone re-streams (replug the USB); ON brings the full-frame back"
         ;;
     undeclared)
         BODY="leave the menu (Back), the setting is live on the unit"

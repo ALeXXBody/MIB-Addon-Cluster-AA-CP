@@ -29,15 +29,19 @@ fi
 CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 echo "app: read-write via '$APP_LADDER_FORM'"
 
+# v0.7.1: the runtime file /tmp/gal_hires is read by the hook when it
+# builds the next phone session - so the choice lands at the NEXT PHONE
+# SESSION (unplug/replug the USB or cycle phone AA), not at a reboot.
+echo "GAL_SECONDARY_HIRESEN=$([ "$1" = on ] && echo 1 || echo 0)" > /tmp/gal_hires
 sed -i '/^GAL_SECONDARY_HIRESEN=/d' "$CONF"
 case "$1" in
     on)  echo "GAL_SECONDARY_HIRESEN=1" >> "$CONF"
-         echo "Hi-res trial: ON. The next gal start (reboot / phone reconnect)"
-         echo "declares the 1280x720 cluster stream beside 800x480; the phone picks."
-         echo "If the map goes dark or stays stock, press Hi-res OFF (this same menu)"
-         echo "and reboot - the trial key is inert by itself."
+         echo "Hi-res trial: ON (LIVE ARMED) - declares the 1280x720 stream"
+         echo "beside 800x480 at your NEXT PHONE SESSION (re-plug the USB or"
+         echo "cycle the phone's AA). The phone picks a resolution at that"
+         echo "point. If the map goes dark, press Hi-res OFF then reconnect."
          ;;
-    off) echo "Hi-res trial: OFF (key removed; the shipped look is restored at the next gal start)."
+    off) echo "Hi-res trial: OFF (LIVE ARMED) - back to the shipped look at the next phone session."
          ;;
 esac
 sync

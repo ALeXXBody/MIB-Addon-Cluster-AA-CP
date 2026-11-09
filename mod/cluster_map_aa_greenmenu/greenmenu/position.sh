@@ -109,6 +109,14 @@ else
     OVER=""
 fi
 mv "$CONF.new" "$CONF"
+# v0.7.1: the insets are ALSO shipped live on the wire the way the
+# ETA-card presets and the wheel menu do it - /tmp/gal_uiconfig is what
+# the hook's ui-config sender turns into an immediate
+# UpdateUiConfigRequest to the phone. The GEM's big shipdates stay:
+# the phone's UiConfig *layout* is its own call, so the positions land
+# now only when the phone accepts an update (normal on Android Auto 1.7).
+echo "$NT,$NB,$NL,$NR" > /tmp/gal_uiconfig
 sync
-echo "Position: $ACTION (from $NOWSRC: $T,$B,$L,$R -> $NT,$NB,$NL,$NR; step $STEP px)$OVER"
-echo "Lands at the NEXT phone session (or unit reboot). 'standard' is the shipped look."
+echo "Position: $ACTION (from $NOWSRC: $T,$B,$L,$R -> $NT,$NB,$NL,$NR; step $STEP px) LIVE SENT."
+echo "Sent live on the wire; the next phone session re-derives it from the"
+echo "unit's copy either way ('standard' is the shipped look)."

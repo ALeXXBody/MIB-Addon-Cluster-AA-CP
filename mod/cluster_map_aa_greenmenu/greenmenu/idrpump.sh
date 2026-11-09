@@ -35,14 +35,18 @@ fi
 CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 echo "app: read-write via '$APP_LADDER_FORM'"
 
+# v0.7.1: the period is LIVE - /tmp/gal_idr_pump is what the focus
+# controller polls 1x/s while the session is healthy; writing it makes
+# the change take effect within a second, no reboot.
+echo "GAL_IDR_PUMP=${NUM:-0}" > /tmp/gal_idr_pump
 sed -i '/^GAL_IDR_PUMP=/d' "$CONF"
 case "$NUM" in
-    '') echo "Sharpness pump: OFF (key removed; lands at the next gal start)." ;;
+    '') echo "Sharpness pump: OFF (LIVE - stops pulsing within a second)." ;;
     *)  echo "GAL_IDR_PUMP=$NUM" >> "$CONF"
         echo "Sharpness pump: every $NUM s the hook keeps the cluster's"
-        echo "key-recess closest: mode 2 / brief / re-grant (player stays up;"
-        echo "the brief blink of re-key is the price). Lands at the next gal"
-        echo "start (reboot or reconnect the phone)."
+        echo "key-reject cadence short: mode 2 / brief / re-grant (player"
+        echo "stays up; the brief blink is the price). LIVE - starts"
+        echo "pulsing within a second, no reboot needed."
         ;;
 esac
 sync

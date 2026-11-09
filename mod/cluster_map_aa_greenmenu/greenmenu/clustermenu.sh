@@ -34,16 +34,21 @@ CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 echo "app: read-write via '$APP_LADDER_FORM'"
 
 sed -i '/^GAL_CLUSTER_MENU=/d' "$CONF"
+# v0.7.1: the mode is LIVE - the runtime override file is what the hook
+# checks at every steering-wheel gesture, so the NEXT wheel press already
+# ends up inside (or out of) the menu. No reboot anywhere.
+echo "GAL_CLUSTER_MENU=$([ "$1" = on ] && echo 1 || echo 0)" > /tmp/gal_cluster_menu
+sync
 case "$1" in
     on)
         echo "GAL_CLUSTER_MENU=1" >> "$CONF"
-        echo "Cluster menu: ON. At the next gal start (reboot / phone"
-        echo "reconnect): SHORT OK opens the overlay, rotary navigates,"
-        echo "OK applies; LONG OK stays the strip toggle."
+        echo "Cluster menu: ON (LIVE) - SHORT OK opens the overlay on the"
+        echo "cluster NOW, rotary navigates, OK applies; LONG OK stays the"
+        echo "strip toggle. No reboot needed."
         ;;
     off)
-        echo "Cluster menu: OFF (key removed; the wheel behaves as before)."
+        echo "Cluster menu: OFF (LIVE) - the wheel returns to the old binds:"
+        echo "short OK cycles the ETA card, rotary zooms. No reboot needed."
         ;;
 esac
-sync
 exit 0
