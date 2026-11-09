@@ -1330,3 +1330,58 @@ GEM texts corrected everywhere the "reboot" wording had crept in
 (install-screen labels and Next: instructions now name phone-session
 tiers). No new GEM entries; four switch scripts + the hook binary
 (v0.7.1 build) changed.
+
+---
+
+## 39. Round - the deep full-system audit (v0.7.1, the "every connection" pass)
+
+**What was verified, line by line and byte by byte:**
+
+1. **The GEM screen ↔ the payload (1:1):**
+   40 wrappers on the built screen = 40 on the template = 40 wrapper
+   files on the card; every entry is a bare script path (the M.I.B.
+   format the GEM resolves).
+2. **Every press circuit:** wrapper → dispatcher verb → handler script
+   → (ladder (app_mount_rw)) → write through the winning alias →
+   verified → story in the diag bundle → verdict tail with the correct
+   timing tier. All 40 resolve; nothing references a missing file.
+3. **Every key a GEM switch writes has a consumer in the shipped
+   binaries:**
+   - `GAL_CLUSTER_MENU` (hook: live wheel routing)
+   - `GAL_IDR_PUMP` (hook: pump period + the /tmp file)
+   - `GAL_SECONDARY_HIRESEN` (hook: hi-res declaration)
+   - `GAL_CLUSTER_REMOTE` (hook: wheel bindings)
+   - `GAL_PLAYER_WINDOW/ZOOM_E4/KEEP_MAP` (player)
+   - `GAL_SECONDARY_DPI/INSETS/MARGINS/PIXEL_ASPECT_RATIO_E4`
+     (hook: sink + wire)
+   - `CLUSTERMAP_FULL_FRAME` (shell-side geometry + hook PAR)
+   Each was then re-shell-audited down to the wire path
+   (UpdateUiConfigRequest via /tmp/gal_uiconfig included).
+4. **The LIVE tier is real, not a claim:**
+   - the hook's menu poll accepts /tmp/gal_cluster_menu ("0"/"1") and
+     flips on the very next wheel gesture (the wire routing itself
+     traced: gesture → cluster_remote_event → menu event file →
+     player's overlay);
+   - the pump period file /tmp/gal_idr_pump is polled 1x/s while the
+     session is healthy;
+   - /tmp/gal_hires is read at every build_secondary_sink — a menu
+     toggle lands at the next phone session (no gal restart);
+   - /tmp/gal_uiconfig catches Position/ETA-card writes and turns
+     into an immediate UpdateUiConfigRequest.
+   (all five paths reread in the source and confirmed as strings in
+   the SHIPPED binary — the release's own bytes, pulled from the tag
+   and byte-compared with both payload copies: identical.)
+5. **The release byte-consistency check:** the v0.7.1 zip's
+   libgal_hook.so and stream-player are byte-identical to the two
+   payload copies in the repo and the fork; the shipped hook carries
+   every runtime file path (menu/pump/hires/wire) and both mode keys.
+6. **The static gates:** manifest, screen parse, portability,
+   find_card, release contract (armed zipped / unarmed repo), all
+   scripts parse; 56 sim tests; the harness wiring (runner →
+   diag_collect → card truth → verdict tail) verified in the source.
+
+**where known work is still open (unchanged by this audit):**
+- the car round to confirm the wheel channel end-to-end on this unit
+  (Cluster remote ON press was re-issued in v0.6.4);
+- the Hi-res + pump sharpness car trial (photo pair) for pinning;
+- GEM 4.12st's own console-screen re-entry bug (display-side, not ours).
