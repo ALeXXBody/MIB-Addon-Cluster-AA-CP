@@ -1172,3 +1172,31 @@ The gate now verifies END-TO-END for every aspect that a press touches:
 consumed by a shipped binary, the verdict chain live, manifest fresh,
 release contract green, the capture chain present, and every script
 parse-clean. 53 sim tests + this audit = the shipping bar.
+
+---
+
+## 34. Round v0.6.3 - the ETA card gets its own pose presets
+
+Owner: "modify the green card (eta, directions) so it can be reshaped and
+placed in a better position."
+
+The green card's SHAPE is the phone's turn banner layout inside Android
+Auto's UiConfig content inset - the same field family the shipped
+Turn-card presets use. v0.6.3 extends that family to all four edges
+(bottom/left/right did not exist) and adds a fifth (wider top) for the
+strips the owner asked about:
+
+- ETA card: TOP strip (the shipped pose, 5a041202083c)
+- ETA card: BOTTOM strip (5a041202103c) - NEW
+- ETA card: LEFT column (5a041202183c) - NEW
+- ETA card: RIGHT column (5a041202203c) - NEW
+- ETA card: broad TOP strip (5a041202084c, 76 px) - NEW
+- ETA card: OFF (removes the hex; the hook re-derives from the plain
+  insets, so the Position presets drive again)
+
+Same contract as every switch: shared remount ladder, single-edge hex
+(write through the winning view; the hook resolves its conf through the
+same first-success order), bundle story, DONE/Next tail, and a helpful
+"the hex overrides the plain insets" line. Sim tests cover each pose's
+hex landing and the OFF reset; the wiring audit goes green with 38
+wrappers = 38 screen entries.

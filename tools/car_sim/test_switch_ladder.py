@@ -149,3 +149,46 @@ def test_position_clears_an_old_ui_config_override(car):
     assert hit is not None, f"no inset write\n{p.stdout}\n{p.stderr}"
     assert "GAL_SECONDARY_UI_CONFIG_HEX" not in hit, "the override survived"
     assert "GAL_SECONDARY_UI_THEME=2" in hit, "theme preset lost"
+
+
+def test_eta_card_pose_writes_single_edge_hex(car):
+    """The ETA card (the green banner) takes POSE presets: single-edge UiConfig
+    declarations (the same field family the shipped Turn-card presets use,
+    extended to the bottom/left/right edges). The press writes through the
+    winning view and the story lands in the bundle."""
+    _stage(car)
+    for name, want in (("etacard_bottom", "GAL_SECONDARY_UI_CONFIG_HEX=5a041202103c"),
+                       ("etacard_left", "GAL_SECONDARY_UI_CONFIG_HEX=5a041202183c"),
+                       ("etacard_right", "GAL_SECONDARY_UI_CONFIG_HEX=5a041202203c"),
+                       ("etacard_top", "GAL_SECONDARY_UI_CONFIG_HEX=5a041202083c")):
+        car.run([f"sh", f"/fs/sda0/mod/cluster_aa/greenmenu/gem/{name}.sh"],
+                expect_rc=0)
+        hit = None
+        for v in APP_VIEWS:
+            f = pathlib.Path(v, "eso/lib/gal_dualscreen/gal_dualscreen.conf")
+            if f.is_file() and want in f.read_text():
+                hit = f
+        assert hit is not None, f"{name}: {want} not written"
+
+
+def test_eta_card_off_restores_stock_insets_and_removes_the_hex(car):
+    _stage(car)
+    for v in APP_VIEWS:
+        pathlib.Path(v,
+                     "eso/lib/gal_dualscreen/gal_dualscreen.conf").write_text(
+            "GAL_SECONDARY_INSETS=40,40,127,127\n"
+            "GAL_SECONDARY_UI_CONFIG_HEX=5a041202103c\n")
+    p = car.run(["sh",
+                 "/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_off.sh"],
+                expect_rc=0)
+    hit = False
+    for v in APP_VIEWS:
+        f = pathlib.Path(v, "eso/lib/gal_dualscreen/gal_dualscreen.conf")
+        t = f.read_text()
+        if "UI_CONFIG_HEX" not in t and \
+           "GAL_SECONDARY_INSETS=40,40,127,127" in t:
+            # the ladder writes through ONE winning view; the consumer (the
+            # hook) resolves its own conf through the same first-success
+            # order, so the winner is what counts
+            hit = True
+    assert hit, f"no view carried the OFF state (the hex survives everywhere)"

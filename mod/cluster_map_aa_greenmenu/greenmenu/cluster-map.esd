@@ -107,6 +107,26 @@ script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/idrpump_off.sh"
     label   "Sharpness pump: OFF (reboot after)"
 
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_top.sh"
+    label   "ETA card: TOP strip (the shipped pose)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_bottom.sh"
+    label   "ETA card: BOTTOM strip"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_left.sh"
+    label   "ETA card: LEFT column"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_right.sh"
+    label   "ETA card: RIGHT column"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_off.sh"
+    label   "ETA card: OFF (stock layout)"
+
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/cardclear_top.sh"
     label   "Turn-card clear: TOP strip"
 

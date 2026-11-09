@@ -57,6 +57,9 @@ case "$VERB" in
     idrpump)
         BODY="reboot the unit (power button ~10 s); the pump lands at the next gal start; press Sharpness pump OFF to undo"
         ;;
+    etacard)
+        BODY="reconnect the phone: the card takes its new edge; stamp the look with a photo + Save logs"
+        ;;
     status)
         BODY="nothing required - stay or leave (Back), your call"
         ;;
