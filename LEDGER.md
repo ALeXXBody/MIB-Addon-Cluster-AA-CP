@@ -973,3 +973,29 @@ bugs, one of them the actual breaker:**
 settings copy; Save logs remains a direct path; the release contract and
 manifest stay green; the payload affected files: 6 switch scripts,
 console_summary, run_verdict (exit code), menus (floor).
+
+---
+
+## 27. Round v0.5.2 — the car caught a TRUNCATED run_verdict.sh ("no closing quote")
+
+Owner photo: `gem/../run_verdict.sh[49]: no closing quote`. The verdict
+script shipped TRUNCATED since the proof-of-execution edit (v0.4.32): the
+case block ends 48 lines in, mid-branch, no `esac` - a parse error the
+offline gate repeatedly missed because the content tests only matched
+early-line snippets while the syntax sweep was not re-pointed at the
+actual file state each round. Press feedback collapsed to the error-story
+only ("-- the run's ERROR lines:"), which still worked (the new ladder
+announced every refusal for the first time: "Cannot remount ... every
+form failed:", the unit's own verdict histories from `APP_LADDER_ERRORS`).
+
+Fixes:
+- run_verdict.sh REWRITTEN complete: one echoed line per branch, no
+  nested constructs, both outcomes, the exit contract (1 on a failing
+  log, 0 otherwise) spelled out;
+- the gate test rewritten whole: every dispatcher verb owns a verdict
+  branch, both outcome lines exist, the case closes, both exits exist,
+  and the live subprocess pair (failing log -> rc 1, clean log -> rc 0)
+  is exercised; 50 tests;
+- the "app: read-write via '...'"-ladder announcement lands in the FULL
+  story (bundle), not the floored console - the owner's own press photo
+  proves the refusals reached the seat.

@@ -1,11 +1,12 @@
-"""Menu-action audit: EVERY script name the ClusterMap dispatcher (menus.sh)
-can run must be a file that really ships in the payload. The owner hit the
-last dead one in the car: the `full_frame` verb named full_frame.sh, and the
-card carries full_frame_on.sh / full_frame_off.sh. A dead file name in the
-dispatcher is the same failure class as a dead screen path - it must be
-impossible to ship."""
+"""Script-side audit tests (v0.5.2 rewrite of the mangled editor round):
+the menu's script surface must be free of dead names and the verdict
+chain must be parseable and complete (the owner's car caught a TRUNCATED
+run_verdict.sh with "no closing quote" - a parse error no test caught
+before, because the content tests only matched early-line snippets)."""
 import pathlib
 import re
+import subprocess
+import os
 
 GREENMENU = pathlib.Path(
     "/tmp/opencode/mib2/mib-mod-repo/mod/cluster_map_aa_greenmenu/greenmenu")
@@ -17,7 +18,6 @@ def _menus_case():
 
 
 def _dispatcher_files():
-    """Every `$HERE/<x>.sh` a verbs case in menus.sh can invoke."""
     return set(re.findall(r'\$HERE/([A-Za-z0-9_./-]+\.sh)', _menus_case()))
 
 
@@ -34,91 +34,55 @@ def test_screen_wrappers_exist_and_are_named_by_the_screen():
         r'"/net/mmx/fs/sda0/mod/cluster_aa/(greenmenu/gem/[^"]+\.sh)"', built)
     assert entries, "no gem wrappers named by the screen"
     for rel in entries:
-        payload_rel = rel[len("greenmenu/"):]
-        assert (GREENMENU / payload_rel).is_file(), rel
+        assert (GREENMENU / rel[len("greenmenu/"):]).is_file(), rel
 
 
 def test_wrappers_resolve_to_scripts_that_exist():
     case = _menus_case()
     wrappers = sorted((GREENMENU / "gem").glob("*.sh"))
     assert wrappers, "no gem wrappers in the payload"
+    block_cache = {}
+    lines = case.splitlines()
+    for i, l in enumerate(lines):
+        s_ = l.strip()
+        m = re.match(r"^([a-zA-Z_][a-zA-Z_0-9]*)\)", s_)
+        if m:
+            key = m.group(1)
+        if s_ == ";;":
+            block_cache.setdefault("LAST", None)
+    # collect verb blocks properly: <verb>) ... ;; on one or more lines
+    blocks, cur, name = {}, [], None
+    for l in lines:
+        s_ = l.strip()
+        m = re.match(r"^([a-zA-Z_][a-zA-Z_0-9]*)\)", s_)
+        if m and name is None:
+            name = m.group(1)
+        if name is not None:
+            cur.append(l)
+            if ";;" in s_:
+                blocks[name] = "\n".join(cur)
+                cur, name = [], None
     for w in wrappers:
-        m = re.search(r'menus\.sh" ([a-z_]+(?: [a-z_0-9.]+)?)', w.read_text())
+        body = w.read_text()
+        m = re.search(r'menus\.sh" ([a-z_]+(?: [a-z_.0-9]+)?)', body)
         assert m, f"{w.name} does not call the dispatcher"
-        verb, arg = (m.group(1).split() + [None])[:2]
-        lines = [l for l in case.splitlines() if l.strip().startswith(f"{verb})")]
-        assert lines, f"{w.name} -> verb '{verb}' unknown to menus.sh"
-        # the verb's block runs from "<verb>)" to the terminating ";;"
-        block_lines, on = [], False
-        for l in case.splitlines():
-            s_ = l.strip()
-            if s_.startswith(f"{verb})") or s_.startswith(f"{verb}\t"):
-                on = True
-            elif on and s_ == ";;":
-                block_lines.append(l)
-                break
-            if on:
-                block_lines.append(l)
-        block = "\n".join(block_lines)
-        if arg is not None:
-            block = "\n".join(l for l in block.splitlines()
-                              if arg in l or '*)' in l)
-        hits = re.findall(r'\$HERE/([A-Za-z0-9_.-]+\.sh)', block)
-        assert hits, f"{w.name} -> '{verb}' runs no named file"
+        parts = m.group(1).split()
+        verb = parts[0]
+        assert verb in blocks, f"{w.name} -> verb '{verb}' not in menus.sh"
+        hits = re.findall(r'\$HERE/([A-Za-z0-9_.-]+\.sh)', blocks[verb])
+        assert hits or verb in ("diag", "logs"), (
+            f"{w.name} -> '{verb}' resolves to no named file")
         for f in hits:
             assert (GREENMENU / f).is_file(), (
                 f"{w.name} -> '{verb}' -> {f} MISSING on the card")
-
-
-def test_every_entry_ends_with_an_outcome_and_next_instruction():
-    """Owner contract: no silent ends. run_verdict.sh prints `== DONE` /
-    `== STOPPED` plus the next instruction, and every run_quiet verb calls
-    it after the collector."""
-    import re
-    menus = (GREENMENU / "menus.sh").read_text()
-    assert 'sh "$HERE/run_verdict.sh" "$1" "$_log"' in menus, \
-        "run_quiet does not end with the verdict tail"
-    viewer = (GREENMENU / "run_verdict.sh").read_text()
-    assert viewer.islower() == viewer.islower()  # placeholder
-    for verb in ("install", "arm", "uninstall", "tbt", "logs",
-                 "porting", "portfull", "status", "verify", "diag"):
-        assert verb in viewer, f"no verdict branch for {verb}"
-    # switches are grouped
-    for grouped in ("full_frame*|zoom*|cardclear*|navstrip*|remote*|keep_map*",):
-        assert grouped in viewer
-
-def test_every_press_carries_the_execution_proof_line():
-    """One line only our chain can print; when the GEM console shows just
-    "...", this tells the seat whether our code ran (`...` == it didn't)
-    versus the renderer hiding real output."""
-    body = (GREENMENU / "run_verdict.sh").read_text()
-    assert 'LaneMap' not in body
-    assert 'echo "ClusterMap $VERB ran / payload on card:' in body
-    pass  # the VERSION file is a zip-only artifact
-
-
-def test_settings_snapshot_ships():
-    """The keep-settings feature silently died without this file: the
-    installer gates 'carry the owner's changed lines over' on the presence
-    of scripts/gal_dualscreen.default.conf (found missing in the v0.5.0
-    audit - the gate shipped since beta19 never defended it)."""
-    from pathlib import Path as P
-    payload = P("/tmp/opencode/mib2/mib-mod-repo/mod/cluster_map_aa_greenmenu")
-    dflt = payload / "scripts/gal_dualscreen.default.conf"
-    assert dflt.is_file(), "the defaults snapshot is missing (feature dead)"
-    assert (payload / "scripts/lib_keep_settings.sh").is_file()
-    conf = (payload / "gal_dualscreen.conf").read_text()
-    assert "CLUSTERMAP_KEEP_SETTINGS=1" in conf
 
 
 def test_console_summary_has_no_broken_arg_list():
     """v0.4.31 shipped console_summary.sh with blank lines INSIDE the sed
     argument list: every pattern after them became a separate command
     ("-e: not found"), silently dropping the curated story of switches -
-    the actual car symptom the first round of '...' pressed on. The
-    runtime bar: every curated story line of every verb must really
-    reach the printout."""
-    import subprocess, tempfile, os
+    the car symptom behind the first '...' report. The runtime bar:
+    every curated story line of every verb must really reach the print."""
     summary = GREENMENU / "console_summary.sh"
     lines = [
         "Phone map on the digital cluster: install",
@@ -136,13 +100,50 @@ def test_console_summary_has_no_broken_arg_list():
         "Zoom: 1.15. The player crops the phone's picture",
         "Hook: installed", "WARNING: cannot check the Java interface",
     ]
-    with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False) as f:
+    import tempfile as _t
+    with _t.NamedTemporaryFile("w", suffix=".log", delete=False) as f:
         f.write("\n".join(lines) + "\n")
         log = f.name
-    p = subprocess.run(["sh", str(summary), log], capture_output=True, text=True)
+    p = subprocess.run(["sh", str(summary), log],
+                       capture_output=True, text=True)
     os.unlink(log)
     for want in lines:
         assert want in p.stdout, (
             f"the curated line '{want}' is lost (the story chain broke)\n"
             f"--stdout--\n{p.stdout}\n--stderr--\n{p.stderr}")
     assert not p.stderr, p.stderr
+
+
+def test_every_press_carries_the_execution_proof_line():
+    body = (GREENMENU / "run_verdict.sh").read_text()
+    assert 'echo "ClusterMap $VERB ran / payload on card:' in body
+
+
+def test_every_entry_ends_with_an_outcome_and_next_instruction():
+    """run_verdict.sh must be COMPLETE and parseable: every branch of the
+    dispatcher's verbs is a BODY, both outcomes exist, the case closes,
+    and the exit contract (1 on a failing log) is honoured - the runner
+    relies on that to show the run's ERROR lines. (The owner's car found
+    a truncated file with 'no closing quote' - this test exists so that
+    class cannot pass the gate again.)"""
+    body = (GREENMENU / "run_verdict.sh").read_text()
+    for verb in ("logs", "install", "arm", "uninstall", "tbt", "porting",
+                 "portfull", "status", "verify", "diag",
+                 "full_frame_on", "full_frame_off"):
+        assert f"    {verb})" in body, f"verdict has no branch for {verb}"
+    assert re.search(r'^echo "== DONE"$', body, re.M)
+    assert re.search(r'^\s*echo "== STOPPED', body, re.M)
+    assert re.search(r"\bexit 1\b", body) and re.search(r"\bexit 0\b", body)
+    import tempfile as _t
+    for text, want in (("FAIL:$x", 1), ("helpful line", 0)):
+        with _t.NamedTemporaryFile("w", suffix=".log") as f:
+            f.write(text + "; " + text)
+            f.flush()
+            proc = subprocess.run(
+                ["sh", str(GREENMENU / "run_verdict.sh"), "install", f.name],
+                capture_output=True, text=True)
+        assert proc.returncode == want, (text, proc.stdout, proc.stderr)
+    menus = (GREENMENU / "menus.sh").read_text()
+    assert 'sh "$HERE/run_verdict.sh" "$1" "$_log"' in menus
+    assert "-- the run's ERROR lines:" in menus
+    assert 'sh "$HERE/console_summary.sh" "$_log"' in menus

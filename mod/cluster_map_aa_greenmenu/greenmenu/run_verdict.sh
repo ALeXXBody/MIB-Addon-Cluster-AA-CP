@@ -1,48 +1,85 @@
 #!/bin/sh
 # run_verdict.sh - the END of every ClusterMap run, on the GEM console:
-#   == DONE / == STOPPED, then THE NEXT INSTRUCTION. The owner asked for
-#   an explicit end + what to do next on every entry; a "silent ok" state
-#   was never more than a guess from the story lines.
+#   == DONE / == STOPPED, then THE NEXT INSTRUCTION.
 #   run_verdict.sh <verb> <run-log>
-VERB="$1"; LOG="$2"
-# EXECUTION PROOF: this one line can only be printed by OUR chain. When
-# the GEM's console answers only "...", this line is the difference
-# between "our chain died before its first echo" and "the renderer hid
-# everything" - no more guessing from the seat (owner, 4.12st case).
+# Exit code: 1 when the run log carries a failure (the runner shows the
+# run's ERROR lines), 0 otherwise. Kept brutally simple: one quoted echo
+# per line, no case inside a case, no loops except the failure sniff.
+VERB="$1"
+LOG="$2"
+
 _v=
-HERE_V=`dirname "$0"`
-[ -r "$HERE_V/../VERSION" ] && read _v < "$HERE_V/../VERSION" 2>/dev/null
-echo "ClusterMap $VERB ran / payload on card: ${_v:-VERSION missing - re-copy the zip's mod/}"
+[ -r "VERSION" ] && read _v < "VERSION" 2>/dev/null
+echo "ClusterMap $VERB ran / payload on card: ${_v:-VERSION missing on the card}"
+
 BAD=0
-# POSIX-safe failure sniff: no -E, no alternation (portable shells + the
-# unit's grep differ); each verdict keyword is its own probe.
 if [ -r "$LOG" ]; then
-    for _pat in "^FAIL" "^ERROR" "^CRITICAL" "^MISSING" \
-                "INSTALL_FAILED" "NOT SUPPORTED" "Uninstall FAILED" \
-                "Cannot remount" "Cannot write"; do
-        if grep -q "$_pat" "$LOG" 2>/dev/null; then BAD=1; break; fi
-    done
+    if grep -q "^FAIL" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "^ERROR" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "^CRITICAL" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "^MISSING" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "INSTALL_FAILED" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "NOT SUPPORTED" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "Uninstall FAILED" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "Cannot remount" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "Cannot write" "$LOG" 2>/dev/null; then BAD=1; fi
 fi
+
+BODY=""
 case "$VERB" in
-    logs)       BODY="take the SD card home and send me the file: mod/cluster_aa/diag.txt" ;;
-    install)    BODY="reboot the unit (power button ~10 s), then switch the cockpit to the map view" ;;
-    arm)        BODY="reboot the unit (power button ~10 s); the map goes live" ;;
-    uninstall)  BODY="reboot the unit (power button ~10 s); the cockpit returns to stock" ;;
-    tbt)        BODY="reboot, then select the arrows view on the cockpit" ;;
-    full_frame*|zoom*|cardclear*|navstrip*|remote*|keep_map*)
-                BODY="leave the menu (Back): the setting is live on the unit" ;;
-    porting|portfull)
-                BODY="send me the bundle: mod/cluster_aa/porting/ (named above)" ;;
-    status|verify|diag)
-                BODY="nothing required - stay or leave (Back), your call" ;;
-    *)          BODY="leave the menu (Back)" ;;
+    logs)
+        BODY="take the SD card home and send me the file: mod/cluster_aa/diag.txt"
+        ;;
+    install)
+        BODY="reboot the unit (power button ~10 s), then switch the cockpit to the map view"
+        ;;
+    arm)
+        BODY="reboot the unit (power button ~10 s); the map goes live"
+        ;;
+    uninstall)
+        BODY="reboot the unit (power button ~10 s); the cockpit returns to stock"
+        ;;
+    tbt)
+        BODY="reboot, then select the arrows view on the cockpit"
+        ;;
+    porting)
+        BODY="send me the porting bundle (mod/cluster_aa/porting/, named above)"
+        ;;
+    portfull)
+        BODY="send me the full porting bundle (mod/cluster_aa/porting/, named above)"
+        ;;
+    status)
+        BODY="nothing required - stay or leave (Back), your call"
+        ;;
+    verify)
+        BODY="nothing required - stay or leave (Back), your call"
+        ;;
+    diag)
+        BODY="nothing required - stay or leave (Back), your call"
+        ;;
+    full_frame_on)
+        BODY="reboot the unit (power button ~10 s) - the sharper-map switch lands then"
+        ;;
+    full_frame_off)
+        BODY="reboot the unit (power button ~10 s) - the sharper-map switch lands then"
+        ;;
+    undeclared)
+        BODY="leave the menu (Back), the setting is live on the unit"
+        ;;
+    off)
+        BODY="leave the menu (Back), the setting is live on the unit"
+        ;;
+    *)
+        # zoom on/off, cardclear, navstrip, remote, keep_map: live right away
+        BODY="leave the menu (Back), the setting is live on the unit"
+        ;;
 esac
+
 if [ "$BAD" = 1 ]; then
     echo "== STOPPED - the reason follows (run log: diag.txt)"
     echo "Next: send me the diag file (Save logs -> mod/cluster_aa/diag.txt)"
-else
-    echo "== DONE"
-    echo "Next: $BODY"
+    exit 1
 fi
-# the exit code is the runner's switch for showing the failure story
-exit ${BAD}
+echo "== DONE"
+echo "Next: $BODY"
+exit 0
