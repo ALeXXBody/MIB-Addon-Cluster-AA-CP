@@ -7,10 +7,23 @@
 
 **Install = copy & paste only. You never edit any file.** The mod ships with M.I.B.'s own documented hook (`mod/custom.sh`): one click in M.I.B.'s GEM installs everything; M.I.B.'s `Launcher-sda0.esd` is never touched.
 
+> **STATUS — actively developed, not finished.** This add-on is a working
+> experiment on real car hardware. It can have bugs; a version and the
+> next can behave differently; perfect behaviour is not promised. New
+> capabilities arrive because someone presses a switch and sends feedback —
+> the car test round *is* the development loop. **Use in the car is at
+> your own risk**: always keep a way back (the add-on's own **Uninstall**,
+> `rescue_revert.sh`, and M.I.B.'s own firmware/backup paths), and send
+> `diag.txt` (ClusterMap → *Save logs*) plus a cluster photo whenever
+> something looks off — every report feeds the next build.
+> The licence is GPL-3.0 and the project is unsupported software (no
+> warranty at all — see `LICENSE`).
+
+
 - Engine: [mib-cluster-map](https://github.com/MacsInSpace/mib-cluster-map) (fork of [chopinwong01 / mhi2-android-auto-video-vc](https://github.com/chopinwong01/mhi2-android-auto-video-vc)) — hooks the unit's `gal` process and drives the cluster over MOST150.
 - Wrapper: **M.I.B. — More Incredible Bash** is the base toolbox; this repo only adds one payload folder + one `custom.sh`.
 
-## The owner flow (this is the whole install)
+## The install in three steps (this is the whole flow)
 
 1. **Download two things:** [M.I.B.](https://github.com/Mr-MIBonk/M.I.B._More-Incredible-Bash) (SD image/release) and this repository (green "Code" → ZIP).
 2. **Copy & paste to an SD card** (FAT32):
