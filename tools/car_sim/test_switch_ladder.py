@@ -124,3 +124,28 @@ def test_position_standard_restores_the_shipped_insets(car):
         if "GAL_SECONDARY_INSETS=40,40,127,127" in f.read_text():
             hit = True
     assert hit, "standard did not restore the shipped insets"
+
+
+def test_position_clears_an_old_ui_config_override(car):
+    """A remembered arm-window preset (GAL_SECONDARY_UI_CONFIG_HEX) replaces
+    the insets AND theme entirely: a Position press must clear it, or the
+    preset silently does nothing (found on the owner's unit: hex preset
+    from a Turn-card clear press was still committed)."""
+    _stage(car)
+    for v in APP_VIEWS:
+        f = pathlib.Path(v, "eso/lib/gal_dualscreen/gal_dualscreen.conf")
+        f.write_text("GAL_PLAYER_WINDOW=1010x376\n"
+                     "GAL_SECONDARY_INSETS=40,40,127,127\n"
+                     "GAL_SECONDARY_UI_CONFIG_HEX=5a041202083c\n"
+                     "GAL_SECONDARY_UI_THEME=2\n")
+    p = car.run(["sh", "/fs/sda0/mod/cluster_aa/greenmenu/gem/position_lower.sh"],
+                expect_rc=0)
+    hit = None
+    for v in APP_VIEWS:
+        f = pathlib.Path(v, "eso/lib/gal_dualscreen/gal_dualscreen.conf")
+        t = f.read_text() if f.is_file() else ""
+        if "GAL_SECONDARY_INSETS=48,32,127,127" in t:
+            hit = t
+    assert hit is not None, f"no inset write\n{p.stdout}\n{p.stderr}"
+    assert "GAL_SECONDARY_UI_CONFIG_HEX" not in hit, "the override survived"
+    assert "GAL_SECONDARY_UI_THEME=2" in hit, "theme preset lost"

@@ -93,11 +93,22 @@ CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 echo "app: read-write via '$APP_LADDER_FORM'"
 
 # POSIX-safe rewrite through a new file and rename (zoom.sh's way)
-sed '/^GAL_SECONDARY_INSETS=/d' "$CONF" > "$CONF.new" 2>/dev/null
+# the expert safer-area override REPLACES the insets AND the theme, so a
+# remembered Turn-card preset would silently override the position: the
+# override must go the moment an inset preset runs.
+sed -e '/^GAL_SECONDARY_INSETS=/d' \
+    -e '/^GAL_SECONDARY_UI_CONFIG_HEX=/d' \
+    "$CONF" > "$CONF.new" 2>/dev/null
+sed -e '/^GAL_SECONDARY_UI_CONFIG_HEX=/d' "$CONF" > "$CONF.new" 2>/dev/null
 if ! echo "GAL_SECONDARY_INSETS=$NT,$NB,$NL,$NR" >> "$CONF.new" 2>/dev/null; then
     echo "Could not rewrite the insets in $CONF. Nothing changed."; rm -f "$CONF.new"; exit 1
 fi
+if grep -q "^GAL_SECONDARY_UI_CONFIG_HEX=" "$CONF" 2>/dev/null; then
+    OVER="; removed the UI_CONFIG_HEX override (a Turn-card preset that would have blocked the inset change)"
+else
+    OVER=""
+fi
 mv "$CONF.new" "$CONF"
 sync
-echo "Position: $ACTION (from $NOWSRC: $T,$B,$L,$R -> $NT,$NB,$NL,$NR; step $STEP px)"
+echo "Position: $ACTION (from $NOWSRC: $T,$B,$L,$R -> $NT,$NB,$NL,$NR; step $STEP px)$OVER"
 echo "Lands at the NEXT phone session (or unit reboot). 'standard' is the shipped look."

@@ -1066,3 +1066,31 @@ writes the insets through a working view; standard restores the shipped
 Writing shipped through all shells' parsing: position.sh done single-level
 substitutions only (the nested-backtick round-27 class again pasted by
 this author's own tooling; caught by the 52-test gate before release).
+
+---
+
+## 30. Round v0.5.5 — "the texture is not clear like a low-res conversion"
+
+**What the car-facts pin down (diag + hook binary):**
+- The phone streams the cluster at **800x480 coded** - the hook binds the
+  cluster sink to the primary's own resolution table (a hard fork
+  constraint; the shipped config keys GAL_SECONDARY_WIDTH/HEIGHT accept
+  only 800/480 - anything else is overridden back with a
+  config.resolution log line).
+- Your window is 1010x376, so the map is always up-scaled (~1.26x), and
+  in full frame squeezed 480->376 stretched to 1010: the visible
+  "low-resolution conversion" feel is that resample, not a defect in
+  this card side. TRUE hardware sharpness would need the sink patched
+  to a higher-coded resolution (the hook's own
+  `secondary.output_patch from=.. to=.. success` machinery proves a
+  patch CAN land silicon-side - a topic for a fork round, not a card).
+- The IDR cadence (~60 s between key frames, from the hook log) makes
+  text wander slightly softer near the end of each gap - phone-side
+  GOP, not ours.
+
+**Found and fixed on the card side (v0.5.5):** your unit carries the
+Turn-card TOP preset as the expert override
+(`GAL_SECONDARY_UI_CONFIG_HEX=5a041202083c`). That key REPLACES the
+insets AND theme entirely - the Position presets therefore do nothing
+until the override is removed. From now on every Position press clears
+the override (theme keeps its own key). Sim test added.
