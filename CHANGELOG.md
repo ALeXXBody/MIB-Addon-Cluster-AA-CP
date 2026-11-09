@@ -3,7 +3,7 @@
 ### v0.4.22: the card copy of diag.txt is verified and spoken aloud (2026-11-08)
 
 The report that started this round: "there is no diag.txt file on the card
-after the addon install… aa is showing in cluster". The map installed fine;
+after the add-on install… aa is showing in cluster". The map installed fine;
 the card copy had failed **silently** — v0.4.21's collector did
 `cp ... 2>/dev/null` inside its exit trap, so a card the unit cannot write
 (read-only FAT from an unsafe eject — the known QNX dirty-bit behaviour)
@@ -71,9 +71,9 @@ one-click contract).
 ### v0.4.20: the card is never written + a diag file on EVERY exit (2026-11-08)
 
 Root cause of the recurring "the SD card is READ-ONLY" reports: **our own
-writes**. The addon used to write backups, logs, probes and staging files
+writes**. The add-on used to write backups, logs, probes and staging files
 onto the FAT card during every run; a FAT volume whose dirty bit gets set
-is mounted read-only by QNX on the next boot. That made the addon fail on
+is mounted read-only by QNX on the next boot. That made the add-on fail on
 the card's write state and made a *phantom* read-only card the explanation
 for every failed run.
 
@@ -187,7 +187,7 @@ M.I.B.-CarPlay stack is refused with the config left untouched.
 
 ### v0.4.17: the GEM-boot hang round — the install can no longer place an unverified screen file (2026-11-07)
 
-Symptom on the owner's car: after the addon install, the Green Engineering
+Symptom on the owner's car: after the add-on install, the Green Engineering
 Menu hangs at its "Green menu starting..." screen. The hazard class this
 round exposed: `mod/custom.sh` TRUNCATED the unit's live
 `/eso/hmi/engdefs/cluster-map.esd` with whatever the template generation
@@ -287,7 +287,7 @@ check paths hardcoding one spelling of the app/system partitions.
   custom.sh, README.md) are whitelisted; the fork's NESTED copies
   (`scripts/enable_hook.sh`, `scripts/disable_hook.sh`,
   `scripts/collect_logs.sh` — the copies the fork's M.I.B. screens run)
-  are explicitly governed to byte-match the Addon's canonical root files.
+  are explicitly governed to byte-match the Add-on's canonical root files.
   `tar --exclude` order fixed (POSIX tar applies trailing `--exclude`
   positionally and silently ignores it).
 - **`enable_hook.sh` / `disable_hook.sh`: payload-root resolution by
@@ -343,10 +343,10 @@ check paths hardcoding one spelling of the app/system partitions.
   pre-install payload search.
 
 ### Cluster remote: no-GEM switches via the cluster's own OK press (v0.4.6)
-The subscriber ask: "Don't enter GEM each time — control the addon from the
-M.I.B. unit". The AA-side answer is: the addon's cluster input channel
+The subscriber ask: "Don't enter GEM each time — control the add-on from the
+M.I.B. unit". The AA-side answer is: the add-on's cluster input channel
 carries the unit's own OK/rotary events (the hook owns that channel), so a
-set of gestures can drive the Addon's own switches *live* — no GEM, no
+set of gestures can drive the Add-on's own switches *live* — no GEM, no
 reinstall, no restart of anything:
 
   * short OK press (<0.8 s) -> cycle the turn-card clear preset
@@ -366,7 +366,7 @@ ON" sets the setting; takes effect at the NEXT gal start). Reason for
 opt-in: the hook intercepts OK gestures only when the phone session is
 live and the phone has the cluster view; the gestures were car-verified in
 the openclcardev/openautolink's working sessions only in their setups —
-the car test here should confirm the same happens on the Addon before any
+the car test here should confirm the same happens on the Add-on before any
 default flips to 1.
 
 Implementation in src/video_sink_hook.c (video_sink_hook.c):
@@ -462,7 +462,7 @@ Two new GEM switches, both from docs/android-auto-research.md's findings:
   the upstream "wheel zoom not possible" conclusion is refuted on this
   Harman MHI2 family — two projects prove DSI-tracer-based wheel reading
   car-side, and the same tracer infrastructure is present in the VW image
-  this Addon targets (verified in /eso/hmi/lsd/traceConfig.properties and
+  this Add-on targets (verified in /eso/hmi/lsd/traceConfig.properties and
   the DSI jars). Proposed as opt-in CLUSTERMAP_WHEEL_ZOOM (not yet
   implemented — needs a car round on the current fork-player build).
 
@@ -541,7 +541,7 @@ Two new GEM switches, both from docs/android-auto-research.md's findings:
   check for the owner.
 
 ### Changed (v0.2.0)
-- De-branded the Addon from "Tiguan": the engine is train-generic (any MHI2 train
+- De-branded the Add-on from "Tiguan": the engine is train-generic (any MHI2 train
   upstream mib-cluster-map profiles). docs/Tiguan.md → docs/car-test-notes.md,
   GEM screen labels and wrapper strings renamed, README reworded to cover the
   full model support surface.

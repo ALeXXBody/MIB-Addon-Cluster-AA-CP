@@ -1,4 +1,4 @@
-# M.I.B. Addon — Cluster AA/CP
+# M.I.B. Add-on — Cluster AA/CP
 
 **Android Auto map on the Virtual Cockpit (digital instrument cluster)** on Volkswagen MQB-platform cars with the Harman MHI2 (MIB2.5 High) head unit — packaged as an **M.I.B. mod**.
 
@@ -73,7 +73,7 @@ M.I.B. SD card root/
 ├── Launcher-sda0.esd          ← M.I.B.'s own, UNTOUCHED
 ├── metainfo2.txt, apps/, patches/, esd/, config/, …
 ├── … (M.I.B.'s own mod/ folder, incl. its mod/carplay_maps_vc/)
-└── mod/                       ← merged: M.I.B.'s mods + this Addon's
+└── mod/                       ← merged: M.I.B.'s mods + this Add-on's
     ├── custom.sh                      ← this repo (the one-click hook)
     └── cluster_aa/                    ← this repo (the mod payload)
         ├── greenmenu/cluster-map.esd  ← the GEM screen that gets copied to the unit
@@ -105,7 +105,7 @@ changes it.
 ## Notes & conflicts
 
 - **MHI2Q (Qualcomm) and MIB2 Standard are not supported** — the profile table (`profiles.conf`) gates any install and refuses trains it does not know, so a wrong unit cannot be bricked by this mod.
-- **Do not stack this with M.I.B.'s own “CarPlay Maps VC” payload** on the same unit: they both install a cluster-map hook and conflict. Pick one protocol path per unit (this Addon is the Android Auto path).
+- **Do not stack this with M.I.B.'s own “CarPlay Maps VC” payload** on the same unit: they both install a cluster-map hook and conflict. Pick one protocol path per unit (this Add-on is the Android Auto path).
 - **M.I.B. option 7 (“CarPlay & Android Auto activation”) should be applied first** — the mod does not write persistence bits; it only installs files.
 - `mod/custom.sh` is M.I.B.'s documented user hook. If you also use another mod that ships `mod/custom.sh`, append its commands at the “ADDON CODE” marker of this file instead of overwriting it.
 - Engine support follows the upstream profile table (`MHI2_ER_*` / `MHI2_US_*`); the complete chain is car-verified on a **Tiguan AD1, `MHI2_ER_VWG13_P4521`, AID10** — see `docs/car-test-notes.md`.

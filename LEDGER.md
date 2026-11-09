@@ -16,7 +16,7 @@
 | Addon repo | `MIB-Addon-Cluster-AA-CP` (github.com/ALeXXBody/MIB-Addon-Cluster-AA-CP, `main`) — M.I.B. mod, copy-paste install, zero file edits |
 | Fork engine repo | `mib-cluster-map-generic` (github.com/ALeXXBody/mib-cluster-map-generic, branch `aa-vc`, default; `main` = upstream base). Fork keeps: `GAL_KEEP_MAP` arbiter, `GAL_PLAYER_ZOOM_E4` zoom, verify screen, remount ladder, honest guards |
 | Install flow (verified on car) | SD1 card → M.I.B. → GEM → *M.I.B. → Advanced Settings → “Run /mod/custom.sh”* → reboots → GEM top-level **ClusterMap** screen works |
-| Owner car | VW Tiguan AD1 (`5NA035020D`), `MHI2_ER_VWG13_P4521`, 10.25" AID, related doc: `docs/car-test-notes.md` |
+| Car | VW Tiguan AD1 (`5NA035020D`), `MHI2_ER_VWG13_P4521`, 10.25" AID, related doc: `docs/car-test-notes.md` |
 | Working features ON THE CAR (v0.4.0+) | AA phone map on cluster (Google Maps & Waze), Status, Install, Uninstall, Sharper map (no-op on 800×480 window — by design), Reboot item, log collection |
 | Untested on car (built, awaiting owner verification) | **Zoom 1.0/1.15/1.35** (fork-built player, live), **Keep map ON** (arbiter) |
 
@@ -281,7 +281,7 @@ What was done to make the split real and stable:
 
 | Decision | Reason |
 |---|---|
-| Addon = M.I.b. mod (no parallel installer / launcher edit) | Owner experience: 2 files + 1 click beats editing an esd by hand |
+| Addon = M.I.B. mod (no parallel installer / launcher edit) | Two files + one click beat editing an esd by hand |
 | Run mod payload from `mod/cluster_map_aa_generic`…  | see repo path `mod/cluster_map_aa_greenmenu/` (name kept from the original fork SD payload convention) |
 | Ship upstream v1.1.0 hook + profile_check + libdmdt | Car-tested bits; no cross-compile risk |
 | Ship **fork-built** stream-player (v0.4.0); the fork repo is standalone (no GitHub fork link) | The fork features (zoom, arbiter) only exist in fork-built binaries; the fork source is car-proven up to this release line. Built natively, recorded SHA |
@@ -513,8 +513,7 @@ no-payload diag, already-live verdict, `mod/cluster_aa` discovery. Also green:
 
 ## 13. Round v0.4.21 — one click: install + arm + screen + diag (2026-11-08)
 
-**Owner ask:** "can you not automate 3/4?" — the arm step and the diag fetch
-must not be manual. Answer delivered as a release-level contract:
+**Car-round feedback:** automate the arm step and the diag fetch. Answered as a release-level contract:
 
 - **The ZIP is armed; the REPOSITORY is not.** `tools/build_release.sh`
   creates `mod/cluster_aa/HOOK_ARMED` in the shipped tree only, and now
@@ -711,7 +710,7 @@ self-explaining.
 Gate: 42 tests (new: GEM spelling used when reachable; fallback keeps the
 console view; diag 6b lists ok/MISSING per entry).
 
-**Second, and the bombshell (the Owner): M.I.B.'s pages never let the frame pass arguments to scripts.** M.I.B.'s own menus are written with **bare paths** in every `value` (verified against Launcher-sda0.esd line by line), because the unit runs the entire quoted string as a script name. Calling `menus.sh arm` makes the system look for a
+**The format bombshell: M.I.B.'s pages never let the frame pass arguments to scripts.** M.I.B.'s own menus are written with **bare paths** in every `value` (verified against Launcher-sda0.esd line by line), because the unit runs the entire quoted string as a script name. Calling `menus.sh arm` makes the system look for a
 ```
 value   sys 1 0x0100 "…/menus.sh arm"
 ```
@@ -731,7 +730,7 @@ Gate: 42 tests.
 
 ## 18. Round v0.4.26 — the switch scripts' source line + full_frame + diag for every entry
 
-**Owner report (v0.4.25 in the car):**
+**Car observation (v0.4.25 in the car):**
 - "Sharper map" searched for `full_frame.sh`; the card carries
   `full_frame_on.sh` / `full_frame_off.sh` — the dispatcher named a file
   that does not exist. Fixed: the full_frame verb takes the argument into
@@ -744,8 +743,7 @@ Gate: 42 tests.
   shell, so the switch did nothing and said almost nothing. All five now
   source through the guarded, existing path.
 
-**Owner question answered as a feature: "does diag.txt record these
-errors?" — it now must.** The direct verbs (zoom, navstrip, cardclear,
+Car question answered as a feature: does diag.txt record these errors? It now must.** The direct verbs (zoom, navstrip, cardclear,
 remote, keep_map, verify, porting, portfull, full_frame on/off, tbt) ran
 their child script straight into the GEM console with no capture, so photo
 was the only evidence. Every verb now runs through the same runner:
@@ -789,8 +787,7 @@ Gate: 45 tests.
 
 ## 20. Round v0.4.28 — every entry ends with the outcome and the next step
 
-**Owner ask:** "at the end of every script run, should show a text saying
-that is done and give next instructions."
+**Car-round feedback:** end every run with a done line and the next instructions.
 
 Delivered as a contract, not a per-script patch: one new file,
 `greenmenu/run_verdict.sh`, ends EVERY entry's console with
@@ -884,7 +881,7 @@ the renderer, and M.I.B. has no defence for it either.
 
 ## 24. Round v0.4.32 — proof-of-execution line for the "..." console
 
-Owner still sees `...` on presses in the car (ScreenRenderer crash pages
+Presses still show `...` in the car (ScreenRenderer crash pages
 gone after re-entering GEM, but presses still print nothing readable).
 Two explanations remain, and from the seat they look identical:
 1. our chain never executes on the press (the GEM drops the exec), or
@@ -976,7 +973,7 @@ console_summary, run_verdict (exit code), menus (floor).
 
 ## 27. Round v0.5.2 — the car caught a TRUNCATED run_verdict.sh ("no closing quote")
 
-Owner photo: `gem/../run_verdict.sh[49]: no closing quote`. The verdict
+Press photo: `gem/../run_verdict.sh[49]: no closing quote`. The verdict
 script shipped TRUNCATED since the proof-of-execution edit (v0.4.32): the
 case block ends 48 lines in, mid-branch, no `esac` - a parse error the
 offline gate repeatedly missed because the content tests only matched
@@ -1097,8 +1094,7 @@ the override (theme keeps its own key). Sim test added.
 
 ## 31. Round v0.6.0 - "improve the binaries": the hi-res cluster stream, rebuilt hook
 
-**Owner:** "these binaries are not mandatory - if we can improve them,
-please do." SO the binaries were improved.
+The binaries are ours to change, and the sharpness ceiling sits inside them - so they were improved.
 
 **What v0.6.0 changes inside libgal_hook.so** (the fork's own source,
 rebuilt with the recorded QNX 6.5 ARMv7 toolchain natively on this host
