@@ -51,6 +51,9 @@ case "$VERB" in
     position)
         BODY="reconnect the phone: the content box sits at the new insets (step shown above); stamp the look with a photo + Save logs"
         ;;
+    hiresen)
+        BODY="reboot the unit (power button ~10 s); the trial key lands at the next gal start; press Hi-res OFF to undo"
+        ;;
     status)
         BODY="nothing required - stay or leave (Back), your call"
         ;;

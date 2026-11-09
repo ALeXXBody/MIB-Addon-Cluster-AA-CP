@@ -1094,3 +1094,40 @@ Turn-card TOP preset as the expert override
 insets AND theme entirely - the Position presets therefore do nothing
 until the override is removed. From now on every Position press clears
 the override (theme keeps its own key). Sim test added.
+
+
+---
+
+## 31. Round v0.6.0 - "improve the binaries": the hi-res cluster stream, rebuilt hook
+
+**Owner:** "these binaries are not mandatory - if we can improve them,
+please do." SO the binaries were improved.
+
+**What v0.6.0 changes inside libgal_hook.so** (the fork's own source,
+rebuilt with the recorded QNX 6.5 ARMv7 toolchain natively on this host
+- the unpacked image root from BUILD_LOCALLY.md):
+- new hook capability, opt-in via GAL_SECONDARY_HIRESEN=1 (a plain line
+  in gal_dualscreen.conf; loads via the hook's own conf loader, so the
+  GEM can switch it without touching the supervisor);
+- the cluster sink NOW ALSO declares the phone's higher cluster
+  resolution (AA codec enum 2, 1280x720) BESIDE the 800x480 entry -
+  ADDITION, not replacement, so a phone that rejects enum 2 leaves the
+  historical stream untouched;
+- the declared insets scale to the coded frame (1.6 x, 1.5 y, clamped)
+  so the safe area keeps its on-screen meaning; margins 0; PAR=10000
+  (the DPU side only letterboxes at the window);
+- hard refusal with a line in the log when the expert UiConfig hex is
+  present (unscaled 800-frame insets would replace the safe area);
+- default OFF: without the key this build behaves byte-identically to
+  v0.5.x (the config-resolution pin, decoder depth, 400x400 protection
+  - all unchanged);
+- the delivered stream at enum 2 is decoded by our own ffmpeg-mini
+  player, which samples whatever arrives into the window - DOWN instead
+  of UP this time. That is the sharpness the owner asked for.
+
+**On the GEM (this card):** ClusterMap gains Hi-res trial
+declare-1280x720 / Hi-res trial OFF (hiresen.sh writes/removes the key;
+the switch is inert for an older hook). **On the wire, honestly:**
+higher-coded frames need more bitrate than the phone's default cluster
+stream; if the encoder starves, configure the phone or remove the key
+and reboot.
