@@ -1200,3 +1200,30 @@ same first-success order), bundle story, DONE/Next tail, and a helpful
 "the hex overrides the plain insets" line. Sim tests cover each pose's
 hex landing and the OFF reset; the wiring audit goes green with 38
 wrappers = 38 screen entries.
+
+---
+
+## 35. Round — the APPLY guide, computed from the real tag diff
+
+**Owner ask:** every release must say in its description whether a
+reinstall is needed, and what to do - some releases need it, others don't.
+
+- New tool: tools/release_guide.sh PREV TAG - computes the "APPLY"
+  section from the REAL file diff between the two tags: card update
+  needed? (any mod/** change), one more GEM click? (only when a file the
+  installer copies onto the unit changed: the hook .so, the settings
+  copy, the screen template and the installer-side helpers), reboot,
+  and the standing evidence loop (Save logs + diag.txt + photo).
+- tools/build_release.sh appends the computed guide to the zipped
+  HOW-TO-INSTALL.txt (the doc the owner has in hand at install time).
+- .github/workflows/release.yml now assembles the release body =
+  the tag commit's message + the computed APPLY section
+  (and the tool's dash/refine pass verified the verdict for every
+  historical release; each GitHub release was updated accordingly:
+  skip-rules for script-only rounds, yes-rules for the hook/screen
+  rounds).
+- The refine pass itself caught a shell case-splitting bug in the
+  tool's first cut: unquoted case patterns split on the IFS and
+  everything matched the wildcard branch, making v0.6.0 (which rebuilt
+  libgal_hook.so) report "skip" - the literal alternation replaced it
+  and the verdicts were re-computed and re-published.

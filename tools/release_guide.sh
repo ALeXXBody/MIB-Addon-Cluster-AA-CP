@@ -21,19 +21,20 @@ if [ -z "$FILES" ]; then
     exit 0
 fi
 
-UNIT_COPIES=" libgal_hook.so libdmdt_flush.so stream-player gal_dualscreen.conf profile_check profiles.conf lsd_jar.sh turn_by_turn.sh window_fix.sh cluster-map.template.esd "
-
+# dash splits unquoted case patterns on the IFS - the space-separator
+# variant matched everything (found by the refine pass). Plain literal
+# alternation instead: every file the installer copies onto the unit.
 unit=0
 card=0
 extras=""
 for f in $FILES; do
     base=$(basename "$f")
-    case "$UNIT_COPIES" in
-        *" $base ")  unit=1; card=1; extras="$extras $f" ;;
-        *) case "$f" in
-               mod/cluster_map_aa_greenmenu/greenmenu/cluster-map.esd) card=1 ;;
-               mod/*|thirdparty/*) card=1 ;;
-           esac ;;
+    case "$base" in
+        libgal_hook.so|libdmdt_flush.so|stream-player|gal_dualscreen.conf|profile_check|profiles.conf|lsd_jar.sh|turn_by_turn.sh|window_fix.sh|cluster-map.template.esd)
+            unit=1; card=1; extras="$extras $f" ;;
+        *cluster-map.esd)
+            card=1 ;;
+        *) case "$f" in mod/*|thirdparty/*) card=1 ;; esac ;;
     esac
 done
 
