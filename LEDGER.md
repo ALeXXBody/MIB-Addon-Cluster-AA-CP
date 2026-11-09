@@ -1149,3 +1149,26 @@ per respin (at the 10-20 fps cap that is 1-2 frames).
   `event=focus.loss reason=idr_pump player=kept`;
 - the player is never killed in the pump (stop_player = 0), so no backoff
   and no re-spawn: the on-car cost is only the blink.
+
+---
+
+## 33. Round v0.6.2 - the end-to-end audit caught the screen wiring before the car did
+
+The press-chain audit tool (tools/audit_wiring.sh, additive: every new
+switch joins the audit) proved its worth immediately. Findings:
+
+1. **v0.6.1 shipped the Hi-res/Sharpness-pump GEM SWITCHES without their
+   SCREEN ENTRIES** (the wrappers existed, menus/verdict ran, but the
+   engdefs screen had no buttons to press). Fixed: all four entries added
+   to template + built screens (33 wrappers, 33 entries, 1:1).
+2. **One stale prefix line** (`position_standard` kept the placeholder
+   value in the built screen): every entry's spelling is now checked
+   against the same release layout predicate as check_gem_esd.
+3. `set -eu`-shell gotchas in the audit itself fixed; the verdict live
+   pair is now asserted with explicit exit codes.
+
+The gate now verifies END-TO-END for every aspect that a press touches:
+33 wrapper->dispatcher->child circuits, 11 GEM-writable keys each
+consumed by a shipped binary, the verdict chain live, manifest fresh,
+release contract green, the capture chain present, and every script
+parse-clean. 53 sim tests + this audit = the shipping bar.

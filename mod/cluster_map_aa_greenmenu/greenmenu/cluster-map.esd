@@ -91,6 +91,22 @@ script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/position_standard.sh"
     label   "Position: back to the shipped look"
 
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/hiresen_on.sh"
+    label   "Hi-res trial: declare 1280x720 (reboot after)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/hiresen_off.sh"
+    label   "Hi-res trial: OFF (stock 800x480; reboot after)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/idrpump_on.sh"
+    label   "Sharpness pump: fresh keyframes every 25 s (reboot after)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/idrpump_off.sh"
+    label   "Sharpness pump: OFF (reboot after)"
+
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/cardclear_top.sh"
     label   "Turn-card clear: TOP strip"
 
