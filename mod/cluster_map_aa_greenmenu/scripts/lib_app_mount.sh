@@ -64,13 +64,22 @@ system_pick_view()
 # Writability probe, run THROUGH one specific view spelling.
 app_probe_view()
 {
-    # CAR FACT: this unit REFUSES mkdir ("Function not implemented",
-    # ENOSYS) while FILE writes next to it work - the hook's own log is a
-    # file write, every boot. The old mkdir+rmdir probe therefore treated
-    # a WORKING remount as a refusal (owner diag 2026-11-09: remount
-    # rc=0 on four app views, then "every form failed"). Probe the thing
-    # writes really depend on: a file write through this spelling.
+    # CAR FACTS baked into one probe (diag 2026-11-09: remount rc=0 on
+    # four app views, then "every form failed"):
+    #   1. this unit REFUSES mkdir (ENOSYS) - only a file write works;
+    #   2. writes at the app view's ROOT refuse while SUBDIRECTORY writes
+    #      work (the same boot's engdefs write succeeded through the very
+    #      alias the root probe refused);
+    #   3. the write target of every app write in this payload is
+    #      $1/eso/lib/gal_dualscreen (settings copy, hook, backups).
+    # So probe AT THE WORK TARGET first, fall back to the view root.
     # (Subshell: dash aborts on a special builtin's failed redirect.)
+    if [ -d "$1/eso/lib/gal_dualscreen" ]; then
+        ( : > "$1/eso/lib/gal_dualscreen/.clustermap_rw_probe" ) 2>/dev/null && {
+            rm -f "$1/eso/lib/gal_dualscreen/.clustermap_rw_probe" 2>/dev/null
+            return 0
+        }
+    fi
     ( : > "$1/.clustermap_rw_probe" ) 2>/dev/null || return 1
     rm -f "$1/.clustermap_rw_probe" 2>/dev/null
     return 0

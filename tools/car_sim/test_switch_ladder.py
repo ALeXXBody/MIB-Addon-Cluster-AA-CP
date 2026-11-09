@@ -192,3 +192,25 @@ def test_eta_card_off_restores_stock_insets_and_removes_the_hex(car):
             # order, so the winner is what counts
             hit = True
     assert hit, f"no view carried the OFF state (the hex survives everywhere)"
+
+
+def test_probe_prefers_the_work_target_when_the_root_refuses_writes(car):
+    """The car-diag shape (0473c096): remount rc=0, the write at the app
+    view's ROOT refuses, writes into SUBDIRECTORIES work, and the whole
+    install then reported 'every form failed'. The probe now writes at
+    the payload's own work target (eso/lib/gal_dualscreen) first, so the
+    switch still finds its working spelling and the write lands there."""
+    _stage(car)
+    # /mnt/app: root write refused (a DIRECTORY at the probe name),
+    # but the work-target subfolder accepts the write
+    (pathlib.Path(LOCAL_APP, ".clustermap_rw_probe")).mkdir(exist_ok=True)
+    p = car.run(["sh", "/fs/sda0/mod/cluster_aa/greenmenu/gem/remote_on.sh"],
+                expect_rc=0)
+    hit = None
+    for v in APP_VIEWS:
+        f = pathlib.Path(v, "eso/lib/gal_dualscreen/gal_dualscreen.conf")
+        if f.is_file() and "GAL_CLUSTER_REMOTE=1" in f.read_text():
+            hit = f
+    assert hit is not None, f"the switch wrote nowhere\n{p.stdout}\n{p.stderr}"
+    bundle = pathlib.Path("/tmp/clustermap_diag/diag.txt").read_text()
+    assert "app: read-write via" in bundle, bundle

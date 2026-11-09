@@ -1227,3 +1227,26 @@ reinstall is needed, and what to do - some releases need it, others don't.
   everything matched the wildcard branch, making v0.6.0 (which rebuilt
   libgal_hook.so) report "skip" - the literal alternation replaced it
   and the verdicts were re-computed and re-published.
+
+---
+
+## 36. Round v0.6.4 - the car diag found the probe's last hiding place: the ROOT
+
+Owner diag (0473c096) + photos: hi-res argu-press acts again (the pressed
+ETA/positions wrote), but the STEERING WHEEL press did nothing this
+boot and the install stopped again: the ladder's own per-form output
+named FOUR remounts returning rc=0 ... and then "every form failed".
+
+The truth this time: on this unit the app view's ROOT refuses direct
+file writes while SUBDIRECTORY writes work - the same boot's engdefs
+write succeeded through the FQDN alias the root probe refused. The
+probe now writes AT THE WORK TARGET FIRST
+(`$1/eso/lib/gal_dualscreen/.clustermap_rw_probe`, because that is where
+every app write in this payload goes: the settings copy, the hook, the
+backups), with the view-root probe still there as the fallback.
+
+The wheel control: the unit's settings copy no longer carries
+GAL_CLUSTER_REMOTE (this boot's switches wrote other lines over an
+install whose engine copy wasn't refreshed?): the same press, after the
+fixed probe lands, re-applies it (ClusterMap -> Cluster remote ON).
+The hook is v0.6.1's binary and consumes it at the next gal start.
