@@ -64,11 +64,16 @@ system_pick_view()
 # Writability probe, run THROUGH one specific view spelling.
 app_probe_view()
 {
-    mkdir "$1/.clustermap_rw_probe" 2>/dev/null && {
-        rmdir "$1/.clustermap_rw_probe" 2>/dev/null || true
-        return 0
-    }
-    return 1
+    # CAR FACT: this unit REFUSES mkdir ("Function not implemented",
+    # ENOSYS) while FILE writes next to it work - the hook's own log is a
+    # file write, every boot. The old mkdir+rmdir probe therefore treated
+    # a WORKING remount as a refusal (owner diag 2026-11-09: remount
+    # rc=0 on four app views, then "every form failed"). Probe the thing
+    # writes really depend on: a file write through this spelling.
+    # (Subshell: dash aborts on a special builtin's failed redirect.)
+    ( : > "$1/.clustermap_rw_probe" ) 2>/dev/null || return 1
+    rm -f "$1/.clustermap_rw_probe" 2>/dev/null
+    return 0
 }
 
 # Every attempt's REAL error is recorded (the owner's rule: measured, not

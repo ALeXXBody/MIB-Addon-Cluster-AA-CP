@@ -119,8 +119,8 @@ SYSTEM_OK=
 for _f in "$SYSTEM_MOUNT" /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
     [ -d "$_f" ] || continue
     mount -uw "$_f" 2>/dev/null || continue
-    if mkdir "$_f/.clustermap_restore_probe" 2>/dev/null; then
-        rmdir "$_f/.clustermap_restore_probe" 2>/dev/null || true
+    if ( : > "$_f/.clustermap_restore_probe" ) 2>/dev/null; then
+        rm -f "$_f/.clustermap_restore_probe" 2>/dev/null
         SYSTEM_MOUNT="$_f"
         TARGET_CONFIG="$_f/etc/eso/production/smartphone_integrator.json"
         SYSTEM_OK=1

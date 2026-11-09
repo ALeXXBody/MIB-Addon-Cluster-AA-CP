@@ -86,9 +86,12 @@ class Car:
         exactly a console that can see a partition but not write it. (A
         genuinely ro tmpfs cannot be used: this kernel refuses tmpfs
         remounts with the container's userns mapping.)"""
+        # a directory at each probe name: the payload's write probes are
+        # now FILE writes (`: > probe`, mkdir is refused on the real
+        # unit), so a DIRECTORY is the deterministic "not writable here".
         for probe in (".clustermap_rw_probe", ".clustermap_probe",
                       ".clustermap_restore_probe"):
-            self.stage(view, probe, b"")
+            (pathlib.Path(view, probe)).mkdir(parents=True, exist_ok=True)
 
     def stage(self, view, rel, content=b"", mode=None):
         """Stage <content> at <view>/<rel>; missing parents are created."""

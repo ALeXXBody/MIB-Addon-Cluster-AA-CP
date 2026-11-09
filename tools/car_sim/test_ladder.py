@@ -35,8 +35,11 @@ def test_probe_blocked_views_fall_through_to_fqdn(car):
     on the ONE view whose write probe succeeded."""
     _stage_lib()
     car.mkdir_views(APP_VIEWS)
-    car.stage(APP_VIEWS[0], ".clustermap_rw_probe", b"")
-    car.stage(APP_VIEWS[2], ".clustermap_rw_probe", b"")
+    # the payload's write probe is a FILE write now (mkdir is refused on
+    # the real unit): block = a DIRECTORY at the probe name
+    for v in (APP_VIEWS[0], APP_VIEWS[2]):
+        pathlib.Path(v, ".clustermap_rw_probe").mkdir(parents=True,
+                                                      exist_ok=True)
     p = car.run(_sh('app_mount_rw; echo "APP_RW=$APP_RW"; echo "FORM=$APP_LADDER_FORM"'),
                 expect_rc=0)
     assert "APP_RW=/net/mmx.mibhigh.net/mnt/app" in p.stdout, \

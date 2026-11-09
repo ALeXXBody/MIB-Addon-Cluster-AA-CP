@@ -999,3 +999,38 @@ Fixes:
 - the "app: read-write via '...'"-ladder announcement lands in the FULL
   story (bundle), not the floored console - the owner's own press photo
   proves the refusals reached the seat.
+
+---
+
+## 28. Round v0.5.3 — the owner's diag: mounts were SUCCEEDING, the probe was the liars'
+
+**The bundle that settles every outstanding switch, remount and install
+failure of this thread (line for line):**
+
+```
+mount -uw /mnt/app                      -> rc=0: no message
+mount -uw /net/mmx.mibhigh.net/mnt/app  -> rc=0: no message
+mount -uw /net/mmx/mnt/app              -> rc=0: no message
+on -f mmx mount -uw /mnt/app            -> rc=0: no message
+on -f rcc mount -uw /mnt/app            -> rc=1: ldd:FATAL ... (unrelated tool)
+```
+
+FOUR REMOUNTS SUCCEEDED - and the switch still reported "every form
+failed". The refuser was not the unit: it was `app_probe_view()`, which
+probed with **mkdir+rmdir** - the exact syscall this unit REFUSES
+(`Function not implemented`, ENOSYS - proven in the round-16 diag). Every
+ladder that matters (app, system in enable_hook, restore in
+disable_hook) carried the same fatal probe. Consequences of one probe:
+
+- every switch "did nothing" on every good boot that used a non-default
+  view form (the "cluster remote is not doing anything" entire round);
+- installs aborted at "app partition: NO view accepted writes"/
+  "Cannot remount the app partition read-write";
+- uninstall/uninstall-only decks "Cannot remount" noises.
+
+**Fix:** all three ladders now probe with a FILE write
+(`( : > probe )`, subshell-guarded) - the operation every working
+remount grants on every qnx/boot layout observed. The offline gate's
+read-only emulation switched from "pre-existing file" to "directory at
+the probe name" (EISDIR blocks `: >`) so the tests measure what the unit
+measures. 50 tests, full release gate green.

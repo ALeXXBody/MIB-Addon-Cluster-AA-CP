@@ -1187,8 +1187,8 @@ SYSTEM_RW_OK=0
 for _f in /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
     [ -d "$_f" ] || continue
     mount -uw "$_f" 2>/dev/null || continue
-    if mkdir "$_f/.clustermap_probe" 2>/dev/null; then
-        rmdir "$_f/.clustermap_probe" 2>/dev/null || true
+    if ( : > "$_f/.clustermap_probe" ) 2>/dev/null; then
+        rm -f "$_f/.clustermap_probe" 2>/dev/null
         SYSTEM_RW="$_f"; SYSTEM_RW_OK=1
         echo "system partition: read-write via '$_f'"
         break
