@@ -1,0 +1,44 @@
+
+*~
+*.a
+backups/
+bin/
+build/
+# Build artifacts
+*.d
+dist/
+.DS_Store
+# Emulated-unit test platform: real firmware files must never be committed.
+*.fec
+*.h264
+.idea/
+# IDE & OS metadata
+lib/
+libgal_hook.so
+*.log
+logs/
+# Never commit unit data: real E2P dumps / FEC / VIN-adjacent captures
+*.o
+# Package & temporary directories
+*.pcapng
+__pycache__/
+*.so
+stream-player
+*.swp
+tests/emul/*.bin
+tests/emul/*/dmdtgo
+tests/emul/dmdtgo
+tests/emul/*.efs
+tests/emul/fixtures/eeprom.txt
+tests/emul/fixtures/*.fec
+tests/emul/*.img
+tests/emul/qnxifs/proc/boot/
+tests/emul/qnx-image-root/
+tests/emul/root/
+tests/emul/.staged
+tests/emul/tmp/
+Thumbs.db
+*.tmp
+# toolchain rootfs + built binaries: not for git
+.venv/
+.vscode/

@@ -1,0 +1,4 @@
+# venv deps for this fork's host tooling (tests/emul, tools/, greenmenu).
+kaitaistruct==0.10
+crcmod==1.7
+pytest>=7

@@ -1439,14 +1439,15 @@ Sim: the sharper-map regression + the probe-reason record; 58 tests.
 
 ## 42. Round - consolidation: the fork repository retired
 
-The working mirror `github.com/ALeXXBody/mib-cluster-map-generic` is
-retired; **this Addon repository is the single source of truth** from
-now on: the payload (`mod/cluster_aa`), the rebuilt binaries
-(`libgal_hook.so` v0.7.x, `stream-player` with the menu), the fork's
-sources under the toolchain, and the whole audit trail (LEDGER rounds
-1-41) already live here. A full git bundle of the fork (4.5 MB,
-`--all` branches/history) was taken before the removal and kept
-locally, so nothing is unrecoverable.
+The working mirror `github.com/ALeXXBody/mib-cluster-map-generic` was
+deleted by the owner (the Addon repository is the single source of
+truth now). Before the deletion, the fork's C sources and research docs
+were consolidated INTO this repository: `sources/` carries the hook
+(`src/`), the player (`player/`, incl. menu.h), the CarPlay hook, the
+docs, and the build recipe - so rebuilding/improving both binaries
+needs nothing outside this repo. A full git bundle of the fork also
+existed locally (4.5 MB) and was retired along with the fork per the
+owner's decision ("not even as a backup").
 
 Deleting the remote repository needs the `delete_repo` OAuth scope,
 which the current token does not carry - the deletion is therefore
