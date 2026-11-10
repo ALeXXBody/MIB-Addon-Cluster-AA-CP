@@ -42,6 +42,10 @@ echo "app: read-write via '$APP_LADDER_FORM'"
 
 sed -i '/^GAL_CLUSTER_REMOTE=/d' "$CONF"
 echo "GAL_CLUSTER_REMOTE=$WANT" >> "$CONF"
+# v0.7.4: persist for the hook's OWN loader too (the card-root file wins
+# over the unit copy at the next gal start - no install needed)
+sh "$HERE/card_conf_update.sh" "GAL_CLUSTER_REMOTE=$WANT" 2>/dev/null \
+    || echo "(card-root conf not updated; the unit copy carries the key)"
 
 sync
 echo "Cluster remote (OK press on the cluster): $([ "$WANT" = 1 ] && echo ON || echo OFF) (LIVE)"

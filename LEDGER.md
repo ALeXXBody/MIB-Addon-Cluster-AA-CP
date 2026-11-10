@@ -1454,3 +1454,42 @@ which the current token does not carry - the deletion is therefore
 completed by the owner (one `gh auth refresh -h github.com -s
 delete_repo` + `gh repo delete ALeXXBody/mib-cluster-map-generic
 --yes`, or the web UI's repository Settings -> Danger Zone).
+
+---
+
+## 43. Round v0.7.4 - the wheel round, closed by the diag + the card-root conf
+
+**The v0.7.2-armed diag answered everything (6cdabc4e):**
+- the phone OPENED the cluster input channel (`aap.inbound.first
+  channel=65 role=cluster_input` + the binding request, replied
+  status_0) - gate 2 (the channel) is GREEN on this car;
+- 0x8001 indications arrived - on channel 3 (SensorSource role), SIX in
+  the tail - gate 3 (the unit sending gestures) is GREEN too: the
+  presses ARE reaching the wire;
+- gate 1 was RED and is the whole story: the unit's settings copy
+  carried NO GAL_CLUSTER_REMOTE (section 7 lists only the v0.5.x-era
+  keys) and the live hook is pre-v0.7.2 (no remote.trace lines), so
+  cluster_remote_event correctly ignored every gesture;
+- the sharper-map press now COMPLETES (v0.7.3's fix proven in the car:
+  "Sharper map is already on. Nothing changed." - the honest verdict).
+
+**The fix has two halves:**
+1. **The wheel remote arms LIVE**: the hook reads /tmp/gal_remote at
+   every gesture (v0.7.2 code, shipped then) - and the v0.7.2 switch
+   writes that file. But the LIVE hook on the car was pre-v0.7.2, so
+   the file was inert. The new hook (v0.7.4) also logs the closed gate
+   once per session ("cluster.remote.gate result=closed") so a silent
+   off-remote is never invisible again.
+2. **No install needed to arm the wheel from now on**: the hook's own
+   conf loader reads gal_dualscreen.conf from THE CARD ROOT first
+   (candidate 3 of 5, before the unit copy). New shared tool
+   greenmenu/card_conf_update.sh: writes the union (the unit copy's
+   lines + the switch's key) to the card root via the card's own FAT
+   rw window (the diag-copy contract: remount rw, write, back to ro).
+   Cluster remote / Wheel trace / Pump / Hi-res / Menu switches all
+   persist their keys there - arming at the next gal start WITHOUT any
+   install. The install remains for binary updates only.
+
+Note the trace ran BEFORE the remote gate since v0.7.2, so the next
+car round with Wheel trace ON shows the gestures' own codes even while
+the remote was off.
