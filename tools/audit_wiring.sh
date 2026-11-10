@@ -64,7 +64,8 @@ missing=0
 for key in GAL_PLAYER_WINDOW GAL_SECONDARY_DPI GAL_SECONDARY_INSETS \
            GAL_SECONDARY_MARGINS GAL_SECONDARY_PIXEL_ASPECT_RATIO_E4 \
            GAL_CLUSTER_REMOTE GAL_PLAYER_ZOOM_E4 \
-           GAL_KEEP_MAP GAL_SECONDARY_HIRESEN GAL_IDR_PUMP; do
+           GAL_KEEP_MAP GAL_SECONDARY_HIRESEN GAL_IDR_PUMP \
+           GAL_REMOTE_TRACE GAL_CLUSTER_MENU; do
     case "$union" in
         *"$key"*) : ;;
         *)  fail "no binary reads $key"; missing=1 ;;

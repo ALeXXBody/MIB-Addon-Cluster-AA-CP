@@ -18,6 +18,9 @@ case "$1" in
     off) WANT=0 ;;
     *) echo "usage: $0 on|off" >&2; exit 2 ;;
 esac
+# v0.7.2: LIVE - the hook reads /tmp/gal_remote at each wheel event, so
+# the binding turns on/off without a restart (no reboot needed).
+echo "$WANT" > /tmp/gal_remote
 
 if [ ! -r "$CONF_READ" ]; then
     echo "The cluster map is not installed: install it first."
@@ -41,8 +44,8 @@ sed -i '/^GAL_CLUSTER_REMOTE=/d' "$CONF"
 echo "GAL_CLUSTER_REMOTE=$WANT" >> "$CONF"
 
 sync
-echo "Cluster remote (OK press on the cluster): $([ "$WANT" = 1 ] && echo ON || echo OFF)"
+echo "Cluster remote (OK press on the cluster): $([ "$WANT" = 1 ] && echo ON || echo OFF) (LIVE)"
 echo "  short OK press  -> cycle the card-clear preset"
 echo "  long OK press   -> toggle the turn-info strip"
 echo "  rotary          -> zoom +/-"
-echo "Stage: the switch lands at the NEXT gal start (phone reconnect / reboot)."
+echo "LIVE: bound at the next wheel gesture; a reboot only validates the persisted key."

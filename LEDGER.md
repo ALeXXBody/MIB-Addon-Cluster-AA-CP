@@ -1385,3 +1385,37 @@ tiers). No new GEM entries; four switch scripts + the hook binary
   (Cluster remote ON press was re-issued in v0.6.4);
 - the Hi-res + pump sharpness car trial (photo pair) for pinning;
 - GEM 4.12st's own console-screen re-entry bug (display-side, not ours).
+
+---
+
+## 40. Round v0.7.2 - the wheel trace: the car round needs ONE diagnostic
+
+**Owner: "steering wheel commands are still not working."** The wheel
+path has FOUR gates, and the last diag showed at least one of them open
+(section 7 lacked GAL_CLUSTER_REMOTE - the key the switch writes had not
+landed when the wheel was tried). So ask the car the ONE question this
+diagnostic answers:
+
+- **Wheel trace** (GEM: "Wheel trace: ON"): every input indication is
+  logged at INFO (code/action/rotary delta) - the hook's trace reads
+  /tmp/gal_remote_trace at each incoming event, so it arms without a
+  restart; the persisted GAL_REMOTE_TRACE key survives boots too.
+- Cluster remote binding goes LIVE as well (v0.7.2 hook reads
+  /tmp/gal_remote at each event; the switch still writes the persisted
+  GAL_CLUSTER_REMOTE key).
+- The hook then answers in the diag: either gestures ARRIVE (and the
+  trace printed their code/action/delta - a code other than the
+  Skoda-class OK=23 is now visible and mapped by GAL_CLUSTER_KEYCODES
+  if needed) or gestures DO NOT ARRIVE at the cluster input channel
+  (a VW Tiguan AD1 routing fact -римен we meet only with the evidence).
+
+**The car round (v0.7.2) is the wheel round:**
+1. card merge (mod/ v0.7.2) + one Run /mod/custom.sh click (re-stages
+   the hook) + reboot once;
+2. GEM -> ClusterMap -> Wheel trace ON -> press the wheel (short OK,
+   long OK, rotary both directions) -> Save logs;
+3. send diag.txt. It carries per-gesture: event=remote.trace ... parse
+   rot=.. code=.. action=.. delta=.. at INFO - and the run summary
+   shows if events arrive at all (no trace lines = the wheel's presses
+   are not reaching the cluster input channel: the unit-side answer
+   then comes from M.I.B.'s/VW-side notes, not from more guessing);

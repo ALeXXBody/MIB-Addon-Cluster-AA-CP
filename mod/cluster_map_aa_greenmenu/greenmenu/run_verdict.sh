@@ -60,6 +60,9 @@ case "$VERB" in
     clustermenu)
         BODY="LIVE - the very next steering wheel press enters/leaves the menu; no reboot"
         ;;
+    remotetrace)
+        BODY="LIVE - press the wheel (short + long OK, rotary both ways), then Save logs; the diag lists every gesture's own code"
+        ;;
     etacard)
         BODY="reconnect the phone: the card takes its new edge; stamp the look with a photo + Save logs"
         ;;

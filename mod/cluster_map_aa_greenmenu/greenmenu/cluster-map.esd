@@ -116,6 +116,14 @@ script
     label   "Cluster menu: OFF (the next OK press applies)"
 
 script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/trainer_on.sh"
+    label   "Wheel trace: ON (diagnose; press the wheel then Save logs)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/trainer_off.sh"
+    label   "Wheel trace: OFF"
+
+script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_top.sh"
     label   "ETA card: TOP strip (LIVE; wheel cycle too)"
 
