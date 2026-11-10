@@ -1434,3 +1434,22 @@ FRAME_CONF_MARK check, NOW) use CONF_READ, the write stays CONF (the
 ladder's winning alias). The probe's refusal reason now lands in the
 ladder's record per form ("write probe at <path>: <errno>").
 Sim: the sharper-map regression + the probe-reason record; 58 tests.
+
+---
+
+## 42. Round - consolidation: the fork repository retired
+
+The working mirror `github.com/ALeXXBody/mib-cluster-map-generic` is
+retired; **this Addon repository is the single source of truth** from
+now on: the payload (`mod/cluster_aa`), the rebuilt binaries
+(`libgal_hook.so` v0.7.x, `stream-player` with the menu), the fork's
+sources under the toolchain, and the whole audit trail (LEDGER rounds
+1-41) already live here. A full git bundle of the fork (4.5 MB,
+`--all` branches/history) was taken before the removal and kept
+locally, so nothing is unrecoverable.
+
+Deleting the remote repository needs the `delete_repo` OAuth scope,
+which the current token does not carry - the deletion is therefore
+completed by the owner (one `gh auth refresh -h github.com -s
+delete_repo` + `gh repo delete ALeXXBody/mib-cluster-map-generic
+--yes`, or the web UI's repository Settings -> Danger Zone).
