@@ -177,6 +177,18 @@ Everything we know for certain — engine facts, debugging signatures, engine
 decisions, waits — lives in the project [`LEDGER.md`](LEDGER.md). Read it
 before touching anything; update it when you learn something new.
 
+## Support
+
+<div align="center">
+
+### ☕ [Buy Me A Coffee — ALeXXBody](https://buymeacoffee.com/alexxbody)
+
+*All support goes into hardware parts and tokens for building more free tools for the community.*
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-alexxbody-FFDD00?logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/alexxbody)
+
+</div>
+
 ## Licence
 
 Same upstream licence: GPL-3.0. See `LICENSE` and the per-file licence notes (`thirdparty/*.LICENSE`).
