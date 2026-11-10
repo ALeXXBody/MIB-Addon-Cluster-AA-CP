@@ -1419,3 +1419,18 @@ diagnostic answers:
    shows if events arrive at all (no trace lines = the wheel's presses
    are not reaching the cluster input channel: the unit-side answer
    then comes from M.I.B.'s/VW-side notes, not from more guessing);
+
+---
+
+## 41. Round v0.7.3 - the sharper-map press never ran since v0.5.1: the CONF-before-ladder bug
+
+**Owner diag (the "can't read :" + "The settings copy names no cluster
+map window" lines): the sharper-map press DIED inside the switch.**
+scripts/full_frame.sh read the WINDOW through $CONF - assigned only
+AFTER the remount ladder - so the variable was EMPTY at the read: every
+sharper-map press since the v0.5.1 ladder patch answered "settings copy
+names no cluster map window". Fixed: the pre-ladder reads (WINDOW, the
+FRAME_CONF_MARK check, NOW) use CONF_READ, the write stays CONF (the
+ladder's winning alias). The probe's refusal reason now lands in the
+ladder's record per form ("write probe at <path>: <errno>").
+Sim: the sharper-map regression + the probe-reason record; 58 tests.

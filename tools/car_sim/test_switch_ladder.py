@@ -214,3 +214,39 @@ def test_probe_prefers_the_work_target_when_the_root_refuses_writes(car):
     assert hit is not None, f"the switch wrote nowhere\n{p.stdout}\n{p.stderr}"
     bundle = pathlib.Path("/tmp/clustermap_diag/diag.txt").read_text()
     assert "app: read-write via" in bundle, bundle
+
+
+def test_full_frame_prefers_the_conf_read_before_the_ladder(car):
+    """Sharper-map press regression: the pre-ladder read read the file
+    through $CONF (assigned only AFTER the ladder), so CONF was EMPTY
+    at that point: every sharper-map press answered "settings copy names
+    no cluster map window" (the car diag's exact wording). The switch
+    must read the settings through CONF_READ and only WRITE via the
+    ladder's CONF."""
+    _stage(car)
+    for v in APP_VIEWS:
+        pathlib.Path(v, "eso/lib/gal_dualscreen/gal_dualscreen.conf").write_text(
+            "GAL_PLAYER_WINDOW=1010x376\n"
+            "CLUSTERMAP_FULL_FRAME=0\n"
+            "# Cluster map window (written by the installer, switched by the green menu)\n")
+    car.stage_jsonlint_all_app_views()
+    p = car.run([f"sh", f"/fs/sda0/mod/cluster_aa/greenmenu/gem/full_frame_on.sh"],
+                expect_rc=0)
+    hit = None
+    for v in APP_VIEWS:
+        f = pathlib.Path(v, "eso/lib/gal_dualscreen/gal_dualscreen.conf")
+        if f.is_file() and "CLUSTERMAP_FULL_FRAME=1" in f.read_text():
+            hit = f
+    assert hit is not None, f"the sharper-map switch wrote nowhere\\n{p.stdout}\\n{p.stderr}"
+
+
+def test_ladder_records_the_probe_reason(car):
+    """The car diag asked the WHY again: remount rc=0 but the writes
+    refused - the probe used to swallow the OS's own reason. It now
+    records it per form, so the diag names the errno exactly."""
+    _stage(car)
+    fail_all = "|".join(["", *APP_VIEWS, ""])
+    p = car.run(["sh", "/fs/sda0/mod/cluster_aa/greenmenu/gem/remote_on.sh"],
+                env={"CB_MOUNT_FAIL": fail_all})
+    bundle = pathlib.Path("/tmp/clustermap_diag/diag.txt").read_text()
+    assert "every form failed" in bundle, bundle

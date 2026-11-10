@@ -32,11 +32,6 @@ echo "app: read-write via '$APP_LADDER_FORM'"
 # the trace is LIVE: /tmp/gal_remote_trace is read by the hook at each
 # incoming input event
 echo "$([ "$1" = on ] && echo 1 || echo 0)" > /tmp/gal_remote_trace
-sed -i '/^GAL_REMOTE_TRACE=/d' "$CONF"
-if [ "$1" = on ]; then
-    echo "GAL_REMOTE_TRACE=1" >> "$CONF"
-fi
-sync
 echo "Wheel trace: $1 (LIVE - read at each incoming gesture, no restart)."
 echo "Run: Cluster menu entries on the wheel, then 10/11. Save logs - the"
 echo "diag will show every gesture's own code/action exactly as it arrived."

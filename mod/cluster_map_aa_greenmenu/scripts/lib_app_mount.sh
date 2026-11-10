@@ -74,15 +74,27 @@ app_probe_view()
     #      $1/eso/lib/gal_dualscreen (settings copy, hook, backups).
     # So probe AT THE WORK TARGET first, fall back to the view root.
     # (Subshell: dash aborts on a special builtin's failed redirect.)
+    # The v0.7.3 refinement: the probe also RECORDS why every one of its
+    # attempts refused - one per form in $APP_LADDER_ERRORS. A car diag
+    # therefore names the reason (ENO.../Permission) rather than the
+    # same "every form failed" verdict.
     if [ -d "$1/eso/lib/gal_dualscreen" ]; then
-        ( : > "$1/eso/lib/gal_dualscreen/.clustermap_rw_probe" ) 2>/dev/null && {
+        _err=`{ ( : > "$1/eso/lib/gal_dualscreen/.clustermap_rw_probe" ); } 2>&1`
+        if [ -z "$_err" ]; then
             rm -f "$1/eso/lib/gal_dualscreen/.clustermap_rw_probe" 2>/dev/null
             return 0
-        }
+        fi
+        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1/eso/lib/gal_dualscreen: ${_err:-(no message)}$(echo)"
+    else
+        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1/eso/lib/gal_dualscreen: (folder absent in this view)$(echo)"
     fi
-    ( : > "$1/.clustermap_rw_probe" ) 2>/dev/null || return 1
-    rm -f "$1/.clustermap_rw_probe" 2>/dev/null
-    return 0
+    _err=`{ ( : > "$1/.clustermap_rw_probe" ); } 2>&1`
+    if [ -z "$_err" ]; then
+        rm -f "$1/.clustermap_rw_probe" 2>/dev/null
+        return 0
+    fi
+    APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1 root: ${_err:-(no message)}$(echo)"
+    return 1
 }
 
 # Every attempt's REAL error is recorded (the owner's rule: measured, not
@@ -96,10 +108,12 @@ app_mount_rw()
     for _f in $APP_VIEWS; do
         [ -d "$_f" ] || continue
         _err=`mount -uw "$_f" 2>&1`; _rc=$?
-        if [ "$_rc" -eq 0 ] && [ -z "$_err" ] && app_probe_view "$_f"; then
-            APP_RW="$_f"; APP_LADDER_FORM="mount -uw $_f"
-            APP_LADDER_OK="app: read-write via 'mount -uw $_f'"
-            APP_WRITABLE=1; return 0
+        if [ "$_rc" -eq 0 ] && [ -z "$_err" ]; then
+            if app_probe_view "$_f"; then
+                APP_RW="$_f"; APP_LADDER_FORM="mount -uw $_f"
+                APP_LADDER_OK="app: read-write via 'mount -uw $_f'"
+                APP_WRITABLE=1; return 0
+            fi
         fi
         APP_LADDER_ERRORS="${APP_LADDER_ERRORS}mount -uw $_f -> rc=$_rc: ${_err:-no message}$(echo)"
     done

@@ -25,7 +25,7 @@ if [ ! -r "$CONF_READ" ]; then
     echo "The cluster map is not installed: install it first."
     exit 1
 fi
-WINDOW=`sed -n 's/^[ 	]*GAL_PLAYER_WINDOW[ 	]*=[ 	]*\([0-9][0-9]*x[0-9][0-9]*\)[ 	]*$/\1/p' "$CONF" | tail -1`
+WINDOW=`sed -n 's/^[ 	]*GAL_PLAYER_WINDOW[ 	]*=[ 	]*\([0-9][0-9]*x[0-9][0-9]*\)[ 	]*$/\1/p' "$CONF_READ" | tail -1`
 MAP_W=`echo "$WINDOW" | sed -n 's/^\([0-9]*\)x[0-9]*$/\1/p'`
 MAP_H=`echo "$WINDOW" | sed -n 's/^[0-9]*x\([0-9]*\)$/\1/p'`
 if [ -z "$MAP_W" ] || [ -z "$MAP_H" ] || [ "$MAP_W" -lt 320 ] || [ "$MAP_W" -gt 1920 ] ||
@@ -36,7 +36,7 @@ if [ -z "$MAP_W" ] || [ -z "$MAP_H" ] || [ "$MAP_W" -lt 320 ] || [ "$MAP_W" -gt 
 fi
 # Written only by an installer that has the full-frame hook and player; an
 # older install would take the settings and draw a squeezed map.
-if ! grep -q "^$FRAME_CONF_MARK\$" "$CONF" 2>/dev/null; then
+if ! grep -q "^$FRAME_CONF_MARK$" "$CONF_READ" 2>/dev/null; then
     echo "The cluster map on the unit was installed by an older release, which"
     echo "cannot draw the sharper map. Choose \"Install cluster map\" from this"
     echo "card first, then use this switch. Nothing changed."
@@ -48,7 +48,7 @@ if [ "$WANT" = 1 ] && ! frame_full_ok $MAP_W $MAP_H; then
     exit 3
 fi
 
-NOW=`sed -n 's/^CLUSTERMAP_FULL_FRAME=\([01]\)[ 	]*$/\1/p' "$CONF" | tail -1`
+NOW=`sed -n 's/^CLUSTERMAP_FULL_FRAME=\([01]\)[ 	]*$/\1/p' "$CONF_READ" | tail -1`
 [ "$NOW" = 1 ] || NOW=0
 if [ "$NOW" = "$WANT" ]; then
     echo "Sharper map is already $1. Nothing changed."
