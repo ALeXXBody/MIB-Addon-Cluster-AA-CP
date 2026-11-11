@@ -1,11 +1,7 @@
 #!/bin/sh
-# idrpump.sh - map text sharpening between the phone's own ~60 s key
-# frames. GAL_IDR_PUMP=SECONDS makes the hook bounce the cluster's video
-# focus briefly every N seconds (player stays up, mode 2 / back) so the
-# phone keeps sending fresh IDR key frames. Needs the v0.6.1 hook; the
-# key is inert on an older one. OFF by default.
-#   idrpump.sh SECONDS   (>= 10; start with 25)
-#   idrpump.sh off       historical behaviour (no key)
+# idrpump.sh - map text sharpening between the phone's key frames.
+#   idrpump.sh SECONDS (>=10; start with 25) | off
+# LIVE: the focus controller polls /tmp/gal_idr_pump every second.
 HERE=`dirname "$0"`
 if [ -r "$HERE/../scripts/lib_app_mount.sh" ]; then
     . "$HERE/../scripts/lib_app_mount.sh"
@@ -13,7 +9,6 @@ else
     echo "lib_app_mount.sh missing on the card (re-copy the zip's mod/)" >&2
     exit 1
 fi
-
 CONF_READ="$APP_MOUNT/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 case "$1" in
     [0-9]*)  NUM=$1 ;;
@@ -26,28 +21,20 @@ if [ -n "$NUM" ]; then
     [ "$NUM" -gt 300 ] && NUM=300
 fi
 
-if ! app_mount_rw; then
-    echo "Cannot remount the app partition read-write - every form failed:" >&2
-    echo "$APP_LADDER_ERRORS" >&2
-    echo "Nothing changed." >&2
-    exit 1
-fi
-CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
-echo "app: read-write via '$APP_LADDER_FORM'"
+# The hook reads /tmp/gal_idr_pump as a BARE INTEGER (fscanf "%ld"),
+# seconds or 0; "GAL_IDR_PUMP=25" was unreadable and the pump never
+# started (v0.7.4 car round). The persisted key keeps KEY=VALUE.
+live_write "$GAL_RUNTIME_DIR/gal_idr_pump" "${NUM:-0}" || exit 1
 
-# v0.7.1: the period is LIVE - /tmp/gal_idr_pump is what the focus
-# controller polls 1x/s while the session is healthy; writing it makes
-# the change take effect within a second, no reboot.
-echo "GAL_IDR_PUMP=${NUM:-0}" > /tmp/gal_idr_pump
-sed -i '/^GAL_IDR_PUMP=/d' "$CONF"
+PERSISTED=0
+conf_persist set "GAL_IDR_PUMP=${NUM:-0}" && {
+    if [ "$CONF_PERSISTED" = 1 ]; then PERSISTED=1; else PERSISTED=2; fi
+}
+
 case "$NUM" in
     '') echo "Sharpness pump: OFF (LIVE - stops pulsing within a second)." ;;
-    *)  echo "GAL_IDR_PUMP=$NUM" >> "$CONF"
-        echo "Sharpness pump: every $NUM s the hook keeps the cluster's"
-        echo "key-reject cadence short: mode 2 / brief / re-grant (player"
-        echo "stays up; the brief blink is the price). LIVE - starts"
-        echo "pulsing within a second, no reboot needed."
-        ;;
+    *)  echo "Sharpness pump: every $NUM s (LIVE - pulsing starts within a second;"
+        echo "the brief blink is the price of fresh key frames)." ;;
 esac
-sync
+[ "$PERSISTED" = 0 ] && echo "NOT persisted: still LIVE until the next gal start."
 exit 0

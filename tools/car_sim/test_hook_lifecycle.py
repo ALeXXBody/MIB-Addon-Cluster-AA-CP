@@ -66,7 +66,7 @@ def test_install_then_uninstall_via_fqdn_view(car):
     assert "app partition: read-write via" in out, f"--stdout--\n{out}\n--stderr--\n{p.stderr}"
     assert re.search(r"read-write via '.*mmx\.mibhigh\.net", out), \
         f"install picked some other view:\n--stdout--\n{out}\n--stderr--\n{p.stderr}"
-    assert "system partition: read-write via" in out, out
+    assert "system: read-write via" in out, out
     # Artifacts live ONLY under the FQDN view:
     fq = pathlib.Path(APP_VIEWS[1], "eso/lib/gal_dualscreen/libgal_hook.so")
     assert fq.exists(), f"{fq} missing\n--stdout--\n{out}"

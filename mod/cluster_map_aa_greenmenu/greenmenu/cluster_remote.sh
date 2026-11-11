@@ -1,12 +1,14 @@
 #!/bin/sh
-
+# cluster_remote.sh - the steering wheel remote for the cluster map.
+#
+# v0.7.5: the LIVE arm comes FIRST and does not depend on any remount.
+# The v0.7.5 hook taps the unit's OUTBOUND InputReport path and reads
+# /tmp/gal_remote at every gesture, so this file is the arm: once it
+# reads 1, the very next wheel press is routed. Persistence (unit copy
+# or card root) only matters for the next gal start.
 HERE=`dirname "$0"`
-# the shared lib lives in the payload's scripts/ folder (round-13 class
-# bug: a missing source line ABORTS the shell - guard it explicitly)
 if [ -r "$HERE/../scripts/lib_app_mount.sh" ]; then
     . "$HERE/../scripts/lib_app_mount.sh"
-elif [ -r "$HERE/lib_app_mount.sh" ]; then
-    . "$HERE/lib_app_mount.sh"
 else
     echo "lib_app_mount.sh missing on the card (re-copy the zip's mod/)" >&2
     exit 1
@@ -18,38 +20,30 @@ case "$1" in
     off) WANT=0 ;;
     *) echo "usage: $0 on|off" >&2; exit 2 ;;
 esac
-# v0.7.2: LIVE - the hook reads /tmp/gal_remote at each wheel event, so
-# the binding turns on/off without a restart (no reboot needed).
-echo "$WANT" > /tmp/gal_remote
 
-if [ ! -r "$CONF_READ" ]; then
-    echo "The cluster map is not installed: install it first."
-    exit 1
+# 1) the LIVE arm - the only write the hook needs right now
+live_write "$GAL_RUNTIME_DIR/gal_remote" "$WANT" || exit 1
+
+# 2) persist for the next gal start: the file the hook actually loads
+# (card root when one exists, else the unit copy) and remount app ro again.
+PERSISTED=0
+if conf_persist set "GAL_CLUSTER_REMOTE=$WANT"; then
+    if [ "$CONF_PERSISTED" = 1 ]; then PERSISTED=1; else PERSISTED=2; fi
+else
+    echo "(persistence refused: $(echo "$APP_LADDER_ERRORS" | tail -1))"
 fi
 
-# Shared LADDER (the switch-audit fix): the single local spelling is not
-# enough on cars whose console only remounts app via another view form
-# (owner diag: "Cannot remount /mnt/app" killed EVERY switch silently).
-# Write through the alias that actually took the remount.
-if ! app_mount_rw; then
-    echo "Cannot remount the app partition read-write - every form failed:" >&2
-    echo "$APP_LADDER_ERRORS" >&2
-    echo "Nothing changed." >&2
-    exit 1
+if [ "$WANT" = 1 ]; then
+    echo "Cluster remote: ON (LIVE) - the wheel is armed for the NEXT press."
+    echo "  short OK press  -> cycle the card-clear preset"
+    echo "  long OK press   -> toggle the turn-info strip"
+    echo "  rotary          -> zoom +/-"
+else
+    echo "Cluster remote: OFF (LIVE)."
 fi
-CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
-echo "app: read-write via '$APP_LADDER_FORM'"
-
-sed -i '/^GAL_CLUSTER_REMOTE=/d' "$CONF"
-echo "GAL_CLUSTER_REMOTE=$WANT" >> "$CONF"
-# v0.7.4: persist for the hook's OWN loader too (the card-root file wins
-# over the unit copy at the next gal start - no install needed)
-sh "$HERE/card_conf_update.sh" "GAL_CLUSTER_REMOTE=$WANT" 2>/dev/null \
-    || echo "(card-root conf not updated; the unit copy carries the key)"
-
-sync
-echo "Cluster remote (OK press on the cluster): $([ "$WANT" = 1 ] && echo ON || echo OFF) (LIVE)"
-echo "  short OK press  -> cycle the card-clear preset"
-echo "  long OK press   -> toggle the turn-info strip"
-echo "  rotary          -> zoom +/-"
-echo "LIVE: bound at the next wheel gesture; a reboot only validates the persisted key."
+case "$PERSISTED" in
+    1) echo "Persisted in the unit's copy: survives reboots." ;;
+    2) echo "Persisted on the card root: survives reboots (read at gal start)." ;;
+    *) echo "NOT persisted (both write paths refused): the LIVE arm holds until the next gal start." ;;
+esac
+exit 0

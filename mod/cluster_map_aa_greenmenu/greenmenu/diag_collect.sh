@@ -82,11 +82,54 @@ for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/ap
     fi
 done
 [ -n "$CONF" ] || CONF="$APPVIEW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
-LOGCARD="$PKG/logs/gal_dualscreen.log"
-LOGTMP=/tmp/gal_dualscreen.log
 
 put() { echo "$1" >> "$TMP"; }
 section() { echo "" >> "$TMP"; echo "== $1" >> "$TMP"; }
+
+# _gal_env_lines CONFIG -- print one KEY=VALUE per line for the "envs" array
+# of the "gal" child in the supervisor config.
+#
+# The v0.7.4 extractor only looked for a line that BEGINS with "envs", which
+# this firmware's file does not have, so section 8 printed nothing at all on
+# the car. This one reads the whole file into one buffer and walks to the
+# gal child, then to its envs array, then prints each string that looks like
+# an environment entry. It never prints anything from another child (the
+# stock "mirrorlink" child is the reason the old section 5 could not tell an
+# armed unit from a stock one).
+_gal_env_lines()
+{
+    awk '
+        { buf = buf $0 "\n" }
+        END {
+            s = index(buf, "\"gal\"")
+            if (s == 0) exit 0
+            rest = substr(buf, s)
+            e = index(rest, "\"envs\"")
+            if (e == 0) exit 0
+            rest = substr(rest, e)
+            a = index(rest, "[")
+            if (a == 0) exit 0
+            rest = substr(rest, a + 1)
+            n = length(rest)
+            i = 1
+            while (i <= n) {
+                c = substr(rest, i, 1)
+                if (c == "]") break
+                if (c != "\"") { i++; continue }
+                j = i + 1; str = ""
+                while (j <= n) {
+                    c2 = substr(rest, j, 1)
+                    if (c2 == "\\") { str = str substr(rest, j, 2); j += 2; continue }
+                    if (c2 == "\"") break
+                    str = str c2
+                    j++
+                }
+                if (str ~ /^[A-Za-z_][A-Za-z0-9_]*=/) print str
+                i = j + 1
+            }
+        }
+    ' "$1" 2>/dev/null
+}
 
 put "Cluster Map add-on diagnostic bundle"
 put "collected: `date 2>/dev/null`"
@@ -129,17 +172,63 @@ put "system view: $SYSVIEW"
 put "jsonlint: `([ -x "$APPVIEW/eso/bin/jsonlint" ] && echo present) || echo missing`"
 put "hook .so: `([ -x "$APPVIEW/eso/lib/gal_dualscreen/libgal_hook.so" ] && echo present) || echo absent`"
 
-# ---- 5. arm state
-section "5 arm state"
-_PRELOAD="no"; _PRELOAD_AT=""
-for _v in /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
-    _f="$_v/etc/eso/production/smartphone_integrator.json"
-    if [ -r "$_f" ] && grep -q 'LD_PRELOAD=' "$_f" 2>/dev/null; then
-        _PRELOAD="YES"; _PRELOAD_AT="$_f"; break
+# ---- 4b. the hook binary: card copy vs installed copy
+# The install copies the .so from the card to /eso/lib/gal_dualscreen. A
+# half-copied or stale unit binary is invisible unless both sides are
+# measured, and the build string in the hook's own log (section 9,
+# "event=init build=...") only identifies what is RUNNING, not what the
+# card carries.
+section "4b hook binary (card vs unit)"
+_so_info()
+{
+    if [ ! -r "$1" ]; then echo "absent"; return; fi
+    _sz=`ls -l "$1" 2>/dev/null | awk '{print $5}'`
+    _h=""
+    if command -v sha1sum >/dev/null 2>&1; then
+        _h=`sha1sum "$1" 2>/dev/null | awk '{print $1}'`
+        [ -n "$_h" ] && _h=" sha1=$_h"
+    fi
+    echo "size=${_sz:-?}$_h"
+}
+_SO_CARD="$PKG/libgal_hook.so"
+_SO_UNIT=""
+for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+    if [ -r "$_v/eso/lib/gal_dualscreen/libgal_hook.so" ]; then
+        _SO_UNIT="$_v/eso/lib/gal_dualscreen/libgal_hook.so"; break
     fi
 done
-put "hook preloaded into gal (config carries LD_PRELOAD): ${_PRELOAD}${_PRELOAD_AT:+ (in $_PRELOAD_AT)}"
-put "engdefs/cluster-map.esd: `([ -d "${APPVIEW%\\0}/eso/hmi/engdefs" ] && [ -f "$APPVIEW/eso/hmi/engdefs/cluster-map.esd" ] && echo present) || echo not-registered`"
+put "card: ${_SO_CARD:-none}"
+put "      `_so_info "$_SO_CARD"`"
+put "unit: ${_SO_UNIT:-not found}"
+put "      `_so_info "$_SO_UNIT"`"
+
+# ---- 5. arm state
+section "5 arm state"
+# Is the hook really inside the envs of the "gal" child? v0.7.4's check was
+# a plain `grep LD_PRELOAD=` on the whole file, and this firmware's stock
+# config already carries LD_PRELOAD for its own "mirrorlink" child -- so the
+# bundle said YES on a completely unhooked unit. The envs are read out of
+# the gal child only, and only its own LD_PRELOAD counts.
+_GE=""
+[ -r "$CFG" ] && _GE=`_gal_env_lines "$CFG"`
+_PRELOAD="no"
+if [ -n "$_GE" ]; then
+    _PRELOAD_V=`echo "$_GE" | sed -n 's/^LD_PRELOAD=//p' | tail -1`
+    case "$_PRELOAD_V" in
+        "") _PRELOAD="no (the gal child has no LD_PRELOAD)" ;;
+        *libgal_hook.so*) _PRELOAD="YES ($_PRELOAD_V)" ;;
+        *) _PRELOAD="no (the gal child preloads $_PRELOAD_V, not the hook)" ;;
+    esac
+else
+    _PRELOAD="unknown (could not read the gal child's envs from $CFG)"
+fi
+put "hook preloaded into gal (the gal child's own LD_PRELOAD): $_PRELOAD"
+if [ -n "$_GE" ]; then
+    _GE_N=`echo "$_GE" | awk 'NF { n++ } END { print n + 0 }'`
+    _GE_GAL=`echo "$_GE" | awk '/^GAL_/ { n++ } END { print n + 0 }'`
+    put "gal env entries: $_GE_N in total, $_GE_GAL of them GAL_*"
+fi
+put "engdefs/cluster-map.esd: `([ -d "$APPVIEW/eso/hmi/engdefs" ] && [ -f "$APPVIEW/eso/hmi/engdefs/cluster-map.esd" ] && echo present) || echo not-registered`"
 
 # ---- 6. engdefs listing (names only; the GEM's own world, not read)
 section "6 engdefs listing (names)"
@@ -176,36 +265,49 @@ else
 fi
 
 # ---- 7. installed settings (the fine-tune facts)
-section "7 installed settings (unit copy of gal_dualscreen.conf)"
-if [ -r "$CONF" ]; then
-    grep -e "^GAL_PLAYER_WINDOW" -e "^GAL_SECONDARY_DPI" -e "^GAL_SECONDARY_MARGINS" \
-         -e "^GAL_SECONDARY_INSETS" -e "^GAL_SECONDARY_PIXEL_ASPECT_RATIO_E4" \
-         -e "^GAL_SECONDARY_VIEWING_DISTANCE" -e "^GAL_PLAYER_ZOOM_E4" \
-         -e "^CLUSTERMAP_FULL_FRAME" -e "^GAL_KEEP_MAP" -e "^GAL_SECONDARY_UI_CONFIG_HEX" \
-         "$CONF" >> "$TMP" 2>/dev/null
+section "7 installed settings (the file the hook actually loads)"
+# The hook loads the FIRST file that exists among
+#   /fs/sdb0, /fs/sda0, /eso/lib/gal_dualscreen (the unit copy), /tmp
+# so a file at the card ROOT SHADOWS the unit copy. v0.7.4 dumped a fixed
+# whitelist from the unit copy only: a card-root file was invisible, and so
+# were the keys that decide the wheel (GAL_CLUSTER_REMOTE, GAL_REMOTE_TRACE),
+# the cluster menu, hi-res and the IDR pump. Everything this add-on reads is
+# GAL_*/CLUSTERMAP_*, so dump exactly that, from the file that wins, and say
+# which file that is.
+_ACTCONF=""
+for _c in /fs/sdb0/gal_dualscreen.conf /fs/sda0/gal_dualscreen.conf \
+          /net/mmx/fs/sdb0/gal_dualscreen.conf /net/mmx/fs/sda0/gal_dualscreen.conf \
+          /net/mmx.mibhigh.net/fs/sdb0/gal_dualscreen.conf \
+          /net/mmx.mibhigh.net/fs/sda0/gal_dualscreen.conf; do
+    if [ -r "$_c" ]; then _ACTCONF="$_c"; break; fi
+done
+put "card-root file: ${_ACTCONF:-none}"
+put "unit copy: $CONF"
+if [ -n "$_ACTCONF" ]; then
+    put "the hook loads: $_ACTCONF  (the card-root file wins over the unit copy)"
 else
-    put "(no unit settings copy at $CONF)"
+    put "the hook loads: $CONF  (no card-root file shadows it)"
+fi
+put "-- settings in the file the hook loads --"
+if [ -r "${_ACTCONF:-$CONF}" ]; then
+    grep -e "^GAL_" -e "^CLUSTERMAP_" "${_ACTCONF:-$CONF}" >> "$TMP" 2>/dev/null
+else
+    put "(not readable: ${_ACTCONF:-$CONF})"
+fi
+if [ -n "$_ACTCONF" ] && [ -r "$CONF" ]; then
+    put "-- unit copy (SHADOWED by the card-root file: edits here do nothing) --"
+    grep -e "^GAL_" -e "^CLUSTERMAP_" "$CONF" >> "$TMP" 2>/dev/null
 fi
 
 # ---- 8. supervisor config env keys
 section "8 supervisor config (env KEY names only; no values)"
-_put_envs() {
-    awk '
-        /"children"/ { in_c=1 }
-        in_c && /^[ \t]*"envs"/ {
-            # pull only the entry names, not their values
-            line=$0
-            while (match(line, /"[A-Za-z0-9_]+=/)) {
-                print "  " substr(line, RSTART+1, RLENGTH-2)
-                line = substr(line, RSTART+RLENGTH)
-            }
-            exit
-        }
-    ' "$1" 2>/dev/null
-}
 if [ -r "$CFG" ]; then
     put "config view: $CFG"
-    _put_envs "$CFG"
+    if [ -n "$_GE" ]; then
+        echo "$_GE" | sed -n 's/=.*//; s/^/  /p' >> "$TMP" 2>/dev/null
+    else
+        put "  (the gal child's envs could not be read; is this the stock config?)"
+    fi
     put "persistent backup beside it: `([ -r "$CFG.gal-dualscreen.original" ] && echo present) || echo absent`"
 else
     put "(supervisor config not reachable from this view: $CFG)"
@@ -213,15 +315,51 @@ fi
 
 # ---- 9. hook log tail
 section "9 hook log tail (last 120 lines)"
+# The hook's default log is <card>/logs/gal_dualscreen.log (the card root),
+# with /tmp/gal_dualscreen.log as the RAM fallback -- plus whatever
+# GAL_HOOK_LOG names. v0.7.4 only checked the payload folder and /tmp, so a
+# real log written on the card was reported as "no hook log", which sent the
+# whole wheel round chasing a hook that had in fact been running.
 LOG=""
-[ -r "$LOGCARD" ] && LOG="$LOGCARD"
-[ -z "$LOG" ] && [ -r "$LOGTMP" ] && LOG="$LOGTMP"
+for _c in /fs/sdb0/logs/gal_dualscreen.log /fs/sda0/logs/gal_dualscreen.log \
+          /net/mmx/fs/sdb0/logs/gal_dualscreen.log /net/mmx/fs/sda0/logs/gal_dualscreen.log \
+          "$PKG/logs/gal_dualscreen.log" /tmp/gal_dualscreen.log; do
+    [ -r "$_c" ] && { LOG="$_c"; break; }
+done
+_HOOKLOG_ENV=`echo "$_GE" | sed -n 's/^GAL_HOOK_LOG=//p' | tail -1`
+if [ -n "$_HOOKLOG_ENV" ]; then
+    put "GAL_HOOK_LOG (supervisor env): $_HOOKLOG_ENV"
+    [ -z "$LOG" ] && [ -r "$_HOOKLOG_ENV" ] && LOG="$_HOOKLOG_ENV"
+fi
 if [ -n "$LOG" ]; then
     put "source: $LOG"
     tail -120 "$LOG" >> "$TMP" 2>/dev/null
 else
-    put "(no hook log found on the card at logs/gal_dualscreen.log, none in /tmp yet)"
+    put "(no hook log at the card root logs/, the payload folder, /tmp, or GAL_HOOK_LOG)"
 fi
+put "-- log folders --"
+for _d in /fs/sdb0/logs /fs/sda0/logs "$PKG/logs" /tmp; do
+    [ -d "$_d" ] || continue
+    put "$_d:"
+    ls "$_d" 2>/dev/null | head -20 | sed 's/^/  /' >> "$TMP" 2>/dev/null
+done
+
+# ---- 9b. the hook's live runtime files
+# These are what the switches arm (and what the hook reads per gesture), so
+# their presence and contents decide every "the switch says ON but nothing
+# happens" report. /tmp/gal_inject is the key-injection probe, listed here
+# because an owner who used it needs it in the bundle.
+section "9b hook runtime files (/tmp, read live by the hook)"
+for _f in /tmp/gal_remote /tmp/gal_remote_trace /tmp/gal_cluster_menu /tmp/gal_hires \
+          /tmp/gal_idr_pump /tmp/gal_uiconfig /tmp/stream-player.menu \
+          /tmp/stream-player.zoom /tmp/stream-player.navstrip \
+          /tmp/gal_kombi_ready /tmp/gal_inject; do
+    if [ -r "$_f" ]; then
+        put "$_f = `sed -n 1p "$_f" 2>/dev/null`"
+    else
+        put "$_f = (absent)"
+    fi
+done
 
 # ---- 10. install paths record
 section "10 install home record"

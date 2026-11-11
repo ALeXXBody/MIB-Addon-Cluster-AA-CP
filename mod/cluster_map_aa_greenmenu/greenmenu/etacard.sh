@@ -40,29 +40,28 @@ if [ ! -r "$CONF_READ" ]; then
     exit 1
 fi
 
-# Write through the ladder like every switch
-if ! app_mount_rw; then
-    echo "Cannot remount the app partition read-write - every form failed:" >&2
-    echo "$APP_LADDER_ERRORS" >&2
-    echo "Nothing changed." >&2
-    exit 1
-fi
-CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
-echo "app: read-write via '$APP_LADDER_FORM'"
-
 NOW=`sed -n 's/^GAL_SECONDARY_UI_CONFIG_HEX=//p' "$CONF_READ" | tail -1`
 if [ "$HEX" != "" ] && [ "$NOW" = "$HEX" ]; then
     echo "ETA card ($1) already set. Nothing changed."
     exit 0
 fi
 
-sed -i '/^GAL_SECONDARY_UI_CONFIG_HEX=/d' "$CONF" || {
-    echo "Could not rewrite gal_dualscreen.conf. Nothing changed."; exit 1; }
-if [ "$HEX" != "" ]; then
-    echo "GAL_SECONDARY_UI_CONFIG_HEX=$HEX" >> "$CONF" || {
-        echo "Could not append the settings line. Nothing changed."; exit 1; }
+# v0.7.5: no live channel exists for this hex pose, so persistence IS the
+# arm. The settings file the hook actually loads is updated (card root
+# when one exists, else the unit copy) and the app partition goes back to
+# read-only. Empty HEX = remove the key.
+PERSISTED=0
+if [ "$HEX" = "" ]; then
+    conf_persist clear GAL_SECONDARY_UI_CONFIG_HEX
+else
+    conf_persist set "GAL_SECONDARY_UI_CONFIG_HEX=$HEX"
+fi && {
+    if [ "$CONF_PERSISTED" = 1 ]; then PERSISTED=1; else PERSISTED=2; fi
+}
+if [ "$PERSISTED" = 0 ]; then
+    echo "Cannot persist the ETA pose (both write paths refused). Nothing changed." >&2
+    exit 1
 fi
-sync
 
 if [ "$HEX" = "" ]; then
     echo "ETA card: OFF - $POSE."

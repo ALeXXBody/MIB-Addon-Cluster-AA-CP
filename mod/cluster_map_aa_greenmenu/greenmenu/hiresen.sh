@@ -1,10 +1,7 @@
 #!/bin/sh
 # hiresen.sh - trial the phone-port sharpness ceiling: ask the phone for
-# the cluster stream coded at 1280x720 (AA codec enum 2 requires the
-# v0.6.0 hook; the trial key is harmless for an older hook - nothing
-# reads it).
-#   hiresen.sh on   next gal start declares 1280x720 beside 800x480
-#   hiresen.sh off  historical identity restored (remove the key)
+# the cluster stream coded at 1280x720 (AA codec enum 2, v0.6.0+ hook).
+#   hiresen.sh on|off   LIVE for the NEXT phone session (no reboot)
 HERE=`dirname "$0"`
 if [ -r "$HERE/../scripts/lib_app_mount.sh" ]; then
     . "$HERE/../scripts/lib_app_mount.sh"
@@ -12,37 +9,30 @@ else
     echo "lib_app_mount.sh missing on the card (re-copy the zip's mod/)" >&2
     exit 1
 fi
-
 CONF_READ="$APP_MOUNT/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 case "$1" in
-    on)  : ;;
-    off) : ;;
+    on|off) : ;;
     *) echo "usage: $0 on|off" >&2; exit 2 ;;
 esac
 
-if ! app_mount_rw; then
-    echo "Cannot remount the app partition read-write - every form failed:" >&2
-    echo "$APP_LADDER_ERRORS" >&2
-    echo "Nothing changed." >&2
-    exit 1
-fi
-CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
-echo "app: read-write via '$APP_LADDER_FORM'"
+WANT=$([ "$1" = on ] && echo 1 || echo 0)
+# The hook reads /tmp/gal_hires as a BARE INTEGER (fscanf "%d"): writing
+# "GAL_SECONDARY_HIRESEN=1" here made the file unreadable and the switch
+# a no-op (v0.7.4 car round). The persisted key keeps its KEY=VALUE form;
+# the runtime file is the value only.
+live_write "$GAL_RUNTIME_DIR/gal_hires" "$WANT" || exit 1
 
-# v0.7.1: the runtime file /tmp/gal_hires is read by the hook when it
-# builds the next phone session - so the choice lands at the NEXT PHONE
-# SESSION (unplug/replug the USB or cycle phone AA), not at a reboot.
-echo "GAL_SECONDARY_HIRESEN=$([ "$1" = on ] && echo 1 || echo 0)" > /tmp/gal_hires
-sed -i '/^GAL_SECONDARY_HIRESEN=/d' "$CONF"
-case "$1" in
-    on)  echo "GAL_SECONDARY_HIRESEN=1" >> "$CONF"
-         echo "Hi-res trial: ON (LIVE ARMED) - declares the 1280x720 stream"
-         echo "beside 800x480 at your NEXT PHONE SESSION (re-plug the USB or"
-         echo "cycle the phone's AA). The phone picks a resolution at that"
-         echo "point. If the map goes dark, press Hi-res OFF then reconnect."
-         ;;
-    off) echo "Hi-res trial: OFF (LIVE ARMED) - back to the shipped look at the next phone session."
-         ;;
-esac
-sync
+PERSISTED=0
+conf_persist set "GAL_SECONDARY_HIRESEN=$WANT" && {
+    if [ "$CONF_PERSISTED" = 1 ]; then PERSISTED=1; else PERSISTED=2; fi
+}
+
+if [ "$WANT" = 1 ]; then
+    echo "Hi-res trial: ON (LIVE ARMED) - the next phone session declares 1280x720"
+    echo "beside 800x480. Re-plug the USB (or cycle the phone's AA) to apply."
+    echo "If the map goes dark, press Hi-res OFF and reconnect."
+else
+    echo "Hi-res trial: OFF (LIVE ARMED) - back to the shipped 800x480 at the next phone session."
+fi
+[ "$PERSISTED" = 0 ] && echo "NOT persisted: still LIVE until the next gal start."
 exit 0

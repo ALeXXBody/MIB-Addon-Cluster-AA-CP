@@ -114,6 +114,39 @@ grep -q 'CARDOUT="\$_h/diag.txt"' $GREEN/diag_collect.sh &&
 grep -q 'GAL_PLAYER_WINDOW' $GREEN/diag_collect.sh &&
     ok "the bundle carries the tuning facts" || fail "tuning facts missing"
 
+echo "== 9. switch runtime-file formats agree with the hook's readers"
+# The hook reads these exact byte shapes; a switch that writes KEY=VALUE into
+# them arms nothing (the v0.7.4 bug). Assert every switch uses the bare value.
+rtfail=0
+for f in $GREEN/cluster_remote.sh $GREEN/remote_trace.sh $GREEN/clustermenu.sh \
+         $GREEN/hiresen.sh $GREEN/idrpump.sh $GREEN/position.sh; do
+    [ -f "$f" ] || continue
+    if grep -q 'live_write .*GAL_RUNTIME_DIR' "$f"; then
+        : # uses the shared helper
+    else
+        fail "`basename $f` does not route its runtime write through live_write"; rtfail=1
+    fi
+    code=`sed '/^[[:space:]]*#/d' "$f"`
+    if echo "$code" | grep -q '/tmp/gal_'; then
+        fail "`basename $f` hardcodes a /tmp runtime path"; rtfail=1
+    fi
+done
+[ "$rtfail" = 0 ] && ok "every switch writes the bare value through \$GAL_RUNTIME_DIR"
+
+# runtime default must be /tmp (the hook's own literal path)
+grep -q 'GAL_RUNTIME_DIR="\${GAL_RUNTIME_DIR:-/tmp}"' $PAYLOAD/scripts/lib_app_mount.sh &&
+    ok "runtime directory defaults to /tmp (matches the hook)" ||
+    fail "runtime directory default is not /tmp"
+
+# binary carries the tap + build marker
+for needle in 'event=remote.tap' 'event=cluster.remote.live' \
+              'event=cluster.remote.gate result=closed' '/tmp/gal_remote' 'v0.7.5'; do
+    if strings $PAYLOAD/libgal_hook.so | grep -qF "$needle"; then :; else
+        fail "shipped hook lacks '$needle'"; rtfail=1
+    fi
+done
+[ "$rtfail" = 0 ] && ok "shipped hook carries the tap + build marker"
+
 if [ "$PASS" = 1 ]; then
     echo "audit_wiring: ALL GREEN (${1:-local})"
     exit 0

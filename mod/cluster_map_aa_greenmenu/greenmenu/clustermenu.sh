@@ -1,15 +1,7 @@
 #!/bin/sh
-# clustermenu.sh — the in-cluster menu switch (v0.7.0).
-#
+# clustermenu.sh - the in-cluster menu switch (v0.7.0).
 #   clustermenu.sh on|off
-#
-# ON writes GAL_CLUSTER_MENU=1 into the unit's settings copy: the hook
-# then routes the steering wheel's SHORT OK press to the player's menu
-# overlay (Zoom / Strip / Card / Pump / Hi-res / Exit), the rotary
-# navigates, the LONG OK keeps the strip toggle. OFF removes the key:
-# the wheel behaves exactly as before (short OK cycles the ETA card,
-# long OK the strip, rotary zoom). Lands at the next gal start.
-# Requires the v0.7.0 hook; the key is inert for an older one.
+# LIVE: the hook checks /tmp/gal_cluster_menu at every wheel gesture.
 HERE=`dirname "$0"`
 if [ -r "$HERE/../scripts/lib_app_mount.sh" ]; then
     . "$HERE/../scripts/lib_app_mount.sh"
@@ -17,38 +9,28 @@ else
     echo "lib_app_mount.sh missing on the card (re-copy the zip's mod/)" >&2
     exit 1
 fi
-
 CONF_READ="$APP_MOUNT/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 case "$1" in
     on|off) : ;;
     *) echo "usage: $0 on|off" >&2; exit 2 ;;
 esac
 
-if ! app_mount_rw; then
-    echo "Cannot remount the app partition read-write - every form failed:" >&2
-    echo "$APP_LADDER_ERRORS" >&2
-    echo "Nothing changed." >&2
-    exit 1
-fi
-CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
-echo "app: read-write via '$APP_LADDER_FORM'"
+WANT=$([ "$1" = on ] && echo 1 || echo 0)
+# The hook reads /tmp/gal_cluster_menu as a SINGLE CHARACTER '0'/'1'
+# (len==1 check); "GAL_CLUSTER_MENU=1" was ignored, so the switch
+# reported success and changed nothing (v0.7.4 car round).
+live_write "$GAL_RUNTIME_DIR/gal_cluster_menu" "$WANT" || exit 1
 
-sed -i '/^GAL_CLUSTER_MENU=/d' "$CONF"
-# v0.7.1: the mode is LIVE - the runtime override file is what the hook
-# checks at every steering-wheel gesture, so the NEXT wheel press already
-# ends up inside (or out of) the menu. No reboot anywhere.
-echo "GAL_CLUSTER_MENU=$([ "$1" = on ] && echo 1 || echo 0)" > /tmp/gal_cluster_menu
-sync
-case "$1" in
-    on)
-        echo "GAL_CLUSTER_MENU=1" >> "$CONF"
-        echo "Cluster menu: ON (LIVE) - SHORT OK opens the overlay on the"
-        echo "cluster NOW, rotary navigates, OK applies; LONG OK stays the"
-        echo "strip toggle. No reboot needed."
-        ;;
-    off)
-        echo "Cluster menu: OFF (LIVE) - the wheel returns to the old binds:"
-        echo "short OK cycles the ETA card, rotary zooms. No reboot needed."
-        ;;
-esac
+PERSISTED=0
+conf_persist set "GAL_CLUSTER_MENU=$WANT" && {
+    if [ "$CONF_PERSISTED" = 1 ]; then PERSISTED=1; else PERSISTED=2; fi
+}
+
+if [ "$WANT" = 1 ]; then
+    echo "Cluster menu: ON (LIVE) - SHORT OK opens the overlay on the cluster,"
+    echo "rotary navigates, OK applies; LONG OK stays the strip toggle."
+else
+    echo "Cluster menu: OFF (LIVE) - short OK cycles the ETA card, rotary zooms."
+fi
+[ "$PERSISTED" = 0 ] && echo "NOT persisted: still LIVE until the next gal start."
 exit 0
