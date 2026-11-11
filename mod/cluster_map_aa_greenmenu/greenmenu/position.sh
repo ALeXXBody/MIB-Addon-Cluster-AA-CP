@@ -82,41 +82,31 @@ case "$ACTION" in
         ;;
 esac
 
-# write through the ladder like every switch
-if ! app_mount_rw; then
-    echo "Cannot remount the app partition read-write - every form failed:" >&2
-    echo "$APP_LADDER_ERRORS" >&2
-    echo "Nothing changed." >&2
-    exit 1
-fi
-CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
-echo "app: read-write via '$APP_LADDER_FORM'"
+# v0.7.5: the LIVE wire send comes FIRST and survives a refused remount.
+# /tmp/gal_uiconfig is what the hook's ui-config sender turns into an
+# immediate UpdateUiConfigRequest to the phone (GAL_UICONFIG=1 in the
+# settings turns the sender on); the persisted key only matters for the
+# next phone session.
+live_write "$GAL_RUNTIME_DIR/gal_uiconfig" "$NT,$NB,$NL,$NR" || exit 1
 
-# POSIX-safe rewrite through a new file and rename (zoom.sh's way)
-# the expert safer-area override REPLACES the insets AND the theme, so a
-# remembered Turn-card preset would silently override the position: the
-# override must go the moment an inset preset runs.
-sed -e '/^GAL_SECONDARY_INSETS=/d' \
-    -e '/^GAL_SECONDARY_UI_CONFIG_HEX=/d' \
-    "$CONF" > "$CONF.new" 2>/dev/null
-sed -e '/^GAL_SECONDARY_UI_CONFIG_HEX=/d' "$CONF" > "$CONF.new" 2>/dev/null
-if ! echo "GAL_SECONDARY_INSETS=$NT,$NB,$NL,$NR" >> "$CONF.new" 2>/dev/null; then
-    echo "Could not rewrite the insets in $CONF. Nothing changed."; rm -f "$CONF.new"; exit 1
-fi
-if grep -q "^GAL_SECONDARY_UI_CONFIG_HEX=" "$CONF" 2>/dev/null; then
-    OVER="; removed the UI_CONFIG_HEX override (a Turn-card preset that would have blocked the inset change)"
-else
-    OVER=""
-fi
-mv "$CONF.new" "$CONF"
-# v0.7.1: the insets are ALSO shipped live on the wire the way the
-# ETA-card presets and the wheel menu do it - /tmp/gal_uiconfig is what
-# the hook's ui-config sender turns into an immediate
-# UpdateUiConfigRequest to the phone. The GEM's big shipdates stay:
-# the phone's UiConfig *layout* is its own call, so the positions land
-# now only when the phone accepts an update (normal on Android Auto 1.7).
-echo "$NT,$NB,$NL,$NR" > /tmp/gal_uiconfig
-sync
-echo "Position: $ACTION (from $NOWSRC: $T,$B,$L,$R -> $NT,$NB,$NL,$NR; step $STEP px) LIVE SENT."
-echo "Sent live on the wire; the next phone session re-derives it from the"
-echo "unit's copy either way ('standard' is the shipped look)."
+PERSISTED=0
+# The expert safer-area override REPLACES the insets AND the theme, so a
+# remembered Turn-card preset would silently override the position: clear
+# it in the same write. Empty value = remove that key.
+OVER=""
+_ACTIVE_CONF=`conf_card_file` || _ACTIVE_CONF="$CONF_READ"
+grep -q "^GAL_SECONDARY_UI_CONFIG_HEX=" "$_ACTIVE_CONF" 2>/dev/null &&
+    OVER="; removed the UI_CONFIG_HEX override"
+conf_persist set "GAL_SECONDARY_INSETS=$NT,$NB,$NL,$NR" "GAL_SECONDARY_UI_CONFIG_HEX=" && {
+    if [ "$CONF_PERSISTED" = 1 ]; then PERSISTED=1; else PERSISTED=2; fi
+}
+
+echo "Position: $ACTION (from $NOWSRC: $T,$B,$L,$R -> $NT,$NB,$NL,$NR; step $STEP px)."
+case "$PERSISTED" in
+    1) echo "Live request queued: the hook sends it to the phone now when GAL_UICONFIG=1."
+       echo "Persisted in the unit's copy$OVER: the next phone session re-derives it." ;;
+    2) echo "Live request queued: the hook sends it to the phone now when GAL_UICONFIG=1."
+       echo "Persisted on the card root$OVER: the next gal start re-derives it." ;;
+    *) echo "NOT persisted (both write paths refused): only the live request above is in"
+       echo "effect; the next phone session returns to the previous insets." ;;
+esac

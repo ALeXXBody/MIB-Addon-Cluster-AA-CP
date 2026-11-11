@@ -71,22 +71,20 @@ def test_remote_land_via_ladder_single_form_points_elsewhere(car):
 
 
 def test_remote_report_verdict_when_nothing_can_be_remounted(car):
-    """The owner's full-refusal shape: EVERY remount form fails - the
-    switch refuses LOUDLY (STOPPED verdict + the form errors land in the
-    diag's run log), it never fakes success."""
+    """v0.7.5: even when EVERY app remount form fails, the LIVE arm still
+    lands (the hook reads /tmp/gal_remote per gesture, no remount needed).
+    Persistence then falls back to the card; if that is blocked too, the
+    switch reports the refusal instead of faking success."""
     _stage(car)
     car.stage(LOCAL_APP, PROBE, b"")
     fail_all = "|".join(["", *APP_VIEWS, ""])
     p = car.run(["sh", "/fs/sda0/mod/cluster_aa/greenmenu/gem/remote_on.sh"],
-                env={"CB_MOUNT_FAIL": fail_all})
+                env={"CB_MOUNT_FAIL": fail_all, "GAL_RUNTIME_DIR": "/tmp"})
     out = p.stdout + p.stderr
-    assert "== STOPPED" in out, out
-    assert "Cannot remount the app partition read-write" in out, out
+    assert pathlib.Path("/tmp/gal_remote").read_text() == "1\n", out
+    assert "== DONE" in out, out
     bundle = pathlib.Path("/tmp/clustermap_diag/diag.txt").read_text()
-    assert "Cannot remount" in bundle, (
-        f"the refusal is not measured in the bundle:\n"
-        "== sections 11/12 ==\n"
-        + "\n".join(bundle.splitlines()[-14:]))
+    assert "Cluster remote: ON (LIVE)" in bundle, bundle[-1500:]
 
 
 def test_position_preset_writes_insets_through_a_working_view(car):
@@ -245,8 +243,12 @@ def test_ladder_records_the_probe_reason(car):
     refused - the probe used to swallow the OS's own reason. It now
     records it per form, so the diag names the errno exactly."""
     _stage(car)
-    fail_all = "|".join(["", *APP_VIEWS, ""])
+    for v in ("/fs/sda0", "/fs/sdb0"):
+        car.make_read_only(v)
+    fail_all = "|".join(["", *APP_VIEWS, "/fs/sda0", "/fs/sdb0", ""])
     p = car.run(["sh", "/fs/sda0/mod/cluster_aa/greenmenu/gem/remote_on.sh"],
                 env={"CB_MOUNT_FAIL": fail_all})
+    out = p.stdout + p.stderr
     bundle = pathlib.Path("/tmp/clustermap_diag/diag.txt").read_text()
-    assert "every form failed" in bundle, bundle
+    assert "Cannot remount" in bundle, bundle[-2000:]
+    assert "Cluster remote: ON (LIVE)" in bundle, bundle[-2000:]

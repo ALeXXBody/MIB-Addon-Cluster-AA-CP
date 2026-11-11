@@ -115,23 +115,19 @@ LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$RESTORE_SOURCE
     exit 1
 }
 SYSTEM_WRITABLE=0
-SYSTEM_OK=
-for _f in "$SYSTEM_MOUNT" /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
-    [ -d "$_f" ] || continue
-    mount -uw "$_f" 2>/dev/null || continue
-    if ( : > "$_f/.clustermap_restore_probe" ) 2>/dev/null; then
-        rm -f "$_f/.clustermap_restore_probe" 2>/dev/null
-        SYSTEM_MOUNT="$_f"
-        TARGET_CONFIG="$_f/etc/eso/production/smartphone_integrator.json"
-        SYSTEM_OK=1
-        echo "system partition: read-write via '$_f'"
-        break
-    fi
-done
-if [ -z "$SYSTEM_OK" ]; then
+# v0.7.5: the same ladder enable_hook.sh uses (system_mount_rw in
+# scripts/lib_app_mount.sh). v0.7.4's own copy here probed a write at the
+# mount ROOT, which this unit refuses (ENOSYS) although subdirectory writes
+# work -- the restore then aborted as "cannot remount" on a partition that
+# was in fact writable.
+if system_mount_rw; then
+    SYSTEM_MOUNT="$SYSTEM_RW"
+    TARGET_CONFIG="$SYSTEM_RW/etc/eso/production/smartphone_integrator.json"
+    echo "$SYSTEM_LADDER_OK"
+else
     echo "Cannot remount the system partition read-write." >&2
-    echo "Forms tried: /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system," >&2
-    echo "each with a real write probe." >&2
+    echo "Forms tried (each with a real write probe at etc/eso/production and at the view root):" >&2
+    echo "$SYSTEM_LADDER_ERRORS" | sed 's/^/  /' >&2
     exit 1
 fi
 SYSTEM_WRITABLE=1

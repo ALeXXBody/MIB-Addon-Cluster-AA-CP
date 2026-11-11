@@ -545,3 +545,30 @@ Two new GEM switches, both from docs/android-auto-research.md's findings:
   upstream mib-cluster-map profiles). docs/Tiguan.md → docs/car-test-notes.md,
   GEM screen labels and wrapper strings renamed, README reworded to cover the
   full model support surface.
+
+## v0.7.5
+
+### Fixed
+- Steering-wheel (cluster remote) finally arms: the hook taps the unit's
+  outbound `InputReport` path and reads `/tmp/gal_remote` per gesture (the
+  inbound path only ever carried the phone's binding).
+- Install no longer falsely fails: the system-partition probe writes at
+  `etc/eso/production` (where the config actually lives) instead of the
+  mount root, and tries `on -f mmx|rcc` forms; a repeat install is now a
+  no-op (awk file compare, since this unit has no `cksum`/`cmp`).
+- Switches now write the bare values the hook reads (`/tmp/gal_remote`
+  single char, `/tmp/gal_hires` `%d`, `/tmp/gal_idr_pump` `%ld`,
+  `/tmp/gal_uiconfig` `T,B,L,R`); `GAL_UICONFIG=1` is set so Position's
+  live send works; switches remount the app partition read-only again.
+- A card-root `gal_dualscreen.conf` is now treated as the live settings
+  file (union with the unit copy); the card file is only created as
+  fallback.
+- Diagnostics: §5 reads the `gal` child's own `LD_PRELOAD` (no false
+  positives from the stock `mirrorlink` child); §7 dumps every `GAL_*`/
+  `CLUSTERMAP_*` key from the file the hook actually loads (card root wins)
+  plus the shadowed unit copy; §8 uses a whole-file envs extractor; §9
+  searches every log home including `/fs/sdb0/logs/gal_dualscreen.log`.
+
+### Added
+- `VERSION` file (v0.7.5) on the payload.
+- `tools/car_sim/test_v075_runtime_contract.py` (11 tests).

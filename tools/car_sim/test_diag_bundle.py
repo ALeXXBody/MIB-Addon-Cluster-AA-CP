@@ -73,7 +73,12 @@ def test_diag_sections_carry_fine_tune_facts(car):
     assert "GAL_SECONDARY_DPI=125" in txt
     assert "GAL_SECONDARY_INSETS=40,40,127,127" in txt
     assert "HOOK_ARMED marker: present" in txt
-    assert "hook preloaded into gal (config carries LD_PRELOAD): YES" in txt
+    # v0.7.5: the verdict is read from the gal child's own envs, not from a
+    # bare `grep LD_PRELOAD=` on the whole file (the stock "mirrorlink" child
+    # already carries one, so the old check said YES on an unhooked unit).
+    assert ("hook preloaded into gal (the gal child's own LD_PRELOAD): YES ("
+            in txt), txt
+    assert "gal env entries: " in txt, txt
 
 
 # ---------------------------------------------------------------------------

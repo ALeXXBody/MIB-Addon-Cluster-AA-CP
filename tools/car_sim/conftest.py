@@ -89,9 +89,20 @@ class Car:
         # a directory at each probe name: the payload's write probes are
         # now FILE writes (`: > probe`, mkdir is refused on the real
         # unit), so a DIRECTORY is the deterministic "not writable here".
-        for probe in (".clustermap_rw_probe", ".clustermap_probe",
-                      ".clustermap_restore_probe"):
+        # The v0.7.5 probes live at the WRITE TARGETS, so block those too:
+        #   app    -> $view/eso/lib/gal_dualscreen/.clustermap_rw_probe
+        #   system -> $view/etc/eso/production/.clustermap_sys_probe
+        #   card   -> $view/.galconf_probe  (conf_card_write's own probe)
+        probes = (".clustermap_rw_probe", ".clustermap_probe",
+                  ".clustermap_restore_probe", ".galconf_probe",
+                  ".clustermap_sys_probe")
+        for probe in probes:
             (pathlib.Path(view, probe)).mkdir(parents=True, exist_ok=True)
+        for sub in ("eso/lib/gal_dualscreen", "etc/eso/production"):
+            for probe in (".clustermap_rw_probe", ".clustermap_sys_probe",
+                          ".clustermap_probe"):
+                (pathlib.Path(view, sub, probe)).mkdir(parents=True,
+                                                      exist_ok=True)
 
     def stage(self, view, rel, content=b"", mode=None):
         """Stage <content> at <view>/<rel>; missing parents are created."""

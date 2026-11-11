@@ -1493,3 +1493,45 @@ delete_repo` + `gh repo delete ALeXXBody/mib-cluster-map-generic
 Note the trace ran BEFORE the remote gate since v0.7.2, so the next
 car round with Wheel trace ON shows the gestures' own codes even while
 the remote was off.
+
+---
+
+## Round 44 — v0.7.5: the wheel really arms, the install really idempotents
+
+### Root causes (diag evidence 69daa881, payload v0.7.4)
+- **A (wheel dead):** AA input is car→phone; the unit *sends* `InputReport`
+  (0x8001). Inbound on the synthetic cluster channel only carries the phone's
+  binding 0x8002. v0.7.2–v0.7.4 listened inbound, so the wheel could never
+  work. Fix: tap the outbound `queueOutgoing` path (dedupe ring, `busy` guard,
+  `InputSource` class filter) and read `/tmp/gal_remote` per gesture.
+- **B (install):** the system-partition probe wrote at the mount ROOT, which
+  this unit refuses (ENOSYS) while subdirectory writes work → remount falsely
+  declared failed. Also no `on -f mmx|rcc` forms and no idempotent skip.
+  Fix: `system_mount_rw` ladder (substructure probe + owning-node forms) and
+  an awk file-compare skip when the config is already ours.
+- **C (diag blind spots):** §7 whitelisted keys (never printed
+  `GAL_CLUSTER_REMOTE`/`GAL_REMOTE_TRACE`); §5 `grep LD_PRELOAD=` was a false
+  positive (stock `mirrorlink` child); §8 envs extractor printed nothing (needs
+  `"envs"` at line start); §9 checked only `$PKG/logs` + `/tmp`, missing the
+  hook default `/fs/sdb0/logs/gal_dualscreen.log`; §7 never showed a card-root
+  conf that shadows the unit copy. All fixed.
+- **D (dead switches):** runtime file format mismatch — hook reads
+  `%d`/`%ld`/single char, scripts wrote `KEY=VALUE`. Fixed: bare values.
+- **E (Position live dead):** `/tmp/gal_uiconfig` sender required `GAL_UICONFIG`,
+  never set. Fixed: `GAL_UICONFIG=1` in `gal_dualscreen.conf`.
+- **F (writable partition left writable):** switches called `app_mount_rw` and
+  never remounted ro. Fixed: `app_mount_finish` runs on every exit path.
+- **G (card-root shadow):** a card-root `gal_dualscreen.conf` permanently
+  shadows the unit copy; if one exists it IS the settings file and every
+  switch/install uses it (as a union); the card file is only created as
+  fallback. Fixed: `conf_card_file()` + `conf_card_write()` union.
+
+### Shipped
+- Hook binary `libgal_hook.so` v0.7.5 (134078 B), exports
+  `queueOutgoing` + `queueOutgoingUnencrypted`; verified strings include
+  `event=remote.tap`, `event=cluster.remote.live`,
+  `event=cluster.remote.gate result=closed`, `/tmp/gal_remote`, `v0.7.5`.
+- All switches refactored to `live_write "$GAL_RUNTIME_DIR/…"` with the
+  correct bare formats + `conf_persist`.
+- `tools/car_sim/test_v075_runtime_contract.py` added (11 tests); full suite
+  68/68 green; `tools/audit_wiring.sh v0.7.5` ALL GREEN.

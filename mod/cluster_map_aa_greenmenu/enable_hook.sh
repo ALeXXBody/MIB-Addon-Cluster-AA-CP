@@ -528,8 +528,23 @@ unit_make "$PROFILES" "$TRAIN" || :
 CONF_COPY="$PRELOAD_WRITE_DIR/gal_dualscreen.conf"
 OWNER_SAVED="$PRELOAD_WRITE_DIR/gal_dualscreen.owner.conf"
 CONF_DEFAULT="$CARD_ROOT/scripts/gal_dualscreen.default.conf"
-if [ -r "$CARD_ROOT/gal_dualscreen.conf" ]; then
-    KEEP_SETTINGS=`sed -n 's/^CLUSTERMAP_KEEP_SETTINGS=\([01]\)[ 	]*$/\1/p' "$CARD_ROOT/gal_dualscreen.conf" 2>/dev/null | tail -1`
+# A settings file at the CARD ROOT shadows the unit copy (the hook loads
+# the first candidate that exists). If one is present -- a switch once had
+# to fall back to it -- it is the file the hook reads, so it is also the
+# file this install must take its settings FROM, or the reinstall would
+# write a unit copy nothing reads.
+CARD_CONF_LIVE=""
+for _c in /fs/sdb0/gal_dualscreen.conf /fs/sda0/gal_dualscreen.conf \
+          /net/mmx/fs/sdb0/gal_dualscreen.conf /net/mmx/fs/sda0/gal_dualscreen.conf \
+          /net/mmx.mibhigh.net/fs/sdb0/gal_dualscreen.conf \
+          /net/mmx.mibhigh.net/fs/sda0/gal_dualscreen.conf; do
+    if [ -r "$_c" ]; then CARD_CONF_LIVE="$_c"; break; fi
+done
+SRC_CONF="$CARD_ROOT/gal_dualscreen.conf"
+[ -n "$CARD_CONF_LIVE" ] && SRC_CONF="$CARD_CONF_LIVE"
+if [ -r "$SRC_CONF" ]; then
+    [ -n "$CARD_CONF_LIVE" ] && echo "Settings source: the card-root file ($SRC_CONF) that the hook loads first"
+    KEEP_SETTINGS=`sed -n 's/^CLUSTERMAP_KEEP_SETTINGS=\([01]\)[ 	]*$/\1/p' "$SRC_CONF" 2>/dev/null | tail -1`
     KEEP_FROM=
     if [ "$KEEP_SETTINGS" != 0 ] && [ -r "$CONF_DEFAULT" ] && [ -r "$CARD_ROOT/scripts/lib_keep_settings.sh" ]; then
         . "$CARD_ROOT/scripts/lib_keep_settings.sh"
@@ -550,7 +565,7 @@ if [ -r "$CARD_ROOT/gal_dualscreen.conf" ]; then
             done > /tmp/clustermap_owner_prev.conf && KEEP_FROM="the previous settings copy"
         fi
     fi
-    cp "$CARD_ROOT/gal_dualscreen.conf" "$CONF_COPY" 2>/dev/null || true
+    cp "$SRC_CONF" "$CONF_COPY" 2>/dev/null || true
     chmod 644 "$CONF_COPY" 2>/dev/null || true
     echo "Installed settings copy: $CONF_COPY"
     if [ -n "$KEEP_FROM" ]; then
@@ -1182,91 +1197,119 @@ LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$TEMP" || {
     exit 1
 }
 
-SYSTEM_RW=""
-SYSTEM_RW_OK=0
-for _f in /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
-    [ -d "$_f" ] || continue
-    mount -uw "$_f" 2>/dev/null || continue
-    if ( : > "$_f/.clustermap_probe" ) 2>/dev/null; then
-        rm -f "$_f/.clustermap_probe" 2>/dev/null
-        SYSTEM_RW="$_f"; SYSTEM_RW_OK=1
-        echo "system partition: read-write via '$_f'"
-        break
+# ---------------------------------------------------------------------------
+# v0.7.5: if the supervisor config ALREADY carries this install, there is
+# nothing to remount and nothing to write. The v0.7.4 car round failed here
+# on every reinstall ("Cannot remount the system partition read-write"),
+# which turned a no-op into a red install. The comparison is a plain awk
+# compare of the two files: this unit has no cksum (the diag's own cksum
+# column came out empty on the car), and cmp is absent too. The recovery
+# copy must exist, and the skip is only taken when no CarPlay firewall
+# marker is present (that marker needs a writable system partition to be
+# taken out).
+SYSTEM_NOCHANGE=0
+if [ "$CARPLAY_OK" -ne 1 ] && [ -r "$TARGET_CONFIG" ] && [ -r "$PERSISTENT_BACKUP" ]; then
+    _same=`awk '
+        NR == FNR { a[FNR] = $0; n = FNR; next }
+        { b[FNR] = $0; m = FNR }
+        END {
+            if (n != m) { print "no"; exit }
+            for (i = 1; i <= n; i++) if (a[i] != b[i]) { print "no"; exit }
+            print "yes"
+        }
+    ' "$TEMP" "$TARGET_CONFIG" 2>/dev/null`
+    if [ "$_same" = yes ]; then
+        # A CarPlay firewall marker can only be taken out with a writable
+        # system partition, so never skip past one.
+        _pfmark=0
+        for _pf in /mnt/system/etc/pf*.conf; do
+            [ -f "$_pf" ] || continue
+            grep -q "$CARPLAY_PF_MARK" "$_pf" 2>/dev/null && { _pfmark=1; break; }
+        done
+        [ "$_pfmark" = 1 ] || SYSTEM_NOCHANGE=1
     fi
-done
-if [ "$SYSTEM_RW_OK" = 0 ]; then
-    rm -f "$TEMP"
-    echo "Cannot remount the system partition read-write." >&2
-    echo "Forms tried: /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system," >&2
-    echo "each with a real write probe." >&2
-    exit 1
 fi
-# Re-point the system paths at the alias that worked (the smartphone
-# config and its backups live there on the owning node).
-SYSTEM_MOUNT="$SYSTEM_RW"
-TARGET_CONFIG="$SYSTEM_RW/etc/eso/production/smartphone_integrator.json"
-PERSISTENT_BACKUP="$TARGET_CONFIG.gal-dualscreen.original"
-SYSTEM_WRITABLE=1
-cp "$TARGET_CONFIG" "$BACKUP_DIR/smartphone_integrator.json.before_enable.$$"
-if [ ! -r "$PERSISTENT_BACKUP" ]; then
-    RECOVERY_SOURCE=$ORIGINAL
-    # On a first clean install, preserve the exact currently active firmware
-    # file beside the target. Use the SD recovery only for a repeated install.
-    [ "$TARGET_IS_HOOKED" -eq 1 ] || RECOVERY_SOURCE=$TARGET_CONFIG
-    cp "$RECOVERY_SOURCE" "$PERSISTENT_BACKUP" || {
-        echo "Could not create persistent recovery copy: $PERSISTENT_BACKUP" >&2
+if [ "$SYSTEM_NOCHANGE" -eq 1 ]; then
+    echo "Supervisor config: unchanged by this install; no system write needed."
+    rm -f "$TEMP"
+    SYSTEM_WRITABLE=0
+else
+    if system_mount_rw; then
+        echo "$SYSTEM_LADDER_OK"
+    else
+        rm -f "$TEMP"
+        echo "Cannot remount the system partition read-write." >&2
+        echo "Forms tried (each with a real write probe at etc/eso/production and at the view root):" >&2
+        echo "$SYSTEM_LADDER_ERRORS" | sed 's/^/  /' >&2
+        exit 1
+    fi
+    # Re-point the system paths at the alias that worked (the smartphone
+    # config and its backups live there on the owning node).
+    SYSTEM_MOUNT="$SYSTEM_RW"
+    TARGET_CONFIG="$SYSTEM_RW/etc/eso/production/smartphone_integrator.json"
+    PERSISTENT_BACKUP="$TARGET_CONFIG.gal-dualscreen.original"
+    SYSTEM_WRITABLE=1
+    cp "$TARGET_CONFIG" "$BACKUP_DIR/smartphone_integrator.json.before_enable.$$"
+    if [ ! -r "$PERSISTENT_BACKUP" ]; then
+        RECOVERY_SOURCE=$ORIGINAL
+        # On a first clean install, preserve the exact currently active firmware
+        # file beside the target. Use the SD recovery only for a repeated install.
+        [ "$TARGET_IS_HOOKED" -eq 1 ] || RECOVERY_SOURCE=$TARGET_CONFIG
+        cp "$RECOVERY_SOURCE" "$PERSISTENT_BACKUP" || {
+            echo "Could not create persistent recovery copy: $PERSISTENT_BACKUP" >&2
+            exit 1
+        }
+    fi
+    if grep -q 'libgal_hook.so' "$PERSISTENT_BACKUP" 2>/dev/null; then
+        echo "Persistent recovery copy unexpectedly contains the hook: $PERSISTENT_BACKUP" >&2
+        exit 1
+    fi
+    LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$PERSISTENT_BACKUP" || {
+        echo "Persistent recovery copy failed jsonlint: $PERSISTENT_BACKUP" >&2
         exit 1
     }
+    SYSTEM_TEMP="$TARGET_CONFIG.gal-dualscreen-new"
+    cp "$TEMP" "$SYSTEM_TEMP" || {
+        rm -f "$TEMP"
+        echo "Could not stage $SYSTEM_TEMP" >&2
+        exit 1
+    }
+    chmod 644 "$SYSTEM_TEMP" 2>/dev/null || true
+    grep -q "$VERIFY_TOKEN" "$SYSTEM_TEMP" || {
+        rm -f "$TEMP"
+        echo "Staged supervisor config failed verification" >&2
+        exit 1
+    }
+    LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$SYSTEM_TEMP" || {
+        rm -f "$TEMP"
+        echo "Staged supervisor config failed jsonlint validation" >&2
+        exit 1
+    }
+    mv "$SYSTEM_TEMP" "$TARGET_CONFIG" || {
+        rm -f "$TEMP"
+        echo "Could not atomically install $TARGET_CONFIG" >&2
+        exit 1
+    }
+    SYSTEM_TEMP=
+    LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$TARGET_CONFIG" || {
+        echo "Installed config failed validation; restoring persistent original" >&2
+        if cp "$PERSISTENT_BACKUP" "$TARGET_CONFIG"; then
+            echo "Restored $TARGET_CONFIG from $PERSISTENT_BACKUP" >&2
+        else
+            echo "CRITICAL: restore from $PERSISTENT_BACKUP also failed" >&2
+            echo "CRITICAL: $TARGET_CONFIG is left in a state that failed jsonlint" >&2
+            echo "CRITICAL: fix this file manually before rebooting the unit" >&2
+        fi
+        rm -f "$TEMP"
+        exit 1
+    }
+    rm -f "$TEMP"
+    if [ "$CARPLAY_OK" -eq 1 ]; then carplay_pf_open; else carplay_pf_close; fi
+    sync
+    mount -ur "$SYSTEM_MOUNT" 2>/dev/null || true
+    SYSTEM_WRITABLE=0
+    trap - 0 1 2 15
 fi
-if grep -q 'libgal_hook.so' "$PERSISTENT_BACKUP" 2>/dev/null; then
-    echo "Persistent recovery copy unexpectedly contains the hook: $PERSISTENT_BACKUP" >&2
-    exit 1
-fi
-LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$PERSISTENT_BACKUP" || {
-    echo "Persistent recovery copy failed jsonlint: $PERSISTENT_BACKUP" >&2
-    exit 1
-}
-SYSTEM_TEMP="$TARGET_CONFIG.gal-dualscreen-new"
-cp "$TEMP" "$SYSTEM_TEMP" || {
-    rm -f "$TEMP"
-    echo "Could not stage $SYSTEM_TEMP" >&2
-    exit 1
-}
-chmod 644 "$SYSTEM_TEMP" 2>/dev/null || true
-grep -q "$VERIFY_TOKEN" "$SYSTEM_TEMP" || {
-    rm -f "$TEMP"
-    echo "Staged supervisor config failed verification" >&2
-    exit 1
-}
-LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$SYSTEM_TEMP" || {
-    rm -f "$TEMP"
-    echo "Staged supervisor config failed jsonlint validation" >&2
-    exit 1
-}
-mv "$SYSTEM_TEMP" "$TARGET_CONFIG" || {
-    rm -f "$TEMP"
-    echo "Could not atomically install $TARGET_CONFIG" >&2
-    exit 1
-}
-SYSTEM_TEMP=
-LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$TARGET_CONFIG" || {
-    echo "Installed config failed validation; restoring persistent original" >&2
-    if cp "$PERSISTENT_BACKUP" "$TARGET_CONFIG"; then
-        echo "Restored $TARGET_CONFIG from $PERSISTENT_BACKUP" >&2
-    else
-        echo "CRITICAL: restore from $PERSISTENT_BACKUP also failed" >&2
-        echo "CRITICAL: $TARGET_CONFIG is left in a state that failed jsonlint" >&2
-        echo "CRITICAL: fix this file manually before rebooting the unit" >&2
-    fi
-    rm -f "$TEMP"
-    exit 1
-}
-rm -f "$TEMP"
-if [ "$CARPLAY_OK" -eq 1 ]; then carplay_pf_open; else carplay_pf_close; fi
-sync
-mount -ur "$SYSTEM_MOUNT" 2>/dev/null || true
-SYSTEM_WRITABLE=0
-trap - 0 1 2 15
 
 echo "Hook environment installed for the supervisor-owned GAL."
 echo "  persistent config: $TARGET_CONFIG"

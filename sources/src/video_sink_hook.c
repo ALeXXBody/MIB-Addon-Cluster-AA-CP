@@ -2847,11 +2847,35 @@ static void cluster_menu_event(const char *ev)
 
 static int cluster_remote_on(void)
 {
-    if (g_cluster_remote < 0) {
-        const char *v = getenv("GAL_CLUSTER_REMOTE");
-        g_cluster_remote = (v != NULL && strcmp(v, "0") != 0 && strcmp(v, "false") != 0) ? 1 : 0;
-        gal_hook_logf("event=cluster.remote enabled=%d", g_cluster_remote);
+    /*
+     * v0.7.5 - the LIVE arm, implemented for real this time (v0.7.2/v0.7.4
+     * described it but only the SWITCH side existed: the hook never read
+     * the file - that is why the wheel stayed dead on cars where the
+     * install never landed the key). The read is per gesture (one fopen
+     * per wheel press, cheap and rare): /tmp/gal_remote ("1"/"0")
+     * overrides, the env seeds the default, and every state change is
+     * logged so the diag proves the arm.
+     */
+    const char *v = getenv("GAL_CLUSTER_REMOTE");
+    int env_on = (v != NULL && strcmp(v, "0") != 0 && strcmp(v, "false") != 0) ? 1 : 0;
+    int live = env_on;
+    FILE *f = fopen("/tmp/gal_remote", "r");
+    if (f != NULL) {
+        char buf[8]; buf[0] = 0;
+        if (fgets(buf, sizeof buf, f) != NULL) {
+            int len = strlen(buf);
+            while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r' ||
+                               buf[len-1] == ' ')) --len;
+            buf[len] = 0;
+            if (len == 1 && (buf[0] == '0' || buf[0] == '1'))
+                live = buf[0] - '0';
+        }
+        fclose(f);
     }
+    if (live != env_on || g_cluster_remote < 0)
+        gal_hook_logf("event=cluster.remote.live state=%d env=%d (armed by the Cluster remote switch)",
+                      live, env_on);
+    g_cluster_remote = live;
     return g_cluster_remote;
 }
 
@@ -2969,7 +2993,17 @@ static void cluster_remote_event(const unsigned char *m, unsigned n)
         gal_hook_logf("event=remote.trace bytes=%u key=%u action=%u conf=%d",
                       n, (unsigned)(m[0] << 8 | m[1]), 0u, 0u);
     }
-    if (!cluster_remote_on() || m == NULL || n < 4u) return;
+    if (!cluster_remote_on()) {
+        /* one INFO line per session: a wheel press behind a closed gate
+         * is visible in every diag (the owner's v0.7.2 round). */
+        static int gate_logged;
+        if (!gate_logged) {
+            gate_logged = 1;
+            gal_hook_logf("event=cluster.remote.gate result=closed reason=not_enabled (press Cluster remote ON; the key arrives via gal_dualscreen.conf at gal start)");
+        }
+        return;
+    }
+    if (m == NULL || n < 4u) return;
     /* proto3 field scan: 4 = KeyEvent {1 code, 2 action(downbool), 3 meta, 4 long);
      * 6 = RelativeEvent {1 scan_code, 2 delta}. Tolerant to unknown fields. */
     while (i + 1u < n) {
@@ -3073,6 +3107,97 @@ static void cluster_remote_event(const unsigned char *m, unsigned n)
             cluster_remote_toggle_strip();
         }
     }
+}
+
+/*
+ * ---- v0.7.5: the OUTBOUND InputReport tap --------------------------------
+ *
+ * The diag finally named the wheel's real path: Android Auto input is
+ * car -> phone. The unit SENDS InputReport (0x8001) for every physical
+ * gesture; nothing ever arrives inbound on the synthetic cluster input
+ * channel except the phone's binding request (0x8002) - which the diag
+ * shows. v0.7.2..v0.7.4 listened on the inbound path, so the wheel
+ * could never work, whatever the conf said.
+ *
+ * These two overrides interpose MessageRouter's outbound entry points
+ * (the same RTLD_NEXT pass-through pattern the binary's other hooks use)
+ * and hand every outbound InputReport to the same gesture parser, then
+ * forward it UNCHANGED so the primary display keeps its input. The tap
+ * is inert when neither the remote nor the trace is armed.
+ *
+ * A small de-duplicator kills the double tap you get when queueOutgoing
+ * internally calls queueOutgoingUnencrypted with the same buffer: two
+ * copies of one rotary click must not zoom twice.
+ */
+struct ob_sig { unsigned h; unsigned long long t_ms; };
+static struct ob_sig ob_last[8];
+static unsigned ob_idx;
+
+static unsigned long long ob_now_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (unsigned long long)ts.tv_sec * 1000ull + (unsigned long long)(ts.tv_nsec / 1000000l);
+}
+
+static int ob_is_dup(const unsigned char *m, unsigned n)
+{
+    unsigned h = 2166136261u, i;
+    unsigned long long now = ob_now_ms();
+    for (i = 0u; i < n && i < 24u; ++i) h = (h ^ m[i]) * 16777619u;
+    h = (h ^ (n << 3)) * 16777619u;
+    for (i = 0u; i < 8u; ++i) {
+        if (ob_last[i].h == h && now - ob_last[i].t_ms < 30ull) {
+            ob_last[i].t_ms = now;
+            return 1;
+        }
+    }
+    ob_last[ob_idx & 7u].h = h;
+    ob_last[ob_idx & 7u].t_ms = now;
+    ++ob_idx;
+    return 0;
+}
+
+static void outbound_sniff(unsigned char channel, const void *buf, unsigned len)
+{
+    const unsigned char *m = (const unsigned char *)buf;
+    unsigned id;
+
+    if (m == NULL || len < 2u) return;
+    /*
+     * The class filter is not cosmetic. This unit emits 0x8001 on several
+     * services that are NOT the wheel: SensorSource (channel 3,
+     * _ZTV12SensorSource, 6 bytes about every 100 ms) and PhoneStatusEndpoint
+     * carry the same message id. Parsing those as gestures is exactly how a
+     * "random zoom/next-track" bug is born. Only a real InputSource -- the
+     * service the physical wheel is bound to -- may reach the parser.
+     */
+    if (strstr(g_service_class[channel], "InputSource") == NULL) return;
+    id = ((unsigned)m[0] << 8) | m[1];
+    if (id != 0x8001u) return;                 /* InputReport only */
+    if (ob_is_dup(m, len)) return;
+    if (remote_trace_on())
+        gal_hook_logf("event=remote.tap channel=%u id=0x%04x bytes=%u class=%s",
+                      (unsigned)channel, id, len, g_service_class[channel]);
+    cluster_remote_event(m, len);              /* gates on the remote itself */
+}
+
+/* queueOutgoing itself is interposed further down (it also rewrites the
+ * legacy discovery response), so only the unencrypted entry point gets a
+ * fresh wrapper here; the tap call is added to the existing queueOutgoing. */
+void _ZN13MessageRouter24queueOutgoingUnencryptedEhPvj(void *router, unsigned char channel,
+                                                       void *buf, unsigned len)
+{
+    static void (*real)(void *, unsigned char, void *, unsigned);
+    static int busy;
+    if (real == NULL)
+        real = (void (*)(void *, unsigned char, void *, unsigned))
+            dlsym(RTLD_NEXT, "_ZN13MessageRouter24queueOutgoingUnencryptedEhPvj");
+    if (busy) { if (real != NULL) real(router, channel, buf, len); return; }
+    busy = 1;
+    outbound_sniff(channel, buf, len);
+    if (real != NULL) real(router, channel, buf, len);
+    busy = 0;
 }
 
 static void cluster_input_message(void *router, unsigned char channel, const void *buffer);
@@ -3468,6 +3593,7 @@ void _ZN13MessageRouter13queueOutgoingEhPvj(void *router, unsigned char channel,
     unsigned char *rewritten = NULL;
     unsigned rewritten_len = 0u;
 
+    outbound_sniff(channel, data, len);          /* v0.7.5 wheel tap */
     (void)resolve_symbol("_ZN13MessageRouter13queueOutgoingEhPvj", (void **)&g_queue_outgoing);
     if (g_queue_outgoing == NULL) return;
     if (g_receiver->legacy && channel == 0u && m != NULL && len > 2u &&
