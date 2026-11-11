@@ -199,8 +199,16 @@ for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/ap
 done
 put "card: ${_SO_CARD:-none}"
 put "      `_so_info "$_SO_CARD"`"
-put "unit: ${_SO_UNIT:-not found}"
-put "      `_so_info "$_SO_UNIT"`"
+# v0.7.8: per-view table. The unit's gal resolves /eso on ITS OWN node, so a
+# hook binary that landed on one node's app partition (the ladder's winner)
+# can be invisible to gal on the other node -- the prime suspect for an
+# armed hook that never starts. Name every view and where the .so is.
+put "-- hook .so on every unit view (gal must find it on its own node) --"
+for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+    [ -d "$_v" ] || continue
+    put "  $_v/eso/lib/gal_dualscreen/libgal_hook.so"
+    put "      `_so_info "$_v/eso/lib/gal_dualscreen/libgal_hook.so"`"
+done
 
 # ---- 5. arm state
 section "5 arm state"
@@ -309,6 +317,8 @@ if [ -r "$CFG" ]; then
         put "  (the gal child's envs could not be read; is this the stock config?)"
     fi
     put "persistent backup beside it: `([ -r "$CFG.gal-dualscreen.original" ] && echo present) || echo absent`"
+    put "-- processes in this config (names only; gal's siblings) --"
+    sed -n 's/^[[:space:]]*"\([A-Za-z0-9_]*\)"[[:space:]]*:[[:space:]]*{.*/  \1/p' "$CFG" >> "$TMP" 2>/dev/null
 else
     put "(supervisor config not reachable from this view: $CFG)"
 fi
@@ -333,18 +343,33 @@ if [ -n "$_HOOKLOG_ENV" ]; then
 fi
 if [ -n "$LOG" ]; then
     put "source: $LOG"
+    put "VERDICT: the hook HAS run on this unit (its log exists)."
+    put "-- its start line (init) --"
+    sed -n '/event=init/p' "$LOG" 2>/dev/null | head -3 >> "$TMP"
+    put "-- first 12 lines --"
+    head -12 "$LOG" >> "$TMP" 2>/dev/null
+    put "-- last 120 lines --"
     tail -120 "$LOG" >> "$TMP" 2>/dev/null
 else
     put "(no hook log at the card root logs/, the payload folder, /tmp, or GAL_HOOK_LOG)"
-    # The owner asked for the diag to ANSWER, not just list: an armed hook
-    # that has never written a log has never run -- which means the unit has
-    # not started gal with the hook yet. One reboot decides it.
-    case "$_PRELOAD" in
-        YES*) put "VERDICT: the hook is armed but has NOT run yet -- reboot the"
-              put "unit (power button ~10 s), use the car normally for a minute,"
-              put "then Save logs again; this bundle will then carry the hook's own log."
-              put "If the hook log is still absent after that reboot, the arming never"
-              put "reached the running unit -- send this file anyway." ;;
+    # The owner asked for the diag to ANSWER, not just list. /tmp is RAM and
+    # is wiped at every boot, so the install-home marker tells us whether
+    # THIS boot has already seen an install run: a missing marker after a
+    # reboot means the boot is fresh -- and the hook still never started.
+    _LASTPATHS="`([ -r /tmp/clustermap_last_paths ] && echo present) || echo absent`"
+    put "install-home marker (/tmp/clustermap_last_paths): $_LASTPATHS"
+    case "$_LASTPATHS" in
+        present) put "VERDICT: the last install ran in THIS boot session -- the unit has"
+                 put "NOT been rebooted since. Reboot now (power button ~10 s), connect the"
+                 put "phone, start Android Auto, then Save logs again." ;;
+        absent)  case "$_PRELOAD" in
+                     YES*) put "VERDICT: this boot is fresh (the marker above is wiped at every"
+                           put "boot) and the hook STILL never started. Prime suspect: gal cannot"
+                           put "resolve the preload path on its own node -- section 4b above shows"
+                           put "which unit views carry the hook binary and which do not. Send this"
+                           put "file." ;;
+                     *) put "VERDICT: the hook is not armed; run /mod/custom.sh once, then reboot." ;;
+                 esac ;;
     esac
 fi
 put "-- log folders --"

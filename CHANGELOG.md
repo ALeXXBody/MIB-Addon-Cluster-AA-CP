@@ -619,3 +619,18 @@ v0.7.4 survived because its ladder used `mount -uw ... || continue`.
   formatting no longer matter).
 - diag §9 now ANSWERS: armed + no hook log => "the hook is armed but has
   NOT run yet — reboot the unit, then Save logs again".
+
+## v0.7.8
+
+###diag.txt now answers the reboot question too
+- §9 verdict logic: /tmp is wiped at every boot, so the install-home marker
+  distinguishes "no reboot since the install" from "fresh boot and the hook
+  STILL never started". The first case says reboot; the second names the
+  prime suspect (gal cannot resolve the preload path on its node) and
+  points at §4b.
+- §4b: hook .so presence + sha1 per unit view (local / m m x FQDN / mmx
+  shorthand / rcc) — a hook binary that landed on one node's app partition
+  can be invisible to gal on the other node.
+- §9: when a hook log exists, the bundle now prints the init line and the
+  first 12 lines, plus the tail.
+- §8: process names in the supervisor config (gal's siblings), one line.

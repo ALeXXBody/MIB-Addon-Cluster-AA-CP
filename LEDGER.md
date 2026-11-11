@@ -1576,3 +1576,19 @@ Fixes: `|| _rc=$?` / `|| true` on every probe assignment, an EXIT trap that
 prints FAIL on any rc!=0 death, a semantic env-based skip compare, and a
 diag §9 verdict that says "armed but has NOT run yet — reboot" in exactly
 that state. 71/71 car-sim green, audit_wiring v0.7.7 ALL GREEN.
+
+---
+
+## Round 47 — v0.7.8: the diag decides between "not rebooted" and "never started"
+
+Owner photo after the reboot round showed the GEM ClusterMap screen — which
+matches the CURRENT screen exactly (labels verified against the template):
+the screen is not supposed to change. What decides "working" is the cluster
+during an AA session, and the discriminator for "armed but silent" is the
+hook's own log. The v0.7.8 diag therefore answers three states itself:
+1. install marker present in /tmp => no reboot since the install (say so);
+2. marker absent (fresh boot) + no hook log => gal never started the hook
+   despite arming -- prime suspect: the preload path is not resolvable on
+   gal's node; §4b now lists the hook .so per unit view (mmx/rcc question);
+3. hook log present => print init line + head + tail (the hook ran).
+71/71 car-sim green; audit_wiring v0.7.8 ALL GREEN.

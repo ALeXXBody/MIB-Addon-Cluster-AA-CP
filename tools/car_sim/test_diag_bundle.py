@@ -79,8 +79,10 @@ def test_diag_sections_carry_fine_tune_facts(car):
     assert ("hook preloaded into gal (the gal child's own LD_PRELOAD): YES ("
             in txt), txt
     assert "gal env entries: " in txt, txt
-    # armed but no hook log anywhere => the diag must SAY what to do next
-    assert "the hook is armed but has NOT run yet" in txt, txt[-1200:]
+    # armed, no hook log, and the install ran in THIS boot (the /tmp marker
+    # is present) => the diag must SAY "reboot" as the next action
+    assert "NOT been rebooted since" in txt, txt[-1200:]
+    assert "hook .so on every unit view" in txt, txt[-1200:]
 
 
 # ---------------------------------------------------------------------------
