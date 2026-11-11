@@ -29,6 +29,28 @@ sed -n \
     -e '/^WARNING/p' \
     -e '/^NOTE:/p' \
     -e '/^MISSING/p' \
+    -e '/^Could not /p' \
+    -e '/^Could n[^o]/p' \
+    -e '/^Generated /p' \
+    -e '/^Staged /p' \
+    -e '/^Persistent /p' \
+    -e '/^Active config/p' \
+    -e '/^Refusing/p' \
+    -e '/^Installed config/p' \
+    -e '/^Rebuilt/p' \
+    -e '/^CLUSTERMAP_INSTALL_FAILED/p' \
+    -e '/^CLUSTERMAP_UPDATE_FIRMWARE_FIRST/p' \
+    -e '/^Forms tried/p' \
+    -e '/^each with/p' \
+    -e '/^Patch-temp/p' \
+    -e '/^This is what/p' \
+    -e '/^[a-z][a-z]*: can.t /p' \
+    -e '/^awk: /p' \
+    -e '/^grep: /p' \
+    -e '/^sed: /p' \
+    -e '/^sh: /p' \
+    -e '/^mv: /p' \
+    -e '/^chmod: /p' \
     -e '/^ok: /p' \
     -e '/^unit files:/p' \
     -e '/^self-check:/p' \

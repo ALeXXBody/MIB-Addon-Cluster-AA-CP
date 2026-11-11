@@ -1261,8 +1261,29 @@ else
         }
     fi
     if grep -q 'libgal_hook.so' "$PERSISTENT_BACKUP" 2>/dev/null; then
-        echo "Persistent recovery copy unexpectedly contains the hook: $PERSISTENT_BACKUP" >&2
-        exit 1
+        # v0.7.6: the recovery copy itself was once mislabelled (an earlier
+        # run backed up an already-injected config). v0.7.5 refused the
+        # install here -- silently in the curated console summary, which is
+        # how the car round then looked "unchanged" to the owner. $ORIGINAL
+        # is guarded untouched further up (never created from a hooked
+        # config, jsonlint-checked), so rebuild the recovery copy from it
+        # instead of refusing forever.
+        echo "Persistent recovery copy contains the hook (mislabelled earlier): rebuilding from $ORIGINAL" >&2
+        cp "$ORIGINAL" "$PERSISTENT_BACKUP.new.$$" || {
+            echo "Could not rebuild the persistent recovery copy: $PERSISTENT_BACKUP" >&2
+            exit 1
+        }
+        LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$PERSISTENT_BACKUP.new.$$" || {
+            rm -f "$PERSISTENT_BACKUP.new.$$"
+            echo "Rebuilt recovery copy failed jsonlint: $PERSISTENT_BACKUP" >&2
+            exit 1
+        }
+        mv "$PERSISTENT_BACKUP.new.$$" "$PERSISTENT_BACKUP" || {
+            rm -f "$PERSISTENT_BACKUP.new.$$"
+            echo "Could not replace the mislabelled recovery copy: $PERSISTENT_BACKUP" >&2
+            exit 1
+        }
+        echo "Rebuilt the persistent recovery copy: $PERSISTENT_BACKUP"
     fi
     LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$PERSISTENT_BACKUP" || {
         echo "Persistent recovery copy failed jsonlint: $PERSISTENT_BACKUP" >&2

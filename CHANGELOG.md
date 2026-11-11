@@ -572,3 +572,19 @@ Two new GEM switches, both from docs/android-auto-research.md's findings:
 ### Added
 - `VERSION` file (v0.7.5) on the payload.
 - `tools/car_sim/test_v075_runtime_contract.py` (11 tests).
+
+## v0.7.6
+
+### Fixed
+- The console can no longer hide the reason for a failed install. The v0.7.5
+  car photo proved the curated summary missed lines like "Generated
+  supervisor config failed jsonlint validation"; console_summary.sh now
+  surfaces every failure shape, and a failed install prints the last lines
+  of the run log directly on the GEM console.
+- A mislabelled persistent recovery copy (one that already contains the
+  hook) no longer stops every future install: it is rebuilt from the guarded
+  untouched copy instead of refusing forever.
+
+### Changed
+- run_verdict.sh treats the new failure shapes as a failed run, so the GEM
+  wrapper shows STOPPED and the error lines instead of a silent DONE.

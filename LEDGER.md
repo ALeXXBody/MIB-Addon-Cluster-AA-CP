@@ -1535,3 +1535,22 @@ the remote was off.
   correct bare formats + `conf_persist`.
 - `tools/car_sim/test_v075_runtime_contract.py` added (11 tests); full suite
   68/68 green; `tools/audit_wiring.sh v0.7.5` ALL GREEN.
+
+---
+
+## Round 45 — v0.7.6: the console tells the truth
+
+Owner photo (2026-11-11) after another red install: the curated summary
+ended at "Environment entries: 7 (limit 10)" and the verdict said "the
+reason is in the summary above" -- a false promise. The reason lines
+("Generated/Staged/Persistent/Could not/Active config/CLUSTERMAP_INSTALL_FAILED")
+start with words the summary never matched, so EVERY failure in the system
+write phase was invisible on the console since v0.4.x. Fixes:
+- console_summary.sh surfaces every failure shape (incl. cp:/awk:/grep:).
+- A failed install prints the last 8 lines of the run log on the console.
+- run_verdict.sh treats those shapes as a failed run.
+- The poisoned persistent-recovery-copy case (backup contains the hook) is
+  rebuilt from the guarded untouched copy instead of refusing forever --
+  the most probable cause of the photo round; v0.7.4/v0.7.5 both stopped
+  there silently when the backup was mislabelled.
+69/69 car-sim tests green; audit_wiring v0.7.6 ALL GREEN.

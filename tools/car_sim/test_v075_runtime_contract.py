@@ -215,6 +215,59 @@ def _stage_install(car):
     return pathlib.Path(SYS_VIEWS[0], CFG_KEY)
 
 
+def test_a_mislabelled_recovery_copy_is_rebuilt_not_fatal(car):
+    """The v0.7.5 car round (photo, 2026-11-11): the install died AFTER the
+    env-entry lines with nothing on the console. The silent candidate is the
+    poisoned recovery-copy guard: an earlier run backed up an already-
+    injected config, so every later install refused with a message the
+    curated summary never surfaced ("Persistent recovery copy ..."). A clean
+    unit config + mislabelled backup must now REBUILD the backup and finish."""
+    cfg_path = _stage_install(car)
+    # poison the persistent recovery copy beside the live config
+    poisoned = str(cfg_path) + ".gal-dualscreen.original"
+    pathlib.Path(poisoned).write_text(
+        '{\n "children": {\n  "gal": {\n'
+        '   "envs":["LD_PRELOAD=/eso/lib/gal_dualscreen/libgal_hook.so"]\n'
+        '  }\n }\n}\n')
+    p = car.run(["sh", f"{PKG}/enable_hook.sh"], expect_rc=0)
+    out = p.stdout + p.stderr
+    assert "Rebuilt the persistent recovery copy" in out, out
+    assert "libgal_hook.so" not in pathlib.Path(poisoned).read_text(), \
+        "the mislabelled backup was not rebuilt"
+    assert "libgal_hook.so" in cfg_path.read_text(), out
+
+
+def test_the_console_summary_surfacing_never_hides_a_failure():
+    """Every failure line the installer can print must survive the curated
+    summary -- the photo round proved a missed line reads as 'nothing
+    changed' to the owner."""
+    import subprocess
+    lines = [
+        "Generated supervisor config failed jsonlint validation",
+        "Generated supervisor config failed verification",
+        "Staged supervisor config failed verification",
+        "Could not stage /tmp/x",
+        "Could not atomically install /mnt/system/etc/eso/production/x",
+        "Could not create persistent recovery copy: /x",
+        "Persistent recovery copy contains the hook (mislabelled earlier): rebuilding",
+        "Active config is already injected and no untouched backup is available",
+        "Refusing to install: 11 environment entries.",
+        "Installed config failed validation; restoring persistent original",
+        "CLUSTERMAP_INSTALL_FAILED (code 1). Read the messages above.",
+        "cp: can't create '/x': No space left on device",
+        "awk: syntax error",
+        "Cannot remount the system partition read-write.",
+        "FAIL: probe",
+    ]
+    log = "/tmp/audit_summary_log"
+    pathlib.Path(log).write_text("\n".join(lines) + "\n")
+    out = subprocess.run(["sh",
+                          str(PAYLOAD_SRC / "greenmenu/console_summary.sh"),
+                          log], capture_output=True, text=True).stdout
+    for ln in lines:
+        assert ln in out, f"summary hid: {ln}\n--- summary ---\n{out}"
+
+
 def test_a_repeat_install_needs_no_system_write(car):
     """v0.7.4's second install died with "Cannot remount the system
     partition read-write" although the config was already exactly what the

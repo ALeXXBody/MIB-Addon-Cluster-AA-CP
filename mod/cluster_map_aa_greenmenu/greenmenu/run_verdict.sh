@@ -23,6 +23,15 @@ if [ -r "$LOG" ]; then
     if grep -q "Uninstall FAILED" "$LOG" 2>/dev/null; then BAD=1; fi
     if grep -q "Cannot remount" "$LOG" 2>/dev/null; then BAD=1; fi
     if grep -q "Cannot write" "$LOG" 2>/dev/null; then BAD=1; fi
+    # v0.7.6: the silent-in-summary failure shapes. Any of these lines means
+    # the run stopped before it finished, even when no FAIL/ERROR prefix
+    # travelled with it (the v0.7.5 car round hid its reason this way).
+    if grep -q "^Could not " "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "^Generated .* failed" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "^Staged .* failed" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "^Persistent recovery copy" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "^Active config is already injected" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "^Refusing to install" "$LOG" 2>/dev/null; then BAD=1; fi
 fi
 
 BODY=""

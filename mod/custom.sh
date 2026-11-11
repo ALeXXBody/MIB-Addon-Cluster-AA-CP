@@ -428,8 +428,14 @@ elif grep -q -e "CLUSTERMAP_INSTALL_OK" -e "CLUSTERMAP_TURN_BY_TURN_OK" $OUT; th
 	say "Map install: DONE. Reboot the unit (power button ~10 s), reconnect"
 	say "the phone, and the map is on the cluster."
 else
-	say "Map install: FAILED - the reason is in the summary above; full"
-	say "detail is in the diagnostic file named just below."
+	say "Map install: FAILED - the reason follows (the summary above can"
+	say "miss it; the run log never lies):"
+	# The v0.7.5 car round proved the curated summary can MISS the failing
+	# line ("Generated supervisor config failed jsonlint" and friends start
+	# with words the summary did not know). Never promise the reason is
+	# somewhere else: print the end of the run log right here.
+	tail -n 8 "$OUT" | sed 's/^/  | /' >> "$CM_CONSOLE_LOG" 2>/dev/null
+	tail -n 8 "$OUT" | sed 's/^/  | /'
 fi
 say ""
 
