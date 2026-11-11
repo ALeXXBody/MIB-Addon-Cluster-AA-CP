@@ -336,6 +336,16 @@ if [ -n "$LOG" ]; then
     tail -120 "$LOG" >> "$TMP" 2>/dev/null
 else
     put "(no hook log at the card root logs/, the payload folder, /tmp, or GAL_HOOK_LOG)"
+    # The owner asked for the diag to ANSWER, not just list: an armed hook
+    # that has never written a log has never run -- which means the unit has
+    # not started gal with the hook yet. One reboot decides it.
+    case "$_PRELOAD" in
+        YES*) put "VERDICT: the hook is armed but has NOT run yet -- reboot the"
+              put "unit (power button ~10 s), use the car normally for a minute,"
+              put "then Save logs again; this bundle will then carry the hook's own log."
+              put "If the hook log is still absent after that reboot, the arming never"
+              put "reached the running unit -- send this file anyway." ;;
+    esac
 fi
 put "-- log folders --"
 for _d in /fs/sdb0/logs /fs/sda0/logs "$PKG/logs" /tmp; do

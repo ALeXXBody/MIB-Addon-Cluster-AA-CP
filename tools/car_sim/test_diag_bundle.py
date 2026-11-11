@@ -79,6 +79,8 @@ def test_diag_sections_carry_fine_tune_facts(car):
     assert ("hook preloaded into gal (the gal child's own LD_PRELOAD): YES ("
             in txt), txt
     assert "gal env entries: " in txt, txt
+    # armed but no hook log anywhere => the diag must SAY what to do next
+    assert "the hook is armed but has NOT run yet" in txt, txt[-1200:]
 
 
 # ---------------------------------------------------------------------------

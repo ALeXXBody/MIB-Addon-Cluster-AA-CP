@@ -79,7 +79,7 @@ app_probe_view()
     # therefore names the reason (ENO.../Permission) rather than the
     # same "every form failed" verdict.
     if [ -d "$1/eso/lib/gal_dualscreen" ]; then
-        _err=`{ ( : > "$1/eso/lib/gal_dualscreen/.clustermap_rw_probe" ); } 2>&1`
+        _err=`{ ( : > "$1/eso/lib/gal_dualscreen/.clustermap_rw_probe" ); } 2>&1` || true
         if [ -z "$_err" ]; then
             rm -f "$1/eso/lib/gal_dualscreen/.clustermap_rw_probe" 2>/dev/null
             return 0
@@ -88,7 +88,7 @@ app_probe_view()
     else
         APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1/eso/lib/gal_dualscreen: (folder absent in this view)$(echo)"
     fi
-    _err=`{ ( : > "$1/.clustermap_rw_probe" ); } 2>&1`
+    _err=`{ ( : > "$1/.clustermap_rw_probe" ); } 2>&1` || true
     if [ -z "$_err" ]; then
         rm -f "$1/.clustermap_rw_probe" 2>/dev/null
         return 0
@@ -107,7 +107,8 @@ app_mount_rw()
 {
     for _f in $APP_VIEWS; do
         [ -d "$_f" ] || continue
-        _err=`mount -uw "$_f" 2>&1`; _rc=$?
+        _rc=0
+        _err=`mount -uw "$_f" 2>&1` || _rc=$?
         if [ "$_rc" -eq 0 ] && [ -z "$_err" ]; then
             if app_probe_view "$_f"; then
                 APP_RW="$_f"; APP_LADDER_FORM="mount -uw $_f"
@@ -119,7 +120,8 @@ app_mount_rw()
     done
     if command -v on >/dev/null 2>&1; then
         for _n in mmx rcc; do
-            _err=`on -f "$_n" mount -uw /mnt/app 2>&1`; _rc=$?
+            _rc=0
+            _err=`on -f "$_n" mount -uw /mnt/app 2>&1` || _rc=$?
             if [ "$_rc" -eq 0 ] && [ -z "$_err" ]; then
                 for _pf in /net/$_n.mibhigh.net/mnt/app /net/$_n/mnt/app /mnt/app; do
                     # The remount succeeded on the owning node; the probe
@@ -255,7 +257,7 @@ system_probe_view()
 {
     _sy_dir="$1/etc/eso/production"
     if [ -d "$_sy_dir" ]; then
-        _sy_err=`{ ( : > "$_sy_dir/.clustermap_sys_probe" ); } 2>&1`
+        _sy_err=`{ ( : > "$_sy_dir/.clustermap_sys_probe" ); } 2>&1` || true
         if [ -z "$_sy_err" ]; then
             rm -f "$_sy_dir/.clustermap_sys_probe" 2>/dev/null
             return 0
@@ -264,7 +266,7 @@ system_probe_view()
     else
         SYSTEM_LADDER_ERRORS="${SYSTEM_LADDER_ERRORS}write probe at $_sy_dir: (folder absent in this view)$(echo)"
     fi
-    _sy_err=`{ ( : > "$1/.clustermap_sys_probe" ); } 2>&1`
+    _sy_err=`{ ( : > "$1/.clustermap_sys_probe" ); } 2>&1` || true
     if [ -z "$_sy_err" ]; then
         rm -f "$1/.clustermap_sys_probe" 2>/dev/null
         return 0
@@ -280,7 +282,8 @@ system_mount_rw()
     SYSTEM_RW=""
     for _f in $SYS_VIEWS; do
         [ -d "$_f" ] || continue
-        _err=`mount -uw "$_f" 2>&1`; _rc=$?
+        _rc=0
+        _err=`mount -uw "$_f" 2>&1` || _rc=$?
         if [ "$_rc" -eq 0 ] && [ -z "$_err" ] && system_probe_view "$_f"; then
             SYSTEM_RW="$_f"
             SYSTEM_LADDER_OK="system: read-write via 'mount -uw $_f'"
@@ -290,7 +293,8 @@ system_mount_rw()
     done
     if command -v on >/dev/null 2>&1; then
         for _n in mmx rcc; do
-            _err=`on -f "$_n" mount -uw /mnt/system 2>&1`; _rc=$?
+            _rc=0
+            _err=`on -f "$_n" mount -uw /mnt/system 2>&1` || _rc=$?
             if [ "$_rc" -eq 0 ] && [ -z "$_err" ]; then
                 for _pf in /net/$_n.mibhigh.net/mnt/system /net/$_n/mnt/system /mnt/system; do
                     if [ -d "$_pf" ] && system_probe_view "$_pf"; then

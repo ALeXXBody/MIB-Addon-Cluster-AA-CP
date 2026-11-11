@@ -215,6 +215,53 @@ def _stage_install(car):
     return pathlib.Path(SYS_VIEWS[0], CFG_KEY)
 
 
+def test_the_repeat_install_skips_even_when_the_config_was_written_differently(car):
+    """The v0.7.5 car diag: the unit's config carried the same env entries
+    the reinstall would write, but the byte-for-byte compare still failed
+    (harmless differences from the earlier run), so every reinstall walked
+    into the system ladder. The skip must compare the gal child's ENVS, not
+    the file bytes."""
+    cfg_path = _stage_install(car)
+    car.run(["sh", f"{PKG}/enable_hook.sh"], expect_rc=0)
+    # perturb the live config: reorder the gal envs, keep every entry.
+    # The entries are taken from what run 1 actually wrote (the DPI value
+    # depends on the unit profile, so it must not be hardcoded here).
+    import re as _re
+    m = _re.search(r'"envs":\[(.*?)\]', cfg_path.read_text())
+    entries = [e.strip().strip('"') for e in m.group(1).split(",")]
+    entries = [e for e in entries if e]
+    entries.reverse()
+    reordered = ('{\n "children": {\n  "gal": {\n   "envs":['
+                 + ", ".join('"%s"' % e for e in entries) + ']\n'
+                 '  }\n }\n}\n')
+    for v in SYS_VIEWS:
+        pathlib.Path(v, CFG_KEY).write_text(reordered)
+    p = car.run(["sh", f"{PKG}/enable_hook.sh"], expect_rc=0)
+    out = p.stdout + p.stderr
+    assert "unchanged by this install; no system write needed" in out, out
+    assert "Cannot remount" not in out, out
+
+
+def test_no_probe_assignment_can_die_silently_under_strict_sh():
+    """The v0.7.5 car round's root cause: `_err=`mount -uw ...`` under the
+    unit's sh exits the whole script (rc=1, no message) when the probe
+    fails -- dash suppresses errexit inside functions called from `if`, the
+    unit's shell does not, which is why the car_sim missed it. Every probing
+    assignment must therefore carry its own `||` guard."""
+    import re
+    lib = (PAYLOAD_SRC / "scripts/lib_app_mount.sh").read_text()
+    bad = []
+    for i, ln in enumerate(lib.splitlines(), 1):
+        if re.search(r'_err=`|_sy_err=`', ln) and "||" not in ln:
+            bad.append(f"{i}: {ln}")
+    assert not bad, "bare probe assignments (die under the unit's sh):\n" + "\n".join(bad)
+    eh = (PAYLOAD_SRC / "enable_hook.sh").read_text()
+    assert '2>/dev/null` || true' in eh, "the skip compare lost its errexit guard"
+    # and the never-silent trap is in place
+    assert "FAIL: enable_hook stopped rc=" in eh, \
+        "the shell-level-death trap is missing"
+
+
 def test_a_mislabelled_recovery_copy_is_rebuilt_not_fatal(car):
     """The v0.7.5 car round (photo, 2026-11-11): the install died AFTER the
     env-entry lines with nothing on the console. The silent candidate is the

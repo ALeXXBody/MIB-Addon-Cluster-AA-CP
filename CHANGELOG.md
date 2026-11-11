@@ -588,3 +588,34 @@ Two new GEM switches, both from docs/android-auto-research.md's findings:
 ### Changed
 - run_verdict.sh treats the new failure shapes as a failed run, so the GEM
   wrapper shows STOPPED and the error lines instead of a silent DONE.
+
+## v0.7.7
+
+### Root cause (owner diag 621e3b24, v0.7.5 run)
+The full log ended at jsonlint-OK and jumped to CLUSTERMAP_INSTALL_FAILED
+(code 1) with nothing in between: `_err=`mount -uw ...`` probe assignments
+inside the v0.7.5 ladders kill the whole script under the unit's stricter sh
+when the probe fails (rc=1, no message). dash (the car-sim shell) suppresses
+errexit inside functions called from `if`, the unit's shell does not — which
+is exactly why every offline test was green while the car died silently.
+v0.7.4 survived because its ladder used `mount -uw ... || continue`.
+
+### The same diag also showed
+- The unit is ALREADY ARMED: the v0.7.5 hook binary is on the unit (sha1
+  matches the card), the gal child carries LD_PRELOAD + 4 GAL_* envs, the
+  settings copy is complete — and the hook has never run (no hook log, no
+  runtime files). The map is one reboot away.
+- Every reinstall after the arming died on the system ladder instead of
+  skipping: the v0.7.5 byte-for-byte skip compare was too strict.
+
+### Fixed
+- Every probing assignment now carries its own `||` guard
+  (`_err=`cmd` || _rc=$?` / `|| true`) — no shell can kill the script
+  silently there anymore.
+- An EXIT trap guarantees enable_hook.sh can never stop without printing a
+  FAIL line, whatever kills it.
+- The reinstall skip is semantic now: every entry the install would inject
+  must already be present, verbatim, in the gal child's envs (order and
+  formatting no longer matter).
+- diag §9 now ANSWERS: armed + no hook log => "the hook is armed but has
+  NOT run yet — reboot the unit, then Save logs again".

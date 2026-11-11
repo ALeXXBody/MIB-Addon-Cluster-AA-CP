@@ -1554,3 +1554,25 @@ write phase was invisible on the console since v0.4.x. Fixes:
   the most probable cause of the photo round; v0.7.4/v0.7.5 both stopped
   there silently when the backup was mislabelled.
 69/69 car-sim tests green; audit_wiring v0.7.6 ALL GREEN.
+
+---
+
+## Round 46 — v0.7.7: the silent death, found by the diag the owner sent
+
+Owner diag 621e3b24 (v0.7.5 run): §12 jumps from "[jsonlint] OK" to
+"CLUSTERMAP_INSTALL_FAILED (code 1)" with nothing between — and §4b/§5/§8
+show the unit ALREADY armed (unit .so sha1 == card, gal child carries
+LD_PRELOAD + 4 GAL_* envs) but §9/§9b show the hook never ran (no log, no
+runtime files). Two conclusions:
+1. The install is DONE on that unit; the map is one reboot away. The red
+   re-installs after it were pure noise.
+2. The noise had a mechanism: v0.7.5's `_err=`mount -uw ...`` assignments
+   die under set -e on the unit's sh when the probe fails (QNX sh does not
+   suppress errexit inside functions called from `if`; dash does — which is
+   why 70 green offline tests missed it). v0.7.4's `|| continue` form was
+   safe; the v0.7.5 refactor introduced the regression.
+
+Fixes: `|| _rc=$?` / `|| true` on every probe assignment, an EXIT trap that
+prints FAIL on any rc!=0 death, a semantic env-based skip compare, and a
+diag §9 verdict that says "armed but has NOT run yet — reboot" in exactly
+that state. 71/71 car-sim green, audit_wiring v0.7.7 ALL GREEN.

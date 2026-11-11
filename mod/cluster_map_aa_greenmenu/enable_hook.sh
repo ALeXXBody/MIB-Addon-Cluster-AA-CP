@@ -13,6 +13,20 @@ export PATH
 
 set -eu
 
+# v0.7.7 safety net: this script must never stop without a reason. The
+# v0.7.5 car round died here invisibly: a probing assignment whose command
+# failed under the unit's stricter sh exited the whole script (rc=1) with
+# no message at all -- the diag's full log jumped straight from jsonlint-OK
+# to "CLUSTERMAP_INSTALL_FAILED (code 1)". The probes no longer use bare
+# failing assignments, and this trap guarantees that even a shell-level
+# death prints a FAIL line into the run log (and through console_summary /
+# the failed-install tail, onto the GEM console).
+trap '_hook_rc=$?
+if [ "$_hook_rc" -ne 0 ]; then
+    echo "FAIL: enable_hook stopped rc=$_hook_rc without printing its own reason" >&2
+    echo "      (shell-level death -- the diag full log names the last completed step)" >&2
+fi' 0
+
 CARD_ROOT=`cd "\`dirname "$0"\`" && pwd`
 # One canonical payload root: if this script copy was reached from a NESTED
 # layout (the fork's scripts/ copy of the same tree -- M.I.B.'s cm_aa_*
@@ -1198,26 +1212,45 @@ LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$TEMP" || {
 }
 
 # ---------------------------------------------------------------------------
-# v0.7.5: if the supervisor config ALREADY carries this install, there is
-# nothing to remount and nothing to write. The v0.7.4 car round failed here
-# on every reinstall ("Cannot remount the system partition read-write"),
-# which turned a no-op into a red install. The comparison is a plain awk
-# compare of the two files: this unit has no cksum (the diag's own cksum
-# column came out empty on the car), and cmp is absent too. The recovery
-# copy must exist, and the skip is only taken when no CarPlay firewall
-# marker is present (that marker needs a writable system partition to be
-# taken out).
+# v0.7.7: if the supervisor config ALREADY carries this install, there is
+# nothing to remount and nothing to write. The comparison is SEMANTIC now:
+# every entry this install would inject must already be present, verbatim,
+# in the gal child's envs of the live config. The v0.7.5 byte-for-byte awk
+# compare was too strict -- the car's config had been written by an earlier
+# run with harmless differences, so every reinstall went to the system
+# ladder instead of skipping. The recovery copy must exist, and the skip is
+# only taken when no CarPlay firewall marker is present (that marker needs
+# a writable system partition to be taken out).
 SYSTEM_NOCHANGE=0
-if [ "$CARPLAY_OK" -ne 1 ] && [ -r "$TARGET_CONFIG" ] && [ -r "$PERSISTENT_BACKUP" ]; then
-    _same=`awk '
-        NR == FNR { a[FNR] = $0; n = FNR; next }
-        { b[FNR] = $0; m = FNR }
+if [ "$CARPLAY_OK" -ne 1 ] && [ "$TARGET_IS_HOOKED" -eq 1 ] && \
+   [ -r "$TARGET_CONFIG" ] && [ -r "$PERSISTENT_BACKUP" ]; then
+    _same=`awk -v inj="$INJECTION" '
+        { buf = buf $0 "\n" }
         END {
-            if (n != m) { print "no"; exit }
-            for (i = 1; i <= n; i++) if (a[i] != b[i]) { print "no"; exit }
+            s = index(buf, "\"gal\"")
+            if (s == 0) { print "no"; exit }
+            rest = substr(buf, s)
+            e = index(rest, "\"envs\"")
+            if (e == 0) { print "no"; exit }
+            rest = substr(rest, e)
+            a = index(rest, "[")
+            if (a == 0) { print "no"; exit }
+            rest = substr(rest, a + 1)
+            end = index(rest, "]")
+            if (end == 0) { print "no"; exit }
+            rest = substr(rest, 1, end)
+            n = split(inj, want, "\", \"")
+            for (i = 1; i <= n; i++) {
+                w = want[i]
+                # keep only the characters an env entry is made of; strips
+                # the quote/comma debris the split leaves at both ends
+                gsub(/[^A-Za-z0-9_\/=.:-]/, "", w)
+                if (w == "") continue
+                if (index(rest, "\"" w "\"") == 0) { print "no"; exit }
+            }
             print "yes"
         }
-    ' "$TEMP" "$TARGET_CONFIG" 2>/dev/null`
+    ' "$TARGET_CONFIG" 2>/dev/null` || true
     if [ "$_same" = yes ]; then
         # A CarPlay firewall marker can only be taken out with a writable
         # system partition, so never skip past one.
