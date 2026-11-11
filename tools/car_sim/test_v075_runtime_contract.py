@@ -242,6 +242,30 @@ def test_the_repeat_install_skips_even_when_the_config_was_written_differently(c
     assert "Cannot remount" not in out, out
 
 
+def test_the_gem_screen_is_nested_with_max_nine_rows_per_screen():
+    """The owner's GEM 4.12st renders ~9 rows per screen and the rest of one
+    long list is unreachable (the hi-res / wheel tabs "did not exist" for
+    him although the file listed them). The screen is nested now: every
+    screen stays under 9 rows and the sub-screens hang off ClusterMap."""
+    tpl = (PAYLOAD_SRC / "greenmenu/cluster-map.template.esd").read_text()
+    screens = re.findall(r'^screen (\S+) (\S+)$', tpl, re.M)
+    assert len(screens) >= 6, f"the screen is not nested: {screens}"
+    # every entry lands in exactly one screen
+    blocks = re.split(r'^screen \S+ \S+$', tpl, flags=re.M)[1:]
+    for name, body in zip([n for n, _ in screens], blocks):
+        rows = len(re.findall(r'^script$', body, re.M)) \
+             + len(re.findall(r'^screen ', body, re.M))
+        assert rows <= 9, f"screen {name} has {rows} rows (>9, unreachable rows again)"
+    # the tabs the owner looked for are now one level inside ClusterMap
+    for needle in ('ClusterMap_hires', 'ClusterMap_wheel'):
+        assert f'screen {needle} ClusterMap' in tpl, needle
+    # and every family is still wired: hires, pump, wheel trace, cluster remote
+    for wrapper in ('hiresen_on.sh', 'idrpump_on.sh', 'trainer_on.sh',
+                    'remote_on.sh', 'clustermenu_on.sh', 'logs.sh',
+                    'uninstall.sh', 'status.sh', 'install.sh', 'arm.sh'):
+        assert f'gem/{wrapper}"' in tpl, wrapper
+
+
 def test_no_probe_assignment_can_die_silently_under_strict_sh():
     """The v0.7.5 car round's root cause: `_err=`mount -uw ...`` under the
     unit's sh exits the whole script (rc=1, no message) when the probe

@@ -1592,3 +1592,17 @@ hook's own log. The v0.7.8 diag therefore answers three states itself:
    gal's node; §4b now lists the hook .so per unit view (mmx/rcc question);
 3. hook log present => print init line + head + tail (the hook ran).
 71/71 car-sim green; audit_wiring v0.7.8 ALL GREEN.
+
+---
+
+## Round 48 — v0.7.9: the menu is nested (every switch reachable)
+
+Owner photo: only the first ~9 rows of the ClusterMap screen are visible
+and "nothing more" appears — his GEM 4.12st does not reach the rest of one
+long list. The owner diag §6b had already proven the live screen file
+carries all 46 scripts, paths all "ok" (two hi-res/pump blocks even
+duplicated). The fix is structural, not another entry: screen design v3
+nests 8 sub-screens under ClusterMap (picture, position, hires, wheel,
+presets, clear, more), each ≤9 rows, children appear as parent entries —
+the same mechanism M.I.B.'s tree uses. New static test pins "≤9 rows per
+screen" + every family wired. 72/72 car-sim green; audit ALL GREEN.

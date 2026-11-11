@@ -1,19 +1,21 @@
 ###########################################################################################
 #
-# Custom Green Engineering Menu screen: phone map on the digital cluster
+# Custom Green Engineering Menu screens: phone map on the digital cluster
 # Attached to the top level of the green engineering menu, so it does not
-# depend on any other screen being installed.
-# Main -> ClusterMap
+# depend on any other screen being installed.  Main -> ClusterMap
 #
 # The entries run scripts straight from the SD card in slot 1:
-#   /net/mmx/fs/sda0/mod/cluster_aa/greenmenu/
+#   /net/mmx/fs/sda0/mod/cluster_aa/greenmenu
 #
-# Screen design v2 (2026-11-06): EVERY entry routes through ONE script
-# (menus.sh). A partial card copy can then produce one "Script not found"
-# message at worst, never a tree of missing switches; custom.sh's install
-# self-check names the missing files exactly.
-
+# Screen design v3 (2026-11-11): the owner's GEM 4.12st shows ~9 rows per
+# screen and does not reach the rest of one long list, so the 40+ entries
+# are NESTED now: every screen stays under 9 rows and each sub-screen
+# appears as an entry of its parent (the same parent/child mechanism
+# M.I.B.'s own tree uses). A partial card copy can still only produce one
+# "Script not found" message at worst, never a tree of missing switches.
+#
 ###########################################################################################
+
 screen ClusterMap Main
 
 keyValue
@@ -23,7 +25,7 @@ keyValue
 
 keyValue
     value   String sys 0x00000000 0
-    label   "SD card must be in slot 1. Reboot after install."
+label   "SD card must be in slot 1. Reboot after install."
     poll    0
 
 script
@@ -39,24 +41,27 @@ script
     label   "2b. Make the map LIVE (arm; reboot after)"
 
 script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/uninstall.sh"
+    label   "Uninstall and restore original state"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/logs.sh"
+    label   "Save logs to SD"
+
+screen ClusterMap_picture ClusterMap
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "ClusterMap: sharper / zoom (the picture)"
+    poll    0
+
+script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/full_frame_on.sh"
     label   "Sharper map ON (full frame; reboot after)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/full_frame_off.sh"
     label   "Sharper map OFF (standard; reboot after)"
-
-script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/keep_map_on.sh"
-    label   "Keep map ON (arbiter; fork)"
-
-script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/keep_map_off.sh"
-    label   "Keep map OFF (standard; fork)"
-
-script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/verify.sh"
-    label   "Verify installed files (fork)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/zoom_off.sh"
@@ -70,7 +75,13 @@ script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/zoom_135.sh"
     label   "Zoom 1.35 (crop-and-enlarge; live)"
 
-script
+screen ClusterMap_position ClusterMap
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "ClusterMap: position (LIVE on the wire)"
+    poll    0
+
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/position_higher.sh"
     label   "Position: content UP a step (LIVE on the wire)"
@@ -91,6 +102,13 @@ script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/position_standard.sh"
     label   "Position: back to the shipped look (LIVE on the wire)"
 
+screen ClusterMap_hires ClusterMap
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "ClusterMap: hi-res trial + sharpness pump"
+    poll    0
+
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/hiresen_on.sh"
     label   "Hi-res trial: declare 1280x720 (next phone session)"
@@ -107,6 +125,13 @@ script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/idrpump_off.sh"
     label   "Sharpness pump: OFF (LIVE)"
 
+screen ClusterMap_wheel ClusterMap
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "ClusterMap: the steering wheel"
+    poll    0
+
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/clustermenu_on.sh"
     label   "Cluster menu: ON (wheel overlay; the next OK press applies)"
@@ -122,6 +147,21 @@ script
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/trainer_off.sh"
     label   "Wheel trace: OFF"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/remote_on.sh"
+    label   "Cluster remote: ON (short OK = presets, long OK = strip)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/remote_off.sh"
+    label   "Cluster remote: OFF"
+
+screen ClusterMap_presets ClusterMap
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "ClusterMap: ETA card (the green banner)"
+    poll    0
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_top.sh"
@@ -143,6 +183,14 @@ script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_off.sh"
     label   "ETA card: OFF (stock layout)"
 
+screen ClusterMap_clear ClusterMap
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "ClusterMap: turn-card clear + turn info strip"
+    poll    0
+
+script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/cardclear_top.sh"
     label   "Turn-card clear: TOP strip"
 
@@ -166,25 +214,28 @@ script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/navstrip_off.sh"
     label   "Turn info strip: OFF"
 
-script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/remote_on.sh"
-    label   "Cluster remote: ON (short OK = presets, long OK = strip)"
+screen ClusterMap_more ClusterMap
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "ClusterMap: keep-map, verify, porting"
+    poll    0
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/remote_off.sh"
-    label   "Cluster remote: OFF"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/keep_map_on.sh"
+    label   "Keep map ON (arbiter; fork)"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/uninstall.sh"
-    label   "Uninstall and restore original state"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/keep_map_off.sh"
+    label   "Keep map OFF (standard; fork)"
+
+script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/verify.sh"
+    label   "Verify installed files (fork)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/tbt.sh"
     label   "Switch to turn-by-turn arrows instead (no map)"
-
-script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/logs.sh"
-    label   "Save logs to SD"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/porting.sh"
@@ -197,3 +248,4 @@ script
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/esd/scripts/reboot.sh"
     label   "Reboot the unit (M.I.B.'s own reboot, 10 s countdown)\n"
+

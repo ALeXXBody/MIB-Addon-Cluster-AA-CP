@@ -634,3 +634,29 @@ v0.7.4 survived because its ladder used `mount -uw ... || continue`.
 - §9: when a hook log exists, the bundle now prints the init line and the
   first 12 lines, plus the tail.
 - §8: process names in the supervisor config (gal's siblings), one line.
+
+## v0.7.9
+
+### Fixed — every switch is now reachable on the owner's GEM
+The owner could see only the first ~9 rows of the ClusterMap screen: his
+GEM 4.12st renders about 9 rows and never reached the rest of one long
+list — so Hi-res, Sharpness pump, Wheel trace, Cluster remote and the
+presets "did not exist" for him although the screen file listed all 46
+(the diag §6b proves the file was complete and every path ok; two entries
+were even duplicated in the template).
+
+The screen is NESTED now (screen design v3): every screen stays under 9
+rows and the sub-screens appear as entries of their parent — the same
+parent/child mechanism M.I.B.'s own tree uses.
+
+    ClusterMap            Status, Install, Make LIVE, Uninstall, Save logs
+    ├─ ClusterMap_picture     Sharper ON/OFF, Zoom 1.0 / 1.15 / 1.35
+    ├─ ClusterMap_position    Position UP/DOWN/WIDER/NARROWER/standard (live)
+    ├─ ClusterMap_hires       Hi-res 1280x720 ON/OFF, Sharpness pump ON/OFF
+    ├─ ClusterMap_wheel       Cluster menu ON/OFF, Wheel trace ON/OFF,
+    │                         Cluster remote ON/OFF
+    ├─ ClusterMap_presets     ETA card TOP/BOTTOM/LEFT/RIGHT/OFF
+    ├─ ClusterMap_clear       Turn-card clear ×4, Turn info strip ON/OFF
+    └─ ClusterMap_more        Keep-map ON/OFF, Verify, arrows, porting ×2, Reboot
+
+Also de-duplicated the template (hiresen/idrpump blocks were listed twice).
