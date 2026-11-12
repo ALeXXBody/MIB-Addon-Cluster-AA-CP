@@ -660,3 +660,19 @@ parent/child mechanism M.I.B.'s own tree uses.
     └─ ClusterMap_more        Keep-map ON/OFF, Verify, arrows, porting ×2, Reboot
 
 Also de-duplicated the template (hiresen/idrpump blocks were listed twice).
+
+## v0.7.10
+
+### Fixed — menu labels are short now
+The owner asked for 4-5 word labels instead of 10-15 word ones. Every
+script entry label in the GEM screen is now 5 words or fewer; screen
+titles are exempt. A static test guards the regression.
+
+### Fixed — diag now captures the decisive mid-log events
+The previous diag's §9 only kept the first 12 and last 120 lines, so the
+mid-session events (player.spawn, aap.playback, aap.video_focus,
+secondary.video_config, primary.register, service.class, impl_at_sink,
+stream.mode, stream.open, stream.idr, focus.healthy, fix.config) were
+invisible. They are now captured verbatim, plus a new §9c listing gal and
+stream-player processes (pidin) and stream-player logs — the exact
+evidence needed to settle "the hook runs but nothing shows".

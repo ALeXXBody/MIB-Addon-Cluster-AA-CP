@@ -1606,3 +1606,19 @@ nests 8 sub-screens under ClusterMap (picture, position, hires, wheel,
 presets, clear, more), each ≤9 rows, children appear as parent entries —
 the same mechanism M.I.B.'s tree uses. New static test pins "≤9 rows per
 screen" + every family wired. 72/72 car-sim green; audit ALL GREEN.
+
+---
+
+## Round 49 — v0.7.10: short menu labels + diag captures the decisive events
+
+Owner photo round 5: the hook runs (init v0.7.5, enabled=1, AA frames
+flowing), the switches persist their values, but "nothing changes, not even
+after USB reconnection or unit reboot" — and the console's log tail only
+carried the steady-state frame traffic, so the mid-session events that
+decide "map shows or not" (player.spawn, aap.playback, aap.video_focus,
+secondary.video_config, primary.register, service.class, impl_at_sink,
+stream.mode, stream.open, stream.idr, focus.healthy) were never captured.
+v0.7.10 captures them verbatim and adds §9c (gal / stream-player process
+list via pidin). Separately, the owner's explicit usability complaint —
+menu labels are 4-5 words now (a static test guards it). 73/73 car-sim
+green; audit ALL GREEN.

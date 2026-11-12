@@ -242,6 +242,33 @@ def test_the_repeat_install_skips_even_when_the_config_was_written_differently(c
     assert "Cannot remount" not in out, out
 
 
+def test_every_menu_label_is_short_enough_to_read_on_the_glass():
+    """The owner could not read the menu: '4-5 words, not 100 lines of text'.
+    Every script entry's label must be 5 words or fewer. Screen titles
+    (keyValue labels) are exempt."""
+    tpl = (PAYLOAD_SRC / "greenmenu/cluster-map.template.esd").read_text()
+    lines = tpl.splitlines()
+    bad = []
+    i = 0
+    while i < len(lines):
+        if lines[i].strip().startswith("value   sys 1 0x0100"):
+            # find the following label line
+            j = i + 1
+            while j < len(lines) and not lines[j].strip().startswith("label"):
+                j += 1
+            if j < len(lines):
+                import re
+                m = re.search(r'label\s+"(.*)"', lines[j])
+                if m:
+                    label = m.group(1)
+                    # strip trailing \n marker
+                    words = label.replace("\\n", "").split()
+                    if len(words) > 5:
+                        bad.append(f"{len(words)} words: {label}")
+        i += 1
+    assert not bad, "menu labels too long:\n" + "\n".join(bad)
+
+
 def test_the_gem_screen_is_nested_with_max_nine_rows_per_screen():
     """The owner's GEM 4.12st renders ~9 rows per screen and the rest of one
     long list is unreachable (the hi-res / wheel tabs "did not exist" for

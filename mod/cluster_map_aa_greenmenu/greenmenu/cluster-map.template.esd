@@ -30,19 +30,19 @@ label   "SD card must be in slot 1. Reboot after install."
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/status.sh"
-    label   "1. Status and compatibility check"
+    label   "Status & compat check"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/install.sh"
-    label   "2. Install cluster map"
+    label   "Install cluster map"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/arm.sh"
-    label   "2b. Make the map LIVE (arm; reboot after)"
+    label   "Arm the map (reboot)"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/uninstall.sh"
-    label   "Uninstall and restore original state"
+    label   "Uninstall"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/logs.sh"
@@ -57,23 +57,23 @@ keyValue
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/full_frame_on.sh"
-    label   "Sharper map ON (full frame; reboot after)"
+    label   "Sharper map ON"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/full_frame_off.sh"
-    label   "Sharper map OFF (standard; reboot after)"
+    label   "Sharper map OFF"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/zoom_off.sh"
-    label   "Zoom 1.0 (off; standard map view)"
+    label   "Zoom 1.0 (off)"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/zoom_115.sh"
-    label   "Zoom 1.15 (crop-and-enlarge; live)"
+    label   "Zoom 1.15 (live)"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/zoom_135.sh"
-    label   "Zoom 1.35 (crop-and-enlarge; live)"
+    label   "Zoom 1.35 (live)"
 
 screen ClusterMap_position ClusterMap
 
@@ -84,23 +84,23 @@ keyValue
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/position_higher.sh"
-    label   "Position: content UP a step (LIVE on the wire)"
+    label   "Position: UP"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/position_lower.sh"
-    label   "Position: content DOWN a step (LIVE on the wire)"
+    label   "Position: DOWN"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/position_wider.sh"
-    label   "Position: content WIDER (LIVE on the wire)"
+    label   "Position: WIDER"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/position_narrower.sh"
-    label   "Position: content NARROWER (LIVE on the wire)"
+    label   "Position: NARROWER"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/position_standard.sh"
-    label   "Position: back to the shipped look (LIVE on the wire)"
+    label   "Position: standard"
 
 screen ClusterMap_hires ClusterMap
 
@@ -111,19 +111,19 @@ keyValue
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/hiresen_on.sh"
-    label   "Hi-res trial: declare 1280x720 (next phone session)"
+    label   "Hi-res ON (next session)"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/hiresen_off.sh"
-    label   "Hi-res trial: OFF (stock 800x480; next session)"
+    label   "Hi-res OFF"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/idrpump_on.sh"
-    label   "Sharpness pump: fresh keyframes every 25 s (LIVE)"
+    label   "Sharpness pump ON"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/idrpump_off.sh"
-    label   "Sharpness pump: OFF (LIVE)"
+    label   "Sharpness pump OFF"
 
 screen ClusterMap_wheel ClusterMap
 
@@ -134,23 +134,23 @@ keyValue
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/clustermenu_on.sh"
-    label   "Cluster menu: ON (wheel overlay; the next OK press applies)"
+    label   "Wheel menu ON"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/clustermenu_off.sh"
-    label   "Cluster menu: OFF (the next OK press applies)"
+    label   "Wheel menu OFF"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/trainer_on.sh"
-    label   "Wheel trace: ON (diagnose; press the wheel then Save logs)"
+    label   "Wheel trace ON"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/trainer_off.sh"
-    label   "Wheel trace: OFF"
+    label   "Wheel trace OFF"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/remote_on.sh"
-    label   "Cluster remote: ON (short OK = presets, long OK = strip)"
+    label   "Cluster remote: ON"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/remote_off.sh"
@@ -165,23 +165,23 @@ keyValue
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/etacard_top.sh"
-    label   "ETA card: TOP strip (LIVE; wheel cycle too)"
+    label   "ETA card: TOP"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/etacard_bottom.sh"
-    label   "ETA card: BOTTOM strip"
+    label   "ETA card: BOTTOM"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/etacard_left.sh"
-    label   "ETA card: LEFT column"
+    label   "ETA card: LEFT"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/etacard_right.sh"
-    label   "ETA card: RIGHT column"
+    label   "ETA card: RIGHT"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/etacard_off.sh"
-    label   "ETA card: OFF (stock layout)"
+    label   "ETA card: OFF"
 
 screen ClusterMap_clear ClusterMap
 
@@ -192,27 +192,27 @@ keyValue
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/cardclear_top.sh"
-    label   "Turn-card clear: TOP strip"
+    label   "Turn-card clear: TOP"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/cardclear_sides.sh"
-    label   "Turn-card clear: SIDES free"
+    label   "Turn-card clear: SIDES"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/cardclear_band.sh"
-    label   "Turn-card clear: middle BAND"
+    label   "Turn-card clear: BAND"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/cardclear_off.sh"
-    label   "Turn-card clear: OFF (standard layout)"
+    label   "Turn-card clear: OFF"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/navstrip_on.sh"
-    label   "Turn info strip: ON (road | ETA | distance)"
+    label   "Turn info strip ON"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/navstrip_off.sh"
-    label   "Turn info strip: OFF"
+    label   "Turn info strip OFF"
 
 screen ClusterMap_more ClusterMap
 
@@ -223,29 +223,29 @@ keyValue
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/keep_map_on.sh"
-    label   "Keep map ON (arbiter; fork)"
+    label   "Keep map ON"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/keep_map_off.sh"
-    label   "Keep map OFF (standard; fork)"
+    label   "Keep map OFF"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/verify.sh"
-    label   "Verify installed files (fork)"
+    label   "Verify installed files"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/tbt.sh"
-    label   "Switch to turn-by-turn arrows instead (no map)"
+    label   "Switch to arrows"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/porting.sh"
-    label   "Collect files for porting (quick)"
+    label   "Collect porting (quick)"
 
 script
     value   sys 1 0x0100 "@GREENMENU@gem/portfull.sh"
-    label   "Collect for porting, with Java image (55 MB, slow)"
+    label   "Collect porting (55MB)"
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/esd/scripts/reboot.sh"
-    label   "Reboot the unit (M.I.B.'s own reboot, 10 s countdown)\n"
+    label   "Reboot the unit\n"
 

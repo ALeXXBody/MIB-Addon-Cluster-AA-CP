@@ -346,6 +346,8 @@ if [ -n "$LOG" ]; then
     put "VERDICT: the hook HAS run on this unit (its log exists)."
     put "-- its start line (init) --"
     sed -n '/event=init/p' "$LOG" 2>/dev/null | head -3 >> "$TMP"
+    put "-- key mid-log events (player, playback, focus, sinks) --"
+    grep -E "event=(player\.|aap\.playback|aap\.video_focus|aap\.frame$|secondary\.video_config|primary\.register|service\.class|impl_at_sink|stream\.mode|stream\.open|stream\.idr|focus\.healthy|fix\.config)" "$LOG" 2>/dev/null >> "$TMP"
     put "-- first 12 lines --"
     head -12 "$LOG" >> "$TMP" 2>/dev/null
     put "-- last 120 lines --"
@@ -395,6 +397,23 @@ for _f in /tmp/gal_remote /tmp/gal_remote_trace /tmp/gal_cluster_menu /tmp/gal_h
         put "$_f = (absent)"
     fi
 done
+
+# ---- 9c. is the map renderer (stream-player) actually running?
+# The hook receives AA frames, but the cluster only shows the map when
+# stream-player is alive and connected to the hook's TCP port. The diag
+# has to name this, because "the hook runs but nothing shows" is the
+# exact shape of the owner's report.
+section "9c map renderer (stream-player process)"
+if command -v pidin >/dev/null 2>&1; then
+    put "stream-player instances: `pidin info 2>/dev/null | grep -c stream-player`"
+    put "gal instances: `pidin info 2>/dev/null | grep -c ' gal '`"
+    put "matching lines:"
+    pidin info 2>/dev/null | grep -iE "stream-player| gal " >> "$TMP" 2>/dev/null
+else
+    put "(pidin not available on this unit)"
+fi
+put "stream-player log on the card: `([ -r /fs/sda0/logs/stream-player.log ] && echo present) || echo absent`"
+put "stream-player log in /tmp: `([ -r /tmp/stream-player.log ] && echo present) || echo absent`"
 
 # ---- 10. install paths record
 section "10 install home record"
