@@ -2733,7 +2733,10 @@ static void ui_config_poll(void *router)
         if (seen != 1) { seen = 1; }
         return;
     }
-    (void)sscanf(line, "%u,%u,%u,%u", &t, &b, &l, &r);
+    if (sscanf(line, "%u,%u,%u,%u", &t, &b, &l, &r) != 4) {
+        gal_hook_logf("event=uiconfig result=rejected line=%s", line);
+        return;
+    }
     { strncpy(last_line, line, sizeof last_line - 1); last_line[sizeof last_line - 1] = 0; }
     seen = 1;
 
