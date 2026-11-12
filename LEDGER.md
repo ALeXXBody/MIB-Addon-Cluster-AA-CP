@@ -1664,3 +1664,15 @@ uncapped §12, full-log §12b, new §12c console narration, 3-generation
 bundle history on unit + card, and hook-side rotation (rename to .prev,
 never truncate) with full .prev collection. 89/89 car-sim green (4 new
 tests), rebuilt hook v0.7.15 verified, audit ALL GREEN.
+
+---
+
+## Round 53 — v0.7.16: no silent anything
+
+Owner asked whether any small error will now tell why and where. Audit
+found two holes and closed both: hook action/drop paths all log at INFO
+(menu event promoted from debug, write-failure elses, one-shot tap
+filter line), and run_quiet names silent child deaths so the verdict
+can't read DONE. 90/90 car-sim green (new end-to-end silent-death
+test), rebuilt hook v0.7.16 verified, audit ALL GREEN (needles extended
+to the new lines).

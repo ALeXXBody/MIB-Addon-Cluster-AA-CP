@@ -31,6 +31,15 @@ run_quiet() {
     else
         sh "$_child" >"$_log" 2>&1
     fi
+    _rc=$?
+    # A child that dies WITHOUT printing its own reason must still land a
+    # named FAIL line: the verdict below is pattern-based, so a silent
+    # non-zero exit would otherwise read as DONE.
+    if [ "$_rc" -ne 0 ] && ! grep -q -e "^FAIL" -e "^ERROR" -e "^CRITICAL" \
+            -e "^MISSING" -e "INSTALL_FAILED" -e "NOT SUPPORTED" \
+            -e "^Cannot " -e "^Could not " "$_log" 2>/dev/null; then
+        echo "FAIL: $1 child ${_child##*/} stopped rc=$_rc without its own reason" >> "$_log"
+    fi
     # FLOOR THE PRESS. Your GEM 4.12st's console screen breaks on re-entry
     # (owner photo: de.audi.gem.?.?.ScreenRenderer "Thread is already
     # started") and shows only "...". Every extra printed line is display

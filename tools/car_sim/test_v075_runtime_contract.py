@@ -165,6 +165,22 @@ def test_hires_off_keeps_the_hex_override(car):
     assert "GAL_SECONDARY_HIRESEN=0" in text, text
 
 
+def test_silent_child_death_gets_a_named_fail_line(car):
+    """run_quiet is pattern-based: a child that dies WITHOUT printing its
+    own reason used to read as DONE. Now the runner appends a named FAIL
+    line, so the verdict is STOPPED and the diag names the script and rc."""
+    _stage(car)
+    _rt()
+    stub = pathlib.Path(PKG, "greenmenu/cluster_remote.sh")
+    stub.write_text("#!/bin/sh\nexit 3\n")
+    p = car.run(["sh", f"{PKG}/greenmenu/gem/remote_on.sh"],
+                env={"GAL_RUNTIME_DIR": "/sim/rt"}, expect_rc=0)
+    out = p.stdout + p.stderr
+    assert "== STOPPED" in out, out
+    log = pathlib.Path("/tmp/cm_menu_remote.log").read_text()
+    assert "FAIL: remote child cluster_remote.sh stopped rc=3" in log, log
+
+
 def test_diag_12b_collects_every_recent_press(car):
     """The owner presses several switches, then Save logs: until the
     add-on fully works the bundle keeps EVERY action in full, so a failing

@@ -2844,7 +2844,10 @@ static void cluster_menu_event(const char *ev)
     if (f != NULL) {
         fprintf(f, "%s\n", ev);
         fclose(f);
-        gal_hook_debugf("event=cluster.menu.event ev=%s", ev);
+        gal_hook_logf("event=cluster.menu.event ev=%s", ev);
+    } else {
+        gal_hook_logf("event=cluster.menu.event result=failed ev=%s reason=cannot-write",
+                      ev);
     }
 }
 
@@ -2912,6 +2915,8 @@ static void cluster_remote_toggle_strip(void)
         (void)remove(CLUSTER_REMOTE_TOGGLE);
         (void)rename(CLUSTER_REMOTE_TOGGLE ".new", CLUSTER_REMOTE_TOGGLE);
         gal_hook_logf("event=cluster.remote.strip set=%d", now ? 0 : 1);
+    } else {
+        gal_hook_logf("event=cluster.remote.strip result=failed reason=cannot-write");
     }
 }
 
@@ -2937,6 +2942,8 @@ static void cluster_remote_cycle_card(void)
         fprintf(f, "%s\n", next);
         fclose(f);
         gal_hook_logf("event=cluster.remote.card preset=%s", next[0] ? next : "off");
+    } else {
+        gal_hook_logf("event=cluster.remote.card result=failed reason=cannot-write");
     }
 }
 
@@ -2957,6 +2964,8 @@ static void cluster_remote_zoom(int step)
         fprintf(f, "%.2f\n", v);
         fclose(f);
         gal_hook_logf("event=cluster.remote.zoom value=%.2f", v);
+    } else {
+        gal_hook_logf("event=cluster.remote.zoom result=failed reason=cannot-write");
     }
 }
 
@@ -3187,7 +3196,15 @@ static void outbound_sniff(unsigned char channel, const void *buf, unsigned len)
      */
     const char *cls = g_service_class[channel];
     if (strstr(cls, "InputSource") == NULL) {
-        if (g_channel_last_id[channel] != 0x8002u) return;
+        if (g_channel_last_id[channel] != 0x8002u) {
+            static int filter_logged;
+            if (!filter_logged) {
+                filter_logged = 1;
+                gal_hook_logf("event=remote.tap result=filtered channel=%u id=0x%04x class=%s reason=no-input-binding-seen",
+                              (unsigned)channel, ((unsigned)m[0] << 8) | m[1], cls);
+            }
+            return;
+        }
         cls = "InputSource(inferred:phone-bound-0x8002)";
     }
     id = ((unsigned)m[0] << 8) | m[1];

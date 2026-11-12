@@ -784,3 +784,18 @@ early decisive lines (init, grants, spawns) forever. It now renames the
 full log to `<log>.prev` and starts fresh (bounded at 2x max, with an
 `event=log.rotate` marker joining the generations). The diag collects
 the previous generation in full (§9).
+
+## v0.7.16 — every small error now says why and where
+
+### Fixed — the last two silent paths (owner: "will any small error tell why and where?")
+Verified first: `live_write` already speaks on failure, and every
+persist path prints its outcome — but two holes remained, both closed:
+- Hook: successful wheel-menu presses only reached the debug log, failed
+  file writes were silent, and a tap filtered for lack of binding left no
+  line. Now `cluster.menu.event`, `cluster.remote.strip/card/zoom` log at
+  INFO on success AND on `result=failed reason=cannot-write`; the tap
+  filter logs a one-shot `result=filtered` naming channel, id and class.
+- Switches: `run_quiet` ignored the child's exit code, so a child that
+  died WITHOUT its own reason read as DONE. It now appends
+  `FAIL: <verb> child <script> stopped rc=<n> without its own reason`,
+  which flips the verdict to STOPPED and lands in the bundle.

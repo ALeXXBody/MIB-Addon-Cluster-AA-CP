@@ -138,9 +138,13 @@ grep -q 'GAL_RUNTIME_DIR="\${GAL_RUNTIME_DIR:-/tmp}"' $PAYLOAD/scripts/lib_app_m
     ok "runtime directory defaults to /tmp (matches the hook)" ||
     fail "runtime directory default is not /tmp"
 
-# binary carries the tap + build marker
+# binary carries the tap + build marker. Every silent-failure path must
+# have a named line: the tap filter, the gate, the menu event, the write
+# failure lines, the parsed trace. If any is missing, a future failure
+# there goes unexplained again.
 for needle in 'event=remote.tap' 'event=cluster.remote.live' \
-              'event=cluster.remote.gate result=closed' '/tmp/gal_remote' 'event=remote.trace parse'; do
+              'event=cluster.remote.gate result=closed' '/tmp/gal_remote' 'event=remote.trace parse' \
+              'event=remote.tap result=filtered' 'event=cluster.menu.event' 'result=failed reason=cannot-write'; do
     if strings $PAYLOAD/libgal_hook.so | grep -qF "$needle"; then :; else
         fail "shipped hook lacks '$needle'"; rtfail=1
     fi
