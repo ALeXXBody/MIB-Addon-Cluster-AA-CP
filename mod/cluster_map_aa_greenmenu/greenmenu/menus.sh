@@ -24,14 +24,12 @@ unset _l
 # design (switches, porting) keep direct output.
 run_quiet() {
     _child=$2
-    _log=/tmp/cm_menu_$1.log
-    trap 2
-    trap '' 2
+    _log="/tmp/cm_menu_${1:-unknown}.log"
     # optional child argument ($3): zoom up/down, keep_map on/off ...
     if [ -n "$3" ]; then
-        sh "$_child" "$3" >$_log 2>&1
+        sh "$_child" "$3" >"$_log" 2>&1
     else
-        sh "$_child" >$_log 2>&1
+        sh "$_child" >"$_log" 2>&1
     fi
     # FLOOR THE PRESS. Your GEM 4.12st's console screen breaks on re-entry
     # (owner photo: de.audi.gem.?.?.ScreenRenderer "Thread is already
