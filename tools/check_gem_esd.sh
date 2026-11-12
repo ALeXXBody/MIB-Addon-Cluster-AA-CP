@@ -32,20 +32,25 @@ for f in $FILES; do
         grep '^screen' "$f" | awk 'NF!=3' | sed 's/^/  /'
         fail=1
     fi
-    # 2. parents
+    # 2. parents (exact 2nd-field match, no prefix match)
     for p in $(grep '^screen' "$f" | awk '{print $3}' | sort -u); do
         case "$p" in
-            "= >M.I.B.<=") ;;
             "=>M.I.B.<="|main|Main) continue ;;
         esac
-        if ! grep -q "^screen $p" "$f"; then
+        if ! grep '^screen ' "$f" | awk '{print $2}' | grep -qx "$p"; then
             echo "check_gem_esd: $f: parent '$p' is not declared in this file"
             fail=1
         fi
     done
-    # 3. script payload paths that exist in this repo (a value may carry an
-    #    argument inside the quotes: "…/keep_map.sh on" — strip it)
-    for v in $(grep -o '"/net/mmx/fs/sda0/mod/[^"]*"' "$f" | tr -d '"' | sed 's/ .*//' | sort -u); do
+    # 3. script paths: resolve @GREENMENU@ to the payload dir first so the
+    #    template's 40+ wrapper entries are validated too (previously only
+    #    /net/…mod/… values were checked, i.e. the template was invisible).
+    #    Every "/net/…*.sh" value is checked; esd/scripts/reboot.sh is the
+    #    one allowed external (M.I.B.'s own tree).
+    _tmp=$(mktemp)
+    sed 's|@GREENMENU@|/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/|g' "$f" > "$_tmp"
+    for v in $(grep -o '"/net/[^"]*\.sh[^"]*"' "$_tmp" | tr -d '"' | sed 's/ .*//' | sort -u); do
+        case "$v" in */esd/scripts/*) continue ;; esac
         rel=${v#/net/mmx/fs/sda0/}
         # the release renames the payload folder; in the repository it lives
         # under the historical name, so resolve the release name first.
@@ -57,6 +62,7 @@ for f in $FILES; do
             fail=1
         fi
     done
+    rm -f "$_tmp"
 done
 
 if [ "$fail" = 0 ]; then
