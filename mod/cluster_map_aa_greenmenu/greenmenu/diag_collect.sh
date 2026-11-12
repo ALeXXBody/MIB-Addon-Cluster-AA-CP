@@ -28,8 +28,9 @@
 #   9e gal process env      - the gal process's ACTUAL runtime environment
 #  10 install paths         - where the install wrote backups/logs
 #  11 last run summary     - the filtered result lines of the recent run
-#  12 full run log          - the entire last operation
-#  12b other presses        - tails of every other recent menu run
+#  12 full run log          - the entire last operation, uncapped
+#  12b other presses        - FULL log of every other recent menu run
+#  12c console narration    - every say line of every custom.sh run
 
 HERE=`dirname "$0"`
 PKG=`cd "$HERE/.." && pwd`
@@ -324,6 +325,11 @@ if [ -n "$LOG" ]; then
     head -20 "$LOG" >> "$TMP" 2>/dev/null
     put "-- full log (all lines) --"
     cat "$LOG" >> "$TMP" 2>/dev/null
+    if [ -r "$LOG.prev" ]; then
+        put "-- previous generation ($LOG.prev: events rotated out of the active log) --"
+        put "size: `ls -l "$LOG.prev" 2>/dev/null | awk '{print $5}'` bytes"
+        cat "$LOG.prev" >> "$TMP" 2>/dev/null
+    fi
 else
     put "(no hook log at the card root logs/, the payload folder, /tmp, or GAL_HOOK_LOG)"
     _LASTPATHS="`([ -r /tmp/clustermap_last_paths ] && echo present) || echo absent`"
@@ -424,24 +430,37 @@ if [ "$MODE" = append-run ] && [ -r "$RUNLOG" ] && [ -n "$RUNLOG" ]; then
     "$HERE/console_summary.sh" "$RUNLOG" >> "$TMP" 2>/dev/null
 fi
 
-# ---- 12. full log of the last operation (the pages the console used to)
-section "12 full log of the last operation (capped at 400 lines)"
+# ---- 12. full log of the last operation (everything: the pages the console used to)
+section "12 full log of the last operation (all lines, no cap)"
 if [ "$MODE" = append-run ] && [ -r "$RUNLOG" ] && [ -n "$RUNLOG" ]; then
-    head -400 "$RUNLOG" >> "$TMP" 2>/dev/null
+    cat "$RUNLOG" >> "$TMP" 2>/dev/null
 fi
 
 # ---- 12b. every other recent press (the owner presses several switches,
-# then Save logs: only the LAST run reached the bundle, so a failing press
-# earlier in the round was invisible). Tails of all other menu run logs.
-section "12b other recent presses (tails of every other menu run log)"
+# then Save logs: until this add-on fully works the bundle keeps EVERY
+# action in full, so a failing press earlier in the round can never hide).
+section "12b other recent presses (full log of every other menu run)"
 for _l in /tmp/cm_menu_*.log /tmp/cm_custom.log; do
     [ -r "$_l" ] || continue
     case "$_l" in "$RUNLOG") continue ;; esac
-    put "-- $_l (last 30 lines) --"
-    tail -30 "$_l" >> "$TMP" 2>/dev/null
+    put "-- $_l (all lines) --"
+    cat "$_l" >> "$TMP" 2>/dev/null
 done
 
+# ---- 12c. the console narration (every say line of every custom.sh run)
+section "12c console narration (all lines)"
+if [ -r /tmp/clustermap_diag/console.log ]; then
+    cat /tmp/clustermap_diag/console.log >> "$TMP" 2>/dev/null
+else
+    put "(no console narration log yet)"
+fi
+
 # ---- deliver ----------------------------------------------------------------
+# History, not just the newest bundle: the previous three bundles survive
+# every run, on the unit and on the card. Until this add-on fully works,
+# no run may destroy the last good evidence.
+[ -r "$OUT.prev2" ] && cat "$OUT.prev2" > "$OUT.prev3" 2>/dev/null
+[ -r "$OUT.prev" ] && cat "$OUT.prev" > "$OUT.prev2" 2>/dev/null
 [ -r "$OUT" ] && cat "$OUT" > "$OUT.prev" 2>/dev/null
 [ -s "$TMP" ] || echo "(empty bundle)" >> "$TMP"
 cat "$TMP" > "$OUT" 2>/dev/null || cp "$TMP" "$OUT" 2>/dev/null
@@ -483,6 +502,10 @@ if [ -d "$PKG" ]; then
                     CARDOUT="$_h/diag.txt"
                     [ -r "$OUT.prev" ] && \
                         cat "$OUT.prev" > "$_h/diag.txt.prev" 2>/dev/null
+                    [ -r "$OUT.prev2" ] && \
+                        cat "$OUT.prev2" > "$_h/diag.txt.prev2" 2>/dev/null
+                    [ -r "$OUT.prev3" ] && \
+                        cat "$OUT.prev3" > "$_h/diag.txt.prev3" 2>/dev/null
                     sync 2>/dev/null || true
                     [ "$_remounted" = 1 ] && mount -ur "$_root" 2>/dev/null
                     break 2

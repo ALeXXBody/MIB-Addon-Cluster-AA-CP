@@ -58,10 +58,13 @@ def test_unarmed_run_writes_the_diag_bundle(car):
         assert section in txt, f"diag bundle missing section: {section}"
     assert "HOOK_ARMED marker: absent" in txt
     assert len(txt) < 64 * 1024, "diag bundle is too large to send casually"
-    # a previous bundle is kept when a second run happens
+    # previous bundles are kept when more runs happen (three generations)
     car.run(["sh", CUSTOM], expect_rc=0)
     prev = pathlib.Path(PKG, "diag.txt.prev")
     assert prev.exists(), "diag.txt.prev missing"
+    car.run(["sh", CUSTOM], expect_rc=0)
+    assert pathlib.Path(PKG, "diag.txt.prev2").exists(), \
+        "diag.txt.prev2 missing after the third run"
 
 
 def test_diag_sections_carry_fine_tune_facts(car):

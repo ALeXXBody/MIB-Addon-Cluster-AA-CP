@@ -766,3 +766,21 @@ OFF leaves the user's preset alone.
 Only the LAST run reached §§11/12, so an earlier failing press in the
 same round was invisible. New §12b carries the tails of every other
 recent menu run log.
+
+## v0.7.15 — the diag keeps everything
+
+### Changed — diag bundle keeps every action in full (owner request)
+Until this add-on fully works, no run may destroy evidence:
+- §12 keeps the ENTIRE last run (the 400-line cap is gone).
+- §12b keeps the FULL log of every other recent press (the 30-line tails
+  are gone) — an earlier failing press can never hide again.
+- New §12c keeps the console narration (`console.log`) in full.
+- The bundle history is now three generations (`diag.txt` + `.prev`,
+  `.prev2`, `.prev3`) on the unit and on the card.
+
+### Fixed — hook log rotates instead of truncating
+`gal_hook.c` truncated the log to zero at 1 MB, destroying the boot's
+early decisive lines (init, grants, spawns) forever. It now renames the
+full log to `<log>.prev` and starts fresh (bounded at 2x max, with an
+`event=log.rotate` marker joining the generations). The diag collects
+the previous generation in full (§9).

@@ -166,6 +166,62 @@ def test_hires_off_keeps_the_hex_override(car):
 
 
 def test_diag_12b_collects_every_recent_press(car):
+    """The owner presses several switches, then Save logs: until the
+    add-on fully works the bundle keeps EVERY action in full, so a failing
+    press earlier in the round can never hide. §12b must carry the COMPLETE
+    earlier run log, not a tail."""
+    _stage(car)
+    for stale in pathlib.Path("/tmp").glob("cm_menu_*.log"):
+        stale.unlink()
+    rt = _rt()
+    car.run(["sh", f"{PKG}/greenmenu/gem/remote_on.sh"],
+            env={"GAL_RUNTIME_DIR": "/sim/rt"}, expect_rc=0)
+    first_log = pathlib.Path("/tmp/cm_menu_remote.log").read_text()
+    assert len(first_log.splitlines()) > 3, first_log
+    car.run(["sh", f"{PKG}/greenmenu/gem/hiresen_on.sh"],
+            env={"GAL_RUNTIME_DIR": "/sim/rt"}, expect_rc=0)
+    txt = pathlib.Path("/tmp/clustermap_diag/diag.txt").read_text()
+    assert "== 12b other recent presses" in txt, txt[-800:]
+    assert "cm_menu_remote.log" in txt, txt[-1500:]
+    assert first_log.strip() in txt, \
+        "§12b tailed the earlier press instead of keeping it whole"
+
+
+def test_diag_keeps_full_last_log_console_and_hook_prev(car):
+    """§12 keeps the whole last run, §12c the console narration, and §9
+    the rotated-out hook generation — nothing tailed, nothing dropped."""
+    _stage(car)
+    for stale in list(pathlib.Path("/tmp").glob("cm_menu_*.log")) + \
+               [pathlib.Path("/tmp/gal_dualscreen.log"),
+                pathlib.Path("/tmp/gal_dualscreen.log.prev")]:
+        if stale.exists():
+            stale.unlink()
+    try:
+        pathlib.Path("/tmp/gal_dualscreen.log").write_text(
+            "gal_dualscreen t=1 pid=1 level=info event=init build=x\n"
+            "gal_dualscreen t=2 pid=1 level=info event=aaa FIRST-GEN-MARKER\n")
+        pathlib.Path("/tmp/gal_dualscreen.log.prev").write_text(
+            "gal_dualscreen t=0 pid=1 level=info event=zzz PREV-GEN-MARKER\n")
+        pathlib.Path("/tmp/clustermap_diag").mkdir(parents=True, exist_ok=True)
+        pathlib.Path("/tmp/clustermap_diag/console.log").write_text(
+            "ClusterMap remote ran / payload on card: vX\n")
+        car.run(["sh", f"{PKG}/greenmenu/gem/remote_on.sh"],
+                env={"GAL_RUNTIME_DIR": "/tmp"}, expect_rc=0)
+        last_log = pathlib.Path("/tmp/cm_menu_remote.log").read_text()
+        txt = pathlib.Path("/tmp/clustermap_diag/diag.txt").read_text()
+        assert last_log.strip() in txt, "§12 is not the whole last run"
+        assert "FIRST-GEN-MARKER" in txt and "PREV-GEN-MARKER" in txt, \
+            "§9 dropped the active or the rotated hook generation"
+        assert "ClusterMap remote ran / payload on card: vX" in txt, \
+            "§12c dropped the console narration"
+    finally:
+        for stale in [pathlib.Path("/tmp/gal_dualscreen.log"),
+                      pathlib.Path("/tmp/gal_dualscreen.log.prev")]:
+            if stale.exists():
+                stale.unlink()
+
+
+def test_diag_12b_collects_every_recent_press_ORIG(car):
     """The owner presses several switches, then Save logs: only the LAST
     run reached §§11/12, so an earlier failing press was invisible. §12b
     must carry the tails of every other recent menu run log."""

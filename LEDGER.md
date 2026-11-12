@@ -1654,3 +1654,13 @@ hi-res skipped every boot. Two mechanisms, both in-spirit P0:
    The switch now clears the override like Position does, loudly.
 Plus §12b (all recent presses' tails). 87/87 car-sim green (3 new
 tests), rebuilt hook v0.7.14 verified by strings+nm, audit ALL GREEN.
+
+---
+
+## Round 52 — v0.7.15: keep everything
+
+Owner: "the diag should keep everything, record every action." Shipped:
+uncapped §12, full-log §12b, new §12c console narration, 3-generation
+bundle history on unit + card, and hook-side rotation (rename to .prev,
+never truncate) with full .prev collection. 89/89 car-sim green (4 new
+tests), rebuilt hook v0.7.15 verified, audit ALL GREEN.

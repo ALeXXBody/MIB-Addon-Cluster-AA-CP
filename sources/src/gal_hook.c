@@ -85,6 +85,8 @@ static unsigned g_aap_minor = 2u;
 static int g_aap_minor_overridden;
 static int g_cluster_input;
 static int g_log_fd = -1;
+/* The resolved log path, kept so rotation can rename it. Set once at open. */
+static char g_log_path[256] = { 0 };
 
 static int parse_hex_payload(const char *value, unsigned char *out, unsigned *out_len)
 {
@@ -173,10 +175,15 @@ static void hook_vlog(const char *level, const char *format, va_list arguments)
             log_path = getenv("GAL_HOOK_LOG");
             if (log_path == NULL || *log_path == '\0') log_path = GAL_HOOK_LOG;
             g_log_fd = open(log_path, O_WRONLY | O_CREAT | O_APPEND, 0666);
-            if (g_log_fd < 0 && strcmp(log_path, GAL_HOOK_FALLBACK_LOG) != 0)
+            if (g_log_fd < 0 && strcmp(log_path, GAL_HOOK_FALLBACK_LOG) != 0) {
+                log_path = GAL_HOOK_FALLBACK_LOG;
                 g_log_fd = open(GAL_HOOK_FALLBACK_LOG,
                                 O_WRONLY | O_CREAT | O_APPEND, 0666);
-            if (g_log_fd < 0) g_log_unavailable = 1;
+            }
+            if (g_log_fd >= 0) {
+                strncpy(g_log_path, log_path, sizeof g_log_path - 1);
+                g_log_path[sizeof g_log_path - 1] = '\0';
+            } else g_log_unavailable = 1;
         }
         pthread_mutex_unlock(&g_log_open_mutex);
     }
@@ -213,12 +220,36 @@ static void hook_vlog(const char *level, const char *format, va_list arguments)
         {
             struct stat st;
             off_t max_bytes = hook_log_max_bytes();
-            if (max_bytes > 0 && fstat(g_log_fd, &st) == 0 &&
+            if (max_bytes > 0 && g_log_path[0] != '\0' && fstat(g_log_fd, &st) == 0 &&
                 st.st_size + (off_t)length > max_bytes) {
-                /* Keep the active log bounded without relying on logrotate,
-                 * which is not available on the head unit. */
-                (void)ftruncate(g_log_fd, 0);
+                /* Rotate, don't truncate: the diag collects both the
+                 * active log and <log>.prev in full, so no run may
+                 * destroy the last good evidence. Bounded at 2x max
+                 * without relying on logrotate, which is not
+                 * available on the head unit. */
+                char prev[300];
+                int plen = snprintf(prev, sizeof prev, "%s.prev", g_log_path);
+                close(g_log_fd);
+                g_log_fd = -1;
+                if (plen > 0 && (size_t)plen < sizeof prev) {
+                    (void)unlink(prev);
+                    (void)rename(g_log_path, prev);
+                }
+                g_log_fd = open(g_log_path, O_WRONLY | O_CREAT | O_APPEND, 0666);
+                if (g_log_fd < 0) {
+                    g_log_unavailable = 1;
+                } else {
+                    char mark[256];
+                    int m = snprintf(mark, sizeof mark,
+                        "gal_dualscreen t=%lu.%03u pid=%ld level=info event=log.rotate prev=%s\n",
+                        seconds, milliseconds, (long)getpid(), prev);
+                    if (m > 0) {
+                        size_t ml = (size_t)m < sizeof mark ? (size_t)m : sizeof mark - 1;
+                        (void)write(g_log_fd, mark, ml);
+                    }
+                }
             }
+            if (g_log_fd < 0) { pthread_mutex_unlock(&g_log_open_mutex); return; }
         }
         while (written < length) {
             ssize_t w = write(g_log_fd, buffer + written, length - written);
