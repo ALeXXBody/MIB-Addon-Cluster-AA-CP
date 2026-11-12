@@ -15,13 +15,25 @@ if [ ! -r "$LIB" ]; then
     echo "window_fix: ${W}x${H} not written: $LIB missing (install again)" >> $LOG
     exit 1
 fi
+MOUNT_LIB="`dirname "$0"`/lib_app_mount.sh"
+if [ -r "$MOUNT_LIB" ]; then
+    . "$MOUNT_LIB"
+else
+    echo "window_fix: ${W}x${H} not written: lib_app_mount.sh missing" >> $LOG
+    exit 1
+fi
 . "$LIB"
-CONF=/mnt/app/eso/lib/gal_dualscreen/gal_dualscreen.conf
-FULL=`sed -n 's/^CLUSTERMAP_FULL_FRAME=\([01]\)[ 	]*$/\1/p' "$CONF" | tail -1`
+if ! app_mount_rw; then
+    echo "window_fix: ${W}x${H} not written: $APP_LADDER_ERRORS" >> $LOG
+    exit 1
+fi
+APP_WRITABLE=1
+trap app_mount_finish 0 1 2 15
+CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
+FULL=`sed -n 's/^CLUSTERMAP_FULL_FRAME=\([01]\)[ 	]*$/\1/p' "$CONF" 2>/dev/null | tail -1` || FULL=""
 [ "$FULL" = 1 ] || FULL=0
-[ -w "$CONF" ] || mount -uw /mnt/app 2>/dev/null
 frame_write_conf "$CONF" $W $H $FULL
 RC=$?
-mount -ur /mnt/app 2>/dev/null
+app_mount_finish
 echo "window_fix: ${W}x${H} margins ${MARGIN_W}x${MARGIN_H} pixel_aspect_e4 ${PIXEL_ASPECT_E4} rc=$RC" >> $LOG
 exit $RC
