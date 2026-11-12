@@ -9,7 +9,12 @@ VERB="$1"
 LOG="$2"
 
 _v=
-[ -r "VERSION" ] && read _v < "VERSION" 2>/dev/null
+# v0.7.9: read the payload version from THIS script's own folder, not from
+# the process CWD -- the GEM starts scripts with an arbitrary CWD, so
+# `./VERSION` (which the car rounds kept printing as "VERSION missing on
+# the card") never resolves from a menu press.
+_vd=`dirname "$0"`/..
+[ -r "$_vd/VERSION" ] && read _v < "$_vd/VERSION" 2>/dev/null
 echo "ClusterMap $VERB ran / payload on card: ${_v:-VERSION missing on the card}"
 
 BAD=0
