@@ -40,7 +40,6 @@ fi
 
 # keep every command substitution on a single, flat level - the nested
 # backtick forms echo junk onto this unit's shell (round-27's class)
-T=$NOW; B=$NOW; L=$NOW_DIR; R=$NOW_R
 set -- $NOW
 T=$1; B=$2; L=$3; R=$4
 
