@@ -13,7 +13,7 @@ cd "$(cd "$(dirname "$0")/.." && pwd)"
 TAG=contract-check
 ZIP="dist/MIB-Addon-Cluster-AA-CP-mod-$TAG.zip"
 
-cleanup() { rm -rf dist; }
+cleanup() { rm -rf "dist/MIB-Addon-Cluster-AA-CP-mod-$TAG" "dist/MIB-Addon-Cluster-AA-CP-mod-$TAG.zip" "dist/MIB-Addon-Cluster-AA-CP-mod-$TAG.zip.sha256"; }
 trap cleanup EXIT
 
 sh tools/build_release.sh "$TAG" >/dev/null

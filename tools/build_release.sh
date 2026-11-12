@@ -24,7 +24,8 @@ cd "$(dirname "$0")/.."
 TAG=${1:-local-test}
 NAME="MIB-Addon-Cluster-AA-CP-mod"
 DIST=dist
-rm -rf "$DIST"
+: "${DIST:?}"
+rm -rf "${DIST:?}/$NAME" "${DIST:?}/$NAME-"*.zip* 2>/dev/null || true
 mkdir -p "$DIST/$NAME/mod"
 
 cp -r mod/cluster_map_aa_greenmenu "$DIST/$NAME/mod/cluster_aa"
@@ -130,10 +131,12 @@ HTI
 # The APPLY section (card update? one more GEM click? reboot?) is computed
 # from the real diff between the previous tag and THIS tag and appended to
 # the shipped HOW-TO (nothing here needs the release's own regime decisions).
-PREV_TAG=$(git tag --sort=-creatordate | grep -v "^$TAG$" | head -1)
+PREV_TAG=$(git tag --list --sort=-v:refname | grep -v "^$TAG$" | head -1)
 { echo
   if [ -n "$PREV_TAG" ]; then
-      sh tools/release_guide.sh "$PREV_TAG" "$TAG" 2>/dev/null || true
+      if ! sh tools/release_guide.sh "$PREV_TAG" "$TAG" 2>/dev/null; then
+          echo "ERROR: release_guide.sh failed for $PREV_TAG..$TAG" >&2; exit 1
+      fi
   else
       echo "(first release: the full install flow is the HOW-TO above)"
   fi; } >> "$DIST/$NAME/HOW-TO-INSTALL.txt"
