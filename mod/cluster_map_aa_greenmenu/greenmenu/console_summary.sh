@@ -69,6 +69,8 @@ sed -n \
     -e '/^Nothing to/p' \
     -e '/^Porting bundle/p' \
     -e '/^Install finished/p' \
+    -e '/^CLUSTERMAP_INSTALL_OK/p' \
+    -e '/^CLUSTERMAP_TURN_BY_TURN_OK/p' \
     -e '/^Uninstall finished/p' \
     -e '/^Sharper map/p' \
     -e '/^Zoom/p' \

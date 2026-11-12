@@ -440,7 +440,7 @@ elif [ "$GEM_ARMED" != 1 ]; then
 	# The truth, in one line: files are staged but nothing is live yet.
 	say "Staged only (not armed): the map is not live until HOOK_ARMED is"
 	say "present on the card. Detail + how to arm: the diag file below."
-elif grep -q -e "CLUSTERMAP_INSTALL_OK" -e "CLUSTERMAP_TURN_BY_TURN_OK" $OUT; then
+elif grep -q -e "CLUSTERMAP_INSTALL_OK" -e "CLUSTERMAP_TURN_BY_TURN_OK" "$OUT"; then
 	say "Map install: DONE. Reboot the unit (power button ~10 s), reconnect"
 	say "the phone, and the map is on the cluster."
 else
