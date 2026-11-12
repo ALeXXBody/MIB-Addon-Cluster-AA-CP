@@ -2973,7 +2973,12 @@ static int remote_trace_on(void)
     FILE *f = fopen("/tmp/gal_remote_trace", "r");
     if (f != NULL) {
         char buf[8]; buf[0] = 0;
-        if (fgets(buf, sizeof buf, f) != NULL && buf[0] == '1') on = 1;
+        if (fgets(buf, sizeof buf, f) != NULL) {
+            size_t len = strlen(buf);
+            while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r' ||
+                               buf[len-1] == ' ')) buf[--len] = 0;
+            if (len == 1 && buf[0] == '1') on = 1;
+        }
         fclose(f);
     }
     return on;
@@ -2988,11 +2993,8 @@ static void cluster_remote_event(const unsigned char *m, unsigned n)
 
     /* The trace runs BEFORE the remote gate: a wheel press behind a
      * switched-off remote would otherwise be invisible, and "does an
-     * event arrive at all" is the first question of the car round. */
-    if (remote_trace_on()) {
-        gal_hook_logf("event=remote.trace bytes=%u key=%u action=%u conf=%d",
-                      n, (unsigned)(m[0] << 8 | m[1]), 0u, 0u);
-    }
+     * event arrive at all" is the first question of the car round.
+     * (The parsed trace line is logged after parsing below.) */
     if (!cluster_remote_on()) {
         /* one INFO line per session: a wheel press behind a closed gate
          * is visible in every diag (the owner's v0.7.2 round). */
