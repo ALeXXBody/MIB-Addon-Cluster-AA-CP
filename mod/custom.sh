@@ -228,11 +228,15 @@ if [ "$GEM_ARMED" = 1 ]; then
 # found" inside the GEM. So: the screen paths use the spelling the GEM can
 # EXECUTE, never merely a view the console can read.
 GEN_PREFIX="/net/mmx/fs/sda0/$PAYLOAD_NAME/greenmenu/"
-if [ -f "$GEN_PREFIX/menus.sh" ]; then
+GEN_PREFIX=${GEN_PREFIX%/}/
+if [ -f "/net/mmx/fs/sda0/$PAYLOAD_NAME/greenmenu/menus.sh" ]; then
 	say "screen paths: GEM view (/net/mmx/fs/sda0)"
 else
 	GEN_PREFIX="$SD/$PAYLOAD_NAME/greenmenu/"
+	GEN_PREFIX=${GEN_PREFIX%/}/
 	say "screen paths: the view this console found the payload under ($SD)"
+	say "NOTE: the GEM executes via /net/mmx/fs/sda0; if that view is"
+	say "unreachable from here, buttons may parse yet answer Script not found."
 fi
 TPL="$SD/$PAYLOAD_NAME/greenmenu/cluster-map.template.esd"
 GEN_PATH=""
@@ -258,9 +262,11 @@ if [ -f "$TPL" ]; then
 		say "           keeping the unit's current screen file untouched."
 		GEN_ERR=1
 	fi
-	# 3. every script path the screen names must exist on the card NOW
+	# 3. every script path the screen names must exist on the card NOW.
+	# Extract the actual generated prefix (works for /net/ and /fs/ views),
+	# not just /net/ paths, or the gate is vacuous on non-/net/ consoles.
 	if [ "$GEN_ERR" = 0 ]; then
-		sed -n 's,^.*"\(/net/[^"]*\.sh\)[^"]*".*,\1,p' "$GEN_PATH" \
+		sed -n 's,^.*"\(/[^"]*\.sh\)[^"]*".*,\1,p' "$GEN_PATH" \
 			| while IFS= read -r sp; do
 			sp=${sp%% *}
 			case "$sp" in */esd/scripts/*) continue ;; esac
@@ -322,7 +328,7 @@ else
 		BUILD_ERR=1
 	fi
 	if [ "$BUILD_ERR" = 0 ]; then
-		sed -n 's,^.*"\(/net/[^"]*\.sh\)[^"]*".*,\1,p' "$GEN_PATH" \
+		sed -n 's,^.*"\(/[^"]*\.sh\)[^"]*".*,\1,p' "$GEN_PATH" \
 			| while IFS= read -r sp; do
 			sp=${sp%% *}
 			case "$sp" in */esd/scripts/*) continue ;; esac
