@@ -424,9 +424,10 @@ static void hold_step(long long now, int gate, int mode_sent, long long mode2_ms
         if (now < g_backoff_until_ms) return;
         g_spawn_accepts = vc_stream_out_accept_count();
         g_spawn_ack_accepts = vc_stream_out_ack_accept_count();
-        vc_player_start();
-        g_spawn_ms = now_ms();
-        g_hold_logged = ~0u;
+        if (vc_player_start()) {
+            g_spawn_ms = now_ms();
+            g_hold_logged = ~0u;
+        }
         return;
     }
 

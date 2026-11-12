@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void vc_player_start(void);
+int vc_player_start(void);
 void vc_player_stop(void);                  /* SIGTERM, SIGKILL after 300 ms */
 void vc_player_stop_wait(int grace_ms);     /* SIGTERM, SIGKILL after grace_ms */
 void vc_player_restart(void);

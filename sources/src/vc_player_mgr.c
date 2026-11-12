@@ -327,7 +327,7 @@ static int open_player_log(void)
     return fd;
 }
 
-void vc_player_start(void)
+int vc_player_start(void)
 {
     const char *bin;
     pid_t pid;
@@ -335,11 +335,14 @@ void vc_player_start(void)
     char url[64];
     int use_spawn = hook_fix_enabled(HOOK_FIX_PLAYER_LOG);
 
-    if (!is_auto_player_enabled()) return;
+    if (!is_auto_player_enabled()) {
+        gal_hook_logf("event=player.spawn result=skipped reason=autorun_disabled");
+        return 0;
+    }
     if (g_player_pid > 0) {
         int status;
         if (waitpid(g_player_pid, &status, WNOHANG) == 0) {
-            return; /* already running */
+            return 0; /* already running */
         }
         g_player_pid = -1;
     }
@@ -363,7 +366,7 @@ void vc_player_start(void)
     bin = find_player_binary();
     if (bin == NULL) {
         gal_hook_logf("event=player.spawn result=skipped reason=binary_not_found");
-        return;
+        return 0;
     }
 
     if (!use_spawn && !fc_enabled()) {
@@ -437,6 +440,7 @@ void vc_player_start(void)
         gal_hook_logf("event=player.spawn result=failed path=%s errno=%d method=spawn",
                       bin, errno);
         g_player_pid = -1;
+        return 0;
     } else {
         g_player_pid = pid;
         ++g_player_generation;
@@ -444,6 +448,7 @@ void vc_player_start(void)
                       bin, (long)pid, url,
                       use_spawn ? " log=" PLAYER_LOG_PATH " fix=player_log" : "");
     }
+    return (g_player_pid > 0);
 }
 
 void vc_player_stop(void)
