@@ -1622,3 +1622,17 @@ v0.7.10 captures them verbatim and adds §9c (gal / stream-player process
 list via pidin). Separately, the owner's explicit usability complaint —
 menu labels are 4-5 words now (a static test guards it). 73/73 car-sim
 green; audit ALL GREEN.
+
+---
+
+## Round 50 — v0.7.13: the audit, repaired end to end
+
+Owner asked for a full audit, then "do them all", then "repair that" (the
+QNX-sh runtime gap). Shipped as one release:
+- 18 audit fixes (12 shell/release-tooling + 6 hook C), each verified
+  individually (sh -n + suite green per commit).
+- Harness batch: FAT-safe renames everywhere, validating jsonlint,
+  root-only-ro + reboot helpers, pidin/netstat fixtures, strict-errexit
+  static gate, expr/cp_setting guards.
+- qnxsh runner: empirically proved no stock shell matches the unit, then
+  built the transformer + run_qnx + 5 tests. 84/84 green, audit ALL GREEN.

@@ -676,3 +676,65 @@ stream.mode, stream.open, stream.idr, focus.healthy, fix.config) were
 invisible. They are now captured verbatim, plus a new §9c listing gal and
 stream-player processes (pidin) and stream-player logs — the exact
 evidence needed to settle "the hook runs but nothing shows".
+
+## v0.7.13 — full audit repairs + qnxsh runner
+
+### Fixed (shell layer, audit rounds 1–12)
+- `position.sh`: removed dead assignments using unset `NOW_DIR`/`NOW_R`.
+- `navstrip.sh` / `card_clear.sh`: added `APP_WRITABLE + trap app_mount_finish`
+  (partition no longer left writable on interrupt); replaced `sed -i` with
+  tmp+mv rewrites (no torn writes on FAT/QNX); navstrip live file now goes
+  through `$GAL_RUNTIME_DIR`.
+- `scripts/window_fix.sh`: uses the app ladder + trap instead of hardcoded
+  `/mnt/app` (wrong view on FQDN-only consoles).
+- `menus.sh`: removed the self-cancelling `trap 2 / trap '' 2` (SIGINT is no
+  longer ignored for the whole child); quoted the log path.
+- `custom.sh` (one-click flow): now runs the same `run_verdict.sh` verdict +
+  ERROR-lines contract as GEM presses (its failures were verdict-less
+  before); quoted `$OUT`; script-existence gate works for `/fs/` views too
+  (was vacuous off `/net/`); install-OK markers surface in the summary.
+- `console_summary.sh`: covers bare `INSTALL_FAILED`, `Uninstall FAILED`,
+  `NOT SUPPORTED`.
+- `check_gem_esd.sh`: validates the template's 40+ `@GREENMENU@` wrappers
+  (previously invisible to CI) and matches parents exactly.
+- `check_manifest.sh`: portable null-delimited hashing, `mktemp` diff file.
+- `tools/build_release.sh`: no longer wipes `dist/`; version-sorted tags;
+  loud failure if the APPLY guide step fails. `check_release_build.sh`
+  cleanup scoped to its own artifacts.
+- ESD: stanza indent fixed; literal `\n` dropped from the Reboot label.
+
+### Fixed (hook C layer, audit rounds 13–18)
+- Wheel trace arm requires a full `len==1` match like the other single-char
+  files (`"10"` no longer arms tracing); removed the pre-parse trace log
+  that printed hardcoded `key=0 action=0`.
+- `ui_config` poll rejects truncated lines (`sscanf==4` required, rejected
+  lines logged) instead of sending partial insets.
+- Removed stray `fopen(… "X")` fd leak on every OK press.
+- Length-skip in the InputReport parser is bounds-checked (was over-read).
+- ACK-socket accessors take the stream lock (were unlocked cross-thread reads).
+- `vc_player_start()` returns spawned/skipped with a log line; the focus
+  controller stamps `g_spawn_ms` only on a real spawn (a no-op no longer
+  burns backoff or logs a phantom `player_exit_before_grant`).
+
+### Fixed (test-harness fidelity gaps)
+- All `mv new existing` sites are FAT-safe (`rm -f` dest first, `cat`
+  fallback): lib, frame conf, enable_hook (8 sites), custom.sh engdefs.
+- `jsonlint` stub actually parses JSON (lenient on trailing commas like the
+  unit's); corrupt-config installs now fail in-sim instead of passing.
+- New `make_root_read_only()` (root refuses, subdir works) and `Car.reboot()`
+  (wipes RAM state, keeps persisted settings) helpers.
+- `pidin` / `netstat` stubs with canned QNX output; diag §9c/§9d parsing
+  covered by test.
+- All single-command backtick substitutions in the install path carry `||`
+  guards (CARD_ROOT, expr math, cp_setting, ENTRY_COUNT).
+
+### Added — qnxsh runner
+No installable shell reproduces the unit's errexit-in-function behavior
+(dash, bash, busybox ash, mksh, posh, zsh all probed — all survive where
+the unit dies). `tools/car_sim/qnxsh.py` closes it by source
+transformation: bare single-command substitutions become
+`VAR=`cmd` || exit 127`, then the script runs under plain sh. Guarded
+lines are byte-identical, so qnxsh differs from plain sh ONLY where the
+unit would have died. `Car.run_qnx()` + 5 regression tests prove the
+current tree QNX-clean (full install, repeat-install skip, total-refusal
+live arm). 84/84 car-sim green; `audit_wiring.sh` ALL GREEN.
