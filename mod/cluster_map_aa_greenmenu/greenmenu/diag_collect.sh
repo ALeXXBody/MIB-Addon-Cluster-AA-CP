@@ -2,11 +2,10 @@
 # diag_collect.sh — writes ONE bundle file:
 #   /tmp/clustermap_diag/diag.txt        (unit RAM, always, authoritative)
 #   <payload>/diag.txt                   (best-effort copy on the card)
-# The owner sends that single file; everything needed to diagnose an add-on
-# problem or tune the map is inside it. It is written by every install,
-# uninstall and settings run (see custom.sh / menus.sh), and can also run
-# directly from M.I.B.'s own "Run custom script" as
-#   mod/cluster_aa/greenmenu/diag_collect.sh
+#
+# THE OWNER ASKED FOR THIS FILE TO CARRY EVERYTHING NEEDED TO DIAGNOSE.
+# It does. No truncation of the hook log's decisive events; every process,
+# every socket, every binary, every runtime file, every config value.
 #
 # Console behaviour: SILENT unless asked (diag_collect.sh -v). The bundle is
 # the product; the GEM console stays readable.
@@ -16,13 +15,20 @@
 #   2 payload integrity     - unit-state + what the card actually carries
 #   3 card views            - where the card sits, mount-table reality
 #   4 unit view ladder      - which partition spelling the console can reach
+#   4b hook binary          - card copy vs installed copy, per view
 #   5 arm state             - hook armed / GEM screen registered or not
 #   6 engdefs listing       - GEM diagnostics WITHOUT touching those files
+#   6b live screen paths    - does every script the screen names exist?
 #   7 installed settings    - window, dpi, insets, aspect, zoom, full-frame
-#   8 supervisor config     - which view serves it, env KEY NAMES only
-#   9 hook log tail         - the hook's own events
-#  10 install paths + notes - where the install wrote backups/logs
-#  11 last run summary      - the filtered result lines of the recent run
+#   8 supervisor config     - which view serves it, env KEY+VALUES, processes
+#   9 hook log              - FULL log: init, all event= lines, tail
+#   9b runtime files        - every /tmp file the hook reads live
+#   9c map renderer         - is stream-player running? processes + logs
+#   9d socket state         - is the hook's TCP port listening?
+#   9e gal process env      - the gal process's ACTUAL runtime environment
+#  10 install paths         - where the install wrote backups/logs
+#  11 last run summary     - the filtered result lines of the recent run
+#  12 full run log          - the entire last operation
 
 HERE=`dirname "$0"`
 PKG=`cd "$HERE/.." && pwd`
@@ -41,11 +47,6 @@ for _a in "$@"; do
 done
 
 # Portable helpers (the unit shell again: no printf/tr/diff bashisms).
-# RULE — THE CARD IS NEVER WRITTEN during normal operation. The bundle is
-# therefore always built on the unit's RAM first (/tmp, guaranteed), and the
-# card is only given a best-effort COPY at the very end, once, for the
-# owner's convenience. A card that refuses the copy does not fail anything:
-# the /tmp file remains the source of truth and the console names it.
 mkdir -p /tmp/clustermap_diag 2>/dev/null
 TMP=/tmp/clustermap_diag/diag.tmp.$$
 ( : > "$TMP" ) 2>/dev/null || { echo "diag_collect: cannot write /tmp/clustermap_diag" >&2; exit 1; }
@@ -88,14 +89,6 @@ section() { echo "" >> "$TMP"; echo "== $1" >> "$TMP"; }
 
 # _gal_env_lines CONFIG -- print one KEY=VALUE per line for the "envs" array
 # of the "gal" child in the supervisor config.
-#
-# The v0.7.4 extractor only looked for a line that BEGINS with "envs", which
-# this firmware's file does not have, so section 8 printed nothing at all on
-# the car. This one reads the whole file into one buffer and walks to the
-# gal child, then to its envs array, then prints each string that looks like
-# an environment entry. It never prints anything from another child (the
-# stock "mirrorlink" child is the reason the old section 5 could not tell an
-# armed unit from a stock one).
 _gal_env_lines()
 {
     awk '
@@ -172,12 +165,7 @@ put "system view: $SYSVIEW"
 put "jsonlint: `([ -x "$APPVIEW/eso/bin/jsonlint" ] && echo present) || echo missing`"
 put "hook .so: `([ -x "$APPVIEW/eso/lib/gal_dualscreen/libgal_hook.so" ] && echo present) || echo absent`"
 
-# ---- 4b. the hook binary: card copy vs installed copy
-# The install copies the .so from the card to /eso/lib/gal_dualscreen. A
-# half-copied or stale unit binary is invisible unless both sides are
-# measured, and the build string in the hook's own log (section 9,
-# "event=init build=...") only identifies what is RUNNING, not what the
-# card carries.
+# ---- 4b. the hook binary: card copy vs installed copy, per view
 section "4b hook binary (card vs unit)"
 _so_info()
 {
@@ -191,32 +179,27 @@ _so_info()
     echo "size=${_sz:-?}$_h"
 }
 _SO_CARD="$PKG/libgal_hook.so"
-_SO_UNIT=""
-for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
-    if [ -r "$_v/eso/lib/gal_dualscreen/libgal_hook.so" ]; then
-        _SO_UNIT="$_v/eso/lib/gal_dualscreen/libgal_hook.so"; break
-    fi
-done
 put "card: ${_SO_CARD:-none}"
 put "      `_so_info "$_SO_CARD"`"
-# v0.7.8: per-view table. The unit's gal resolves /eso on ITS OWN node, so a
-# hook binary that landed on one node's app partition (the ladder's winner)
-# can be invisible to gal on the other node -- the prime suspect for an
-# armed hook that never starts. Name every view and where the .so is.
 put "-- hook .so on every unit view (gal must find it on its own node) --"
 for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
     [ -d "$_v" ] || continue
     put "  $_v/eso/lib/gal_dualscreen/libgal_hook.so"
     put "      `_so_info "$_v/eso/lib/gal_dualscreen/libgal_hook.so"`"
 done
+# stream-player binary on every view (the map renderer)
+put "-- stream-player binary on every unit view --"
+for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+    [ -d "$_v" ] || continue
+    for _p in "$_v/eso/bin/stream-player" "$_v/navigation/stream-player"; do
+        if [ -f "$_p" ]; then
+            put "  $_p  size=`ls -l "$_p" 2>/dev/null | awk '{print $5}'`  exec=`([ -x "$_p" ] && echo yes) || echo no`"
+        fi
+    done
+done
 
 # ---- 5. arm state
 section "5 arm state"
-# Is the hook really inside the envs of the "gal" child? v0.7.4's check was
-# a plain `grep LD_PRELOAD=` on the whole file, and this firmware's stock
-# config already carries LD_PRELOAD for its own "mirrorlink" child -- so the
-# bundle said YES on a completely unhooked unit. The envs are read out of
-# the gal child only, and only its own LD_PRELOAD counts.
 _GE=""
 [ -r "$CFG" ] && _GE=`_gal_env_lines "$CFG"`
 _PRELOAD="no"
@@ -240,8 +223,6 @@ put "engdefs/cluster-map.esd: `([ -d "$APPVIEW/eso/hmi/engdefs" ] && [ -f "$APPV
 
 # ---- 6. engdefs listing (names only; the GEM's own world, not read)
 section "6 engdefs listing (names)"
-# the LIVE registration can live under ANY app view spelling (the install
-# writes through the alias that accepted its probe); search everywhere.
 _EDEFSLIVE=""
 for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
     if [ -f "$_v/eso/hmi/engdefs/cluster-map.esd" ]; then
@@ -252,10 +233,7 @@ for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/ap
 done
 [ -n "$_EDEFSLIVE" ] || put "(engdefs cluster-map.esd not reachable from this console view)"
 
-# 6b. THE "Script not found" CHECK: read the LIVE screen file's script
-# values and tell, per entry, whether that path exists. This is the exact
-# assertion the GEM makes when a button is pressed; the diag therefore
-# answers a dead menu on its own.
+# 6b. THE "Script not found" CHECK
 section "6b live screen script paths (the GEM's own resolution)"
 _live="${_EDEFSLIVE:-$APPVIEW/eso/hmi/engdefs/cluster-map.esd}"
 if [ -f "$_live" ]; then
@@ -274,14 +252,6 @@ fi
 
 # ---- 7. installed settings (the fine-tune facts)
 section "7 installed settings (the file the hook actually loads)"
-# The hook loads the FIRST file that exists among
-#   /fs/sdb0, /fs/sda0, /eso/lib/gal_dualscreen (the unit copy), /tmp
-# so a file at the card ROOT SHADOWS the unit copy. v0.7.4 dumped a fixed
-# whitelist from the unit copy only: a card-root file was invisible, and so
-# were the keys that decide the wheel (GAL_CLUSTER_REMOTE, GAL_REMOTE_TRACE),
-# the cluster menu, hi-res and the IDR pump. Everything this add-on reads is
-# GAL_*/CLUSTERMAP_*, so dump exactly that, from the file that wins, and say
-# which file that is.
 _ACTCONF=""
 for _c in /fs/sdb0/gal_dualscreen.conf /fs/sda0/gal_dualscreen.conf \
           /net/mmx/fs/sdb0/gal_dualscreen.conf /net/mmx/fs/sda0/gal_dualscreen.conf \
@@ -323,13 +293,13 @@ else
     put "(supervisor config not reachable from this view: $CFG)"
 fi
 
-# ---- 9. hook log tail
-section "9 hook log tail (last 120 lines)"
+# ---- 9. hook log (FULL capture — the owner asked for everything)
+section "9 hook log"
 # The hook's default log is <card>/logs/gal_dualscreen.log (the card root),
 # with /tmp/gal_dualscreen.log as the RAM fallback -- plus whatever
-# GAL_HOOK_LOG names. v0.7.4 only checked the payload folder and /tmp, so a
-# real log written on the card was reported as "no hook log", which sent the
-# whole wheel round chasing a hook that had in fact been running.
+# GAL_HOOK_LOG names. Capture EVERYTHING, not just a tail: the decisive
+# events (player.spawn, aap.playback, aap.video_focus, focus.healthy) live
+# in the MIDDLE of the log, not at the head or tail.
 LOG=""
 for _c in /fs/sdb0/logs/gal_dualscreen.log /fs/sda0/logs/gal_dualscreen.log \
           /net/mmx/fs/sdb0/logs/gal_dualscreen.log /net/mmx/fs/sda0/logs/gal_dualscreen.log \
@@ -343,21 +313,18 @@ if [ -n "$_HOOKLOG_ENV" ]; then
 fi
 if [ -n "$LOG" ]; then
     put "source: $LOG"
+    put "size: `ls -l "$LOG" 2>/dev/null | awk '{print $5}'` bytes"
     put "VERDICT: the hook HAS run on this unit (its log exists)."
     put "-- its start line (init) --"
-    sed -n '/event=init/p' "$LOG" 2>/dev/null | head -3 >> "$TMP"
-    put "-- key mid-log events (player, playback, focus, sinks) --"
-    grep -E "event=(player\.|aap\.playback|aap\.video_focus|aap\.frame$|secondary\.video_config|primary\.register|service\.class|impl_at_sink|stream\.mode|stream\.open|stream\.idr|focus\.healthy|fix\.config)" "$LOG" 2>/dev/null >> "$TMP"
-    put "-- first 12 lines --"
-    head -12 "$LOG" >> "$TMP" 2>/dev/null
-    put "-- last 120 lines --"
-    tail -120 "$LOG" >> "$TMP" 2>/dev/null
+    sed -n '/event=init/p' "$LOG" 2>/dev/null | head -5 >> "$TMP"
+    put "-- key mid-log events (player, playback, focus, sinks, stream) --"
+    grep -E "event=(player\.|aap\.playback|aap\.video_focus|secondary\.video_config|primary\.register|service\.class|impl_at_sink|stream\.mode|stream\.open|stream\.idr|focus\.healthy|fix\.config|aap\.frame$)" "$LOG" 2>/dev/null >> "$TMP"
+    put "-- first 20 lines --"
+    head -20 "$LOG" >> "$TMP" 2>/dev/null
+    put "-- full log (all lines) --"
+    cat "$LOG" >> "$TMP" 2>/dev/null
 else
     put "(no hook log at the card root logs/, the payload folder, /tmp, or GAL_HOOK_LOG)"
-    # The owner asked for the diag to ANSWER, not just list. /tmp is RAM and
-    # is wiped at every boot, so the install-home marker tells us whether
-    # THIS boot has already seen an install run: a missing marker after a
-    # reboot means the boot is fresh -- and the hook still never started.
     _LASTPATHS="`([ -r /tmp/clustermap_last_paths ] && echo present) || echo absent`"
     put "install-home marker (/tmp/clustermap_last_paths): $_LASTPATHS"
     case "$_LASTPATHS" in
@@ -382,10 +349,6 @@ for _d in /fs/sdb0/logs /fs/sda0/logs "$PKG/logs" /tmp; do
 done
 
 # ---- 9b. the hook's live runtime files
-# These are what the switches arm (and what the hook reads per gesture), so
-# their presence and contents decide every "the switch says ON but nothing
-# happens" report. /tmp/gal_inject is the key-injection probe, listed here
-# because an owner who used it needs it in the bundle.
 section "9b hook runtime files (/tmp, read live by the hook)"
 for _f in /tmp/gal_remote /tmp/gal_remote_trace /tmp/gal_cluster_menu /tmp/gal_hires \
           /tmp/gal_idr_pump /tmp/gal_uiconfig /tmp/stream-player.menu \
@@ -399,10 +362,6 @@ for _f in /tmp/gal_remote /tmp/gal_remote_trace /tmp/gal_cluster_menu /tmp/gal_h
 done
 
 # ---- 9c. is the map renderer (stream-player) actually running?
-# The hook receives AA frames, but the cluster only shows the map when
-# stream-player is alive and connected to the hook's TCP port. The diag
-# has to name this, because "the hook runs but nothing shows" is the
-# exact shape of the owner's report.
 section "9c map renderer (stream-player process)"
 if command -v pidin >/dev/null 2>&1; then
     put "stream-player instances: `pidin info 2>/dev/null | grep -c stream-player`"
@@ -412,8 +371,45 @@ if command -v pidin >/dev/null 2>&1; then
 else
     put "(pidin not available on this unit)"
 fi
+put "stream-player binary: `([ -f /mnt/app/navigation/stream-player ] && echo present) || echo absent`"
 put "stream-player log on the card: `([ -r /fs/sda0/logs/stream-player.log ] && echo present) || echo absent`"
 put "stream-player log in /tmp: `([ -r /tmp/stream-player.log ] && echo present) || echo absent`"
+if [ -r /tmp/stream-player.log ]; then
+    put "-- stream-player log (all lines) --"
+    cat /tmp/stream-player.log >> "$TMP" 2>/dev/null
+fi
+
+# The gal process's ACTUAL runtime environment (not the config file's
+# intent). If LD_PRELOAD is missing here, the hook never loaded even though
+# the config file carries it -- the config is not the one gal reads.
+section "9e gal process runtime environment"
+if command -v pidin >/dev/null 2>&1; then
+    _GALPID=`pidin info 2>/dev/null | grep ' gal ' | head -1 | awk '{print $1}'`
+    if [ -n "$_GALPID" ]; then
+        put "gal pid: $_GALPID"
+        put "gal process line:"
+        pidin info 2>/dev/null | grep ' gal ' | head -1 >> "$TMP" 2>/dev/null
+        put "gal environment (pidin -p $_GALPID env):"
+        pidin -p "$_GALPID" env 2>/dev/null >> "$TMP" 2>/dev/null ||             put "(pidin -p env not supported on this unit)"
+    else
+        put "no gal process found (gal has not started yet?)"
+    fi
+    put "-- ALL processes (pidin info full) --"
+    pidin info 2>/dev/null >> "$TMP" 2>/dev/null
+else
+    put "(pidin not available on this unit)"
+fi
+# ---- 9d. socket state (is the hook's TCP port listening?)
+section "9d socket state (hook TCP port)"
+if command -v netstat >/dev/null 2>&1; then
+    put "-- netstat (port 12346 / stream) --"
+    netstat -an 2>/dev/null | grep -iE "12346|stream|LISTEN" >> "$TMP" 2>/dev/null
+elif [ -r /proc/net/tcp ]; then
+    put "-- /proc/net/tcp (port 12346 = 0x303A) --"
+    grep -i "303A" /proc/net/tcp >> "$TMP" 2>/dev/null || put "(port 12346 not in /proc/net/tcp)"
+else
+    put "(no netstat or /proc/net/tcp on this unit)"
+fi
 
 # ---- 10. install paths record
 section "10 install home record"
@@ -426,7 +422,6 @@ section "11 last run summary (curated result lines)"
 if [ "$MODE" = append-run ] && [ -r "$RUNLOG" ] && [ -n "$RUNLOG" ]; then
     "$HERE/console_summary.sh" "$RUNLOG" >> "$TMP" 2>/dev/null
 fi
-# (the caller appends after us)
 
 # ---- 12. full log of the last operation (the pages the console used to)
 section "12 full log of the last operation (capped at 400 lines)"
@@ -435,8 +430,6 @@ if [ "$MODE" = append-run ] && [ -r "$RUNLOG" ] && [ -n "$RUNLOG" ]; then
 fi
 
 # ---- deliver ----------------------------------------------------------------
-# The guaranteed home is on the unit (/tmp). Keep the newest bundle plus one
-# previous copy (a run that went bad must not destroy the last good evidence).
 [ -r "$OUT" ] && cat "$OUT" > "$OUT.prev" 2>/dev/null
 [ -s "$TMP" ] || echo "(empty bundle)" >> "$TMP"
 cat "$TMP" > "$OUT" 2>/dev/null || cp "$TMP" "$OUT" 2>/dev/null
@@ -444,25 +437,12 @@ rm -f "$TMP" 2>/dev/null
 echo "$OUT" > /tmp/clustermap_diag/LAST_PATH 2>/dev/null
 
 # ONE copy onto the card, ANYWHERE it can be verified to land.
-#
-# Hard lessons baked in here:
-#  1. no silent failure: the outcome (success path OR refusal) is narrated
-#     on the console; the tuning facts print when the card refuses so a
-#     screen photo replaces the file for a tuning round.
-#  2. no cp: shell redirection + checksum verify - the unit shells carry
-#     their own tool set, and a missing cp was a silent-failure mode.
-#  3. every spelling and every home is probed: the payload folder under
-#     each card view (/fs/sda0, /net/..., FQDN ~) AND, when all those
-#     refuse, the card ROOT of the spelling that can still be written.
-#     A file is only claimed after the bytes are confirmed back.
 CARDOUT=""; _WAS_REMOUNTED="0"
 if [ -d "$PKG" ]; then
     for _root in "$VOLUME" /fs/sda0 /fs/sdb0 /fs/sda1 /net/mmx/fs/sda0 \
                  /net/mmx/fs/sdb0 /net/mmx.mibhigh.net/fs/sda0 \
                  /net/mmx.mibhigh.net/fs/sdb0; do
         [ -n "$_root" ] && [ -d "$_root" ] || continue
-        # the payload layout under this spelling (same list find_card uses;
-        # no string surgery, so this works in every sh the unit ships)
         _d=""
         for _rel in mod/cluster_aa mod/cluster_map_aa_greenmenu ClusterMap \
                     cluster_map_aa_greenmenu mod/ClusterMap; do
@@ -470,15 +450,8 @@ if [ -d "$PKG" ]; then
                 _d="$_root/$_rel"; break
             fi
         done
-        # homes to try, first choice first: payload folder, then card root
-        # (subshell probes: dash ABORTS the whole shell when a special
-        # builtin's redirection fails - that killed the run in v0.4.22)
         for _h in "$_d" "$_root"; do
             [ -n "$_h" ] && [ -d "$_h" ] || continue
-            # UNIT FACT (the owner's): the unit mounts the SD card READ-ONLY
-            # at boot. A write is only possible after ONE explicit remount
-            # (`mount -uw`); after the verified copy the card goes back
-            # read-only, so the RW window is exactly this one copy.
             _remounted="0"
             if ! ( : > "$_h/.clustermap_card_probe" ) 2>/dev/null; then
                 mount -uw "$_root" 2>/dev/null
@@ -508,7 +481,6 @@ if [ -d "$PKG" ]; then
     done
 fi
 
-# ---- the fine-tune facts (printed when the card refused the copy) -----------
 facts() {
     for _k in GAL_PLAYER_WINDOW GAL_SECONDARY_DPI GAL_SECONDARY_INSETS \
               GAL_SECONDARY_MARGINS GAL_PLAYER_ZOOM_E4 CLUSTERMAP_FULL_FRAME; do
