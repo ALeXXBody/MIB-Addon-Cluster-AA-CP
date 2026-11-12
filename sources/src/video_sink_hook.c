@@ -2893,7 +2893,6 @@ static void cluster_remote_toggle_strip(void)
 {
     FILE *f;
     int now;
-    FILE *r = fopen(CLUSTER_REMOTE_TOGGLE "X", "r"); (void)r;
     /* read current state if present */
     f = fopen(CLUSTER_REMOTE_TOGGLE, "r");
     now = 0;
