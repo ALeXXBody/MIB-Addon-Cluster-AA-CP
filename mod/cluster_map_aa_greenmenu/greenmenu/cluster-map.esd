@@ -25,7 +25,7 @@ keyValue
 
 keyValue
     value   String sys 0x00000000 0
-label   "SD card must be in slot 1. Reboot after install."
+    label   "SD card must be in slot 1. Reboot after install."
     poll    0
 
 script
@@ -247,5 +247,5 @@ script
 
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/esd/scripts/reboot.sh"
-    label   "Reboot the unit\n"
+    label   "Reboot the unit"
 
