@@ -61,6 +61,8 @@ if ! app_mount_rw; then
 fi
 CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 echo "app: read-write via '$APP_LADDER_FORM'"
+APP_WRITABLE=1
+trap app_mount_finish 0 1 2 15
 
 strip_now=`sed -n 's/^GAL_NAV_INFO_STRIP=//p' "$CONF_READ" | tail -1`
 file_now=`sed -n 's/^GAL_NAV_INFO_FILE=//p' "$CONF_READ" | tail -1`
@@ -69,22 +71,29 @@ if [ "$strip_now" = "$WANT" ] && [ "$file_now" = "$WANT" ]; then
     exit 3
 fi
 
+# tmp+mv rewrite (no sed -i: torn writes on FAT/QNX)
+_rewrite_navstrip()
+{
+    grep -v '^GAL_NAV_INFO_STRIP=' "$CONF" > "$CONF.new" 2>/dev/null &&
+    grep -v '^GAL_NAV_INFO_FILE=' "$CONF.new" > "$CONF.new2" 2>/dev/null &&
+    mv "$CONF.new2" "$CONF" 2>/dev/null || { rm -f "$CONF.new" "$CONF.new2"; return 1; }
+    return 0
+}
+
 if [ "$WANT" = 1 ]; then
-    sed -i '/^GAL_NAV_INFO_STRIP=/d' "$CONF"
+    _rewrite_navstrip || { echo "Could not rewrite $CONF. Nothing changed."; exit 1; }
     echo "GAL_NAV_INFO_STRIP=1" >> "$CONF"
-    sed -i '/^GAL_NAV_INFO_FILE=/d' "$CONF"
     echo "GAL_NAV_INFO_FILE=1" >> "$CONF"
     sync
-    echo 1 > /tmp/stream-player.navstrip 2>/dev/null || true
+    echo 1 > "$GAL_RUNTIME_DIR/stream-player.navstrip" 2>/dev/null || true
     echo "Turn info strip: ON. The strip reads the hook's live file; if no"
     echo "route is active right now it will appear as soon as the map"
     echo "re-routes (the hook's decoded road name | ETA | distance)."
 else
-    sed -i '/^GAL_NAV_INFO_STRIP=/d' "$CONF"
+    _rewrite_navstrip || { echo "Could not rewrite $CONF. Nothing changed."; exit 1; }
     echo "GAL_NAV_INFO_STRIP=0" >> "$CONF"
-    sed -i '/^GAL_NAV_INFO_FILE=/d' "$CONF"
     echo "GAL_NAV_INFO_FILE=0" >> "$CONF"
     sync
-    echo 0 > /tmp/stream-player.navstrip 2>/dev/null || true
+    echo 0 > "$GAL_RUNTIME_DIR/stream-player.navstrip" 2>/dev/null || true
     echo "Turn info strip: OFF."
 fi

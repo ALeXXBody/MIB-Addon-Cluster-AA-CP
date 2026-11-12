@@ -71,6 +71,8 @@ if ! app_mount_rw; then
 fi
 CONF="$APP_RW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 echo "app: read-write via '$APP_LADDER_FORM'"
+APP_WRITABLE=1
+trap app_mount_finish 0 1 2 15
 
 # Read the currently set value (empty when not present).
 NOW=`sed -n 's/^GAL_SECONDARY_UI_CONFIG_HEX=//p' "$CONF_READ" | tail -1`
@@ -84,14 +86,17 @@ if [ "$HEX" = "" ] && [ "$NOW" = "" ]; then
     exit 3
 fi
 
+# tmp+mv rewrite (no sed -i: torn writes on FAT/QNX)
 if [ "$HEX" = "" ]; then
-    sed -i '/^GAL_SECONDARY_UI_CONFIG_HEX=/d' "$CONF" || {
-        echo "Could not rewrite gal_dualscreen.conf. Nothing changed."; exit 1; }
+    grep -v '^GAL_SECONDARY_UI_CONFIG_HEX=' "$CONF" > "$CONF.new" 2>/dev/null &&
+    mv "$CONF.new" "$CONF" 2>/dev/null || {
+        echo "Could not rewrite gal_dualscreen.conf. Nothing changed."; rm -f "$CONF.new"; exit 1; }
     echo "Turn-card clear: OFF (stock layout). Standard fork content insets."
 else
     # Remove any stale hex line, add the chosen preset's payload, then sync.
-    sed -i '/^GAL_SECONDARY_UI_CONFIG_HEX=/d' "$CONF" || {
-        echo "Could not rewrite gal_dualscreen.conf. Nothing changed."; exit 1; }
+    grep -v '^GAL_SECONDARY_UI_CONFIG_HEX=' "$CONF" > "$CONF.new" 2>/dev/null &&
+    mv "$CONF.new" "$CONF" 2>/dev/null || {
+        echo "Could not rewrite gal_dualscreen.conf. Nothing changed."; rm -f "$CONF.new"; exit 1; }
     echo "GAL_SECONDARY_UI_CONFIG_HEX=$HEX" >> "$CONF" || {
         echo "Could not append the settings line. Nothing changed."; exit 1; }
 fi
