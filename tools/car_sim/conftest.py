@@ -196,6 +196,28 @@ class Car:
                 f"--- stdout ---\n{proc.stdout}\n--- stderr ---\n{proc.stderr}")
         return proc
 
+    def run_qnx(self, argv, cwd=None, env=None, expect_rc=None):
+        """Run with QNX Neutrino sh errexit semantics (see qnxsh.py).
+
+        Rewrites bare single-command substitutions in the staged card tree
+        to explicit `|| exit 127`, then runs under plain sh. A qnxsh death
+        (rc=127, empty output) IS the unit's silent death, made loud; any
+        behavioral difference vs run() is a real unit-only bug."""
+        import qnxsh as _qnxsh
+        n = 0
+        for _p in ("/fs/sda0", "/fs/sdb0"):
+            if pathlib.Path(_p).exists():
+                for _f in sorted(pathlib.Path(_p).rglob("*.sh")):
+                    if _qnxsh.transform_file(_f):
+                        n += 1
+        proc = self.run(argv, cwd=cwd, env=env, expect_rc=None)
+        if expect_rc is not None:
+            assert proc.returncode == expect_rc, (
+                f"qnxsh transformed {n} file(s); "
+                f"rc={proc.returncode} (want {expect_rc})\n"
+                f"--- stdout ---\n{proc.stdout}\n--- stderr ---\n{proc.stderr}")
+        return proc
+
 
 @pytest.fixture
 def car(tmp_path):
