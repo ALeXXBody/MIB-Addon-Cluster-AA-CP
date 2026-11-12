@@ -46,7 +46,7 @@ def test_unarmed_run_writes_the_diag_bundle(car):
     assert ("Map install: FAILED" in out or "Map install: DONE" in out
             or "Staged only (not armed)" in out), out
     n = len([l for l in out.splitlines() if l.strip()])
-    assert n < 20, f"console is too verbose again ({n} lines)\n{out}"
+    assert n <= 23, f"console is too verbose again ({n} lines)\n{out}"
 
     diag = pathlib.Path(PKG, "diag.txt")
     assert diag.exists()

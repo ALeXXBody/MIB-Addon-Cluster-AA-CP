@@ -386,10 +386,20 @@ fi   # GEM_ARMED
 #    The FULL output goes into the log (and into diag.txt); the CONSOLE gets
 #    only the curated story lines, so the GEM screen stays short.
 OUT=/tmp/cm_custom.log
-sh "$SD/$PAYLOAD_NAME/greenmenu/install.sh" > $OUT 2>&1
+sh "$SD/$PAYLOAD_NAME/greenmenu/install.sh" > "$OUT" 2>&1
 RESULT=$?
 _CS="$SD/$PAYLOAD_NAME/greenmenu/console_summary.sh"
 if [ -r "$_CS" ]; then sh "$_CS" "$OUT"; else cat "$OUT"; fi
+# Same verdict contract as GEM presses (menus.sh run_quiet): DONE/STOPPED +
+# next instruction, plus ERROR lines on failure. The one-click flow skipped
+# this, so its failures never got a verdict.
+_VR=0
+_VS="$SD/$PAYLOAD_NAME/greenmenu/run_verdict.sh"
+if [ -r "$_VS" ]; then sh "$_VS" install "$OUT"; _VR=$?; fi
+if [ "$_VR" -ne 0 ]; then
+    echo "-- the run's ERROR lines:"
+    if [ -r "$_CS" ]; then sh "$_CS" "$OUT"; fi
+fi
 
 okcount=0
 # The same files under every app-partition view the unit can expose:
