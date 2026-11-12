@@ -738,3 +738,31 @@ lines are byte-identical, so qnxsh differs from plain sh ONLY where the
 unit would have died. `Car.run_qnx()` + 5 regression tests prove the
 current tree QNX-clean (full install, repeat-install skip, total-refusal
 live arm). 84/84 car-sim green; `audit_wiring.sh` ALL GREEN.
+
+## v0.7.14 — the wheel tap reads the cluster's own channel + hi-res stops arming nothing
+
+### Fixed — steering wheel (root cause, owner's diag 116031ee)
+The hook taps the unit's outbound `InputReport` path but only accepted
+channels whose class table entry contains `InputSource`. The class table
+is filled from `registerService`, which the hook-created cluster input
+service never passes — so the cluster's own input channel keeps an EMPTY
+class forever, and the filter dropped exactly the channel the wheel uses
+when the cluster map is shown (car-verified: the phone's 0x8002 binding
+arrives inbound on that unclassified channel, and zero tap lines appear
+despite trace ON across two live sessions). The tap now also accepts a
+channel the phone bound with 0x8002 and marks the classification as
+inferred in the log. Tap lines are logged whenever the trace OR the
+remote is on, so actioned presses are visible without the trace.
+
+### Fixed — Hi-res ON no longer arms nothing
+`event=secondary.hires result=skipped reason=ui_config_hex_present`:
+the hook refuses hi-res while a `GAL_SECONDARY_UI_CONFIG_HEX` override is
+present (it replaces the insets wholesale), but the switch persisted the
+key and reported success. Hi-res ON now clears the override in the same
+write — same rule as Position — and says it must be re-applied; Hi-res
+OFF leaves the user's preset alone.
+
+### Fixed — diag now keeps every recent press
+Only the LAST run reached §§11/12, so an earlier failing press in the
+same round was invisible. New §12b carries the tails of every other
+recent menu run log.

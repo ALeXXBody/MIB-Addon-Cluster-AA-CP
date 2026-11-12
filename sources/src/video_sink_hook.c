@@ -3176,14 +3176,26 @@ static void outbound_sniff(unsigned char channel, const void *buf, unsigned len)
      * carry the same message id. Parsing those as gestures is exactly how a
      * "random zoom/next-track" bug is born. Only a real InputSource -- the
      * service the physical wheel is bound to -- may reach the parser.
+     *
+     * The cluster's OWN input channel never passes registerService, so the
+     * class table stays empty for it -- and that is exactly the channel the
+     * wheel uses when the cluster map is shown (car-verified: the phone's
+     * 0x8002 binding arrives inbound on an unclassified channel, and zero
+     * tap lines appear despite trace ON). The phone's 0x8002 binding on a
+     * channel proves it is an input channel, so accept it and mark the
+     * classification as inferred in the log.
      */
-    if (strstr(g_service_class[channel], "InputSource") == NULL) return;
+    const char *cls = g_service_class[channel];
+    if (strstr(cls, "InputSource") == NULL) {
+        if (g_channel_last_id[channel] != 0x8002u) return;
+        cls = "InputSource(inferred:phone-bound-0x8002)";
+    }
     id = ((unsigned)m[0] << 8) | m[1];
     if (id != 0x8001u) return;                 /* InputReport only */
     if (ob_is_dup(m, len)) return;
-    if (remote_trace_on())
+    if (remote_trace_on() || cluster_remote_on())
         gal_hook_logf("event=remote.tap channel=%u id=0x%04x bytes=%u class=%s",
-                      (unsigned)channel, id, len, g_service_class[channel]);
+                      (unsigned)channel, id, len, cls);
     cluster_remote_event(m, len);              /* gates on the remote itself */
 }
 

@@ -133,6 +133,56 @@ def test_no_switch_writes_a_key_value_line_into_a_runtime_file(car):
                 "reads the bare value")
 
 
+def test_hires_on_clears_the_blocking_hex_override(car):
+    """The hook refuses hi-res while a UI_CONFIG_HEX override is present
+    (event=secondary.hires result=skipped, car-verified on the owner's
+    unit) — so Hi-res ON must clear it in the same write, like Position
+    does, and say so. Hi-res OFF must leave the user's preset alone."""
+    _stage(car)
+    rt = _rt()
+    unit = pathlib.Path(APP_VIEWS[0],
+                        "eso/lib/gal_dualscreen/gal_dualscreen.conf")
+    unit.write_text(unit.read_text() + "GAL_SECONDARY_UI_CONFIG_HEX=5a041202083c\n")
+    p = _run(car, f"{SW}/hiresen.sh", "on", expect_rc=0)
+    out = p.stdout + p.stderr
+    assert "UI_CONFIG_HEX" in out, f"the switch did not say it removed the override\n{out}"
+    text = unit.read_text()
+    assert "GAL_SECONDARY_HIRESEN=1" in text, text
+    assert "GAL_SECONDARY_UI_CONFIG_HEX" not in text, \
+        f"the HEX override survived Hi-res ON, the hook will skip hi-res\n{text}"
+    assert (rt / "gal_hires").read_text() == "1\n"
+
+
+def test_hires_off_keeps_the_hex_override(car):
+    _stage(car)
+    _rt()
+    unit = pathlib.Path(APP_VIEWS[0],
+                        "eso/lib/gal_dualscreen/gal_dualscreen.conf")
+    unit.write_text(unit.read_text() + "GAL_SECONDARY_UI_CONFIG_HEX=5a041202083c\n")
+    _run(car, f"{SW}/hiresen.sh", "off", expect_rc=0)
+    text = unit.read_text()
+    assert "GAL_SECONDARY_UI_CONFIG_HEX=5a041202083c" in text, text
+    assert "GAL_SECONDARY_HIRESEN=0" in text, text
+
+
+def test_diag_12b_collects_every_recent_press(car):
+    """The owner presses several switches, then Save logs: only the LAST
+    run reached §§11/12, so an earlier failing press was invisible. §12b
+    must carry the tails of every other recent menu run log."""
+    _stage(car)
+    for stale in pathlib.Path("/tmp").glob("cm_menu_*.log"):
+        stale.unlink()
+    rt = _rt()
+    car.run(["sh", f"{PKG}/greenmenu/gem/remote_on.sh"],
+            env={"GAL_RUNTIME_DIR": "/sim/rt"}, expect_rc=0)
+    car.run(["sh", f"{PKG}/greenmenu/gem/hiresen_on.sh"],
+            env={"GAL_RUNTIME_DIR": "/sim/rt"}, expect_rc=0)
+    txt = pathlib.Path("/tmp/clustermap_diag/diag.txt").read_text()
+    assert "== 12b other recent presses" in txt, txt[-800:]
+    assert "cm_menu_remote.log" in txt, txt[-1500:]
+    assert "Cluster remote: ON (LIVE)" in txt, txt[-1500:]
+
+
 # ---------------------------------------------------------------------------
 # 2. The live arm survives a total remount refusal.
 # ---------------------------------------------------------------------------

@@ -1636,3 +1636,21 @@ QNX-sh runtime gap). Shipped as one release:
   static gate, expr/cp_setting guards.
 - qnxsh runner: empirically proved no stock shell matches the unit, then
   built the transformer + run_qnx + 5 tests. 84/84 green, audit ALL GREEN.
+
+---
+
+## Round 51 — v0.7.14: the tap filter's blind channel
+
+Owner diag 116031ee (v0.7.13): the map pipeline is fully alive (player
+spawned, first frame drawn, dmdt switched, ~30 fps, brightness 68-74 —
+real map content), switches persist, runtime files land — but zero
+`event=remote.tap` lines despite trace ON across two live sessions, and
+hi-res skipped every boot. Two mechanisms, both in-spirit P0:
+1. The outbound tap's InputSource class filter can never match the
+   cluster's own input channel (empty class table entry — the hook-made
+   service never passes registerService). Fixed by accepting the
+   phone-bound (0x8002) channel with an `inferred` mark in the log.
+2. Hi-res ON vs UI_CONFIG_HEX: hook refuses, switch claimed success.
+   The switch now clears the override like Position does, loudly.
+Plus §12b (all recent presses' tails). 87/87 car-sim green (3 new
+tests), rebuilt hook v0.7.14 verified by strings+nm, audit ALL GREEN.

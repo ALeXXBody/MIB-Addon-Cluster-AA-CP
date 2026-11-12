@@ -23,16 +23,31 @@ WANT=$([ "$1" = on ] && echo 1 || echo 0)
 live_write "$GAL_RUNTIME_DIR/gal_hires" "$WANT" || exit 1
 
 PERSISTED=0
-conf_persist set "GAL_SECONDARY_HIRESEN=$WANT" && {
-    if [ "$CONF_PERSISTED" = 1 ]; then PERSISTED=1; else PERSISTED=2; fi
-}
+# The hook REFUSES hi-res while a UI_CONFIG_HEX override is present (the hex
+# replaces the insets wholesale, so a hi-res entry would run with unscaled
+# insets — the hook logs "result=skipped reason=ui_config_hex_present" and
+# the switch would arm nothing). Same rule as Position: Hi-res ON clears the
+# override in the same write and says so; re-apply the ETA card afterwards.
+OVER=""
+_ACTIVE_CONF=`conf_card_file` || _ACTIVE_CONF="$CONF_READ"
+if [ "$WANT" = 1 ]; then
+    grep -q "^GAL_SECONDARY_UI_CONFIG_HEX=" "$_ACTIVE_CONF" 2>/dev/null &&
+        OVER="; removed the UI_CONFIG_HEX override (it blocks hi-res — re-apply the ETA card preset after)"
+    conf_persist set "GAL_SECONDARY_HIRESEN=$WANT" "GAL_SECONDARY_UI_CONFIG_HEX=" && {
+        if [ "$CONF_PERSISTED" = 1 ]; then PERSISTED=1; else PERSISTED=2; fi
+    }
+else
+    conf_persist set "GAL_SECONDARY_HIRESEN=$WANT" && {
+        if [ "$CONF_PERSISTED" = 1 ]; then PERSISTED=1; else PERSISTED=2; fi
+    }
+fi
 
 if [ "$WANT" = 1 ]; then
-    echo "Hi-res trial: ON (LIVE ARMED) - the next phone session declares 1280x720"
+    echo "Hi-res trial: ON (LIVE ARMED)$OVER - the next phone session declares 1280x720"
     echo "beside 800x480. Re-plug the USB (or cycle the phone's AA) to apply."
     echo "If the map goes dark, press Hi-res OFF and reconnect."
 else
-    echo "Hi-res trial: OFF (LIVE ARMED) - back to the shipped 800x480 at the next phone session."
+    echo "Hi-res trial: OFF (LIVE ARMED)$OVER - back to the shipped 800x480 at the next phone session."
 fi
 [ "$PERSISTED" = 0 ] && echo "NOT persisted: still LIVE until the next gal start."
 exit 0

@@ -29,6 +29,7 @@
 #  10 install paths         - where the install wrote backups/logs
 #  11 last run summary     - the filtered result lines of the recent run
 #  12 full run log          - the entire last operation
+#  12b other presses        - tails of every other recent menu run
 
 HERE=`dirname "$0"`
 PKG=`cd "$HERE/.." && pwd`
@@ -428,6 +429,17 @@ section "12 full log of the last operation (capped at 400 lines)"
 if [ "$MODE" = append-run ] && [ -r "$RUNLOG" ] && [ -n "$RUNLOG" ]; then
     head -400 "$RUNLOG" >> "$TMP" 2>/dev/null
 fi
+
+# ---- 12b. every other recent press (the owner presses several switches,
+# then Save logs: only the LAST run reached the bundle, so a failing press
+# earlier in the round was invisible). Tails of all other menu run logs.
+section "12b other recent presses (tails of every other menu run log)"
+for _l in /tmp/cm_menu_*.log /tmp/cm_custom.log; do
+    [ -r "$_l" ] || continue
+    case "$_l" in "$RUNLOG") continue ;; esac
+    put "-- $_l (last 30 lines) --"
+    tail -30 "$_l" >> "$TMP" 2>/dev/null
+done
 
 # ---- deliver ----------------------------------------------------------------
 [ -r "$OUT" ] && cat "$OUT" > "$OUT.prev" 2>/dev/null
