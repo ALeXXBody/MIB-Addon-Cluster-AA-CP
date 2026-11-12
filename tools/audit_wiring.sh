@@ -140,7 +140,7 @@ grep -q 'GAL_RUNTIME_DIR="\${GAL_RUNTIME_DIR:-/tmp}"' $PAYLOAD/scripts/lib_app_m
 
 # binary carries the tap + build marker
 for needle in 'event=remote.tap' 'event=cluster.remote.live' \
-              'event=cluster.remote.gate result=closed' '/tmp/gal_remote' 'v0.7.5'; do
+              'event=cluster.remote.gate result=closed' '/tmp/gal_remote' 'event=remote.trace parse'; do
     if strings $PAYLOAD/libgal_hook.so | grep -qF "$needle"; then :; else
         fail "shipped hook lacks '$needle'"; rtfail=1
     fi

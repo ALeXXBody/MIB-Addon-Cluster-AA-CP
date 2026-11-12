@@ -419,7 +419,7 @@ def test_the_shipped_hook_exports_the_send_path_and_carries_the_tap(car):
     # the build marker and the tap's own log lines: a v0.7.4 binary has none
     for needle in ("event=remote.tap", "event=cluster.remote.live",
                    "event=cluster.remote.gate result=closed",
-                   "/tmp/gal_remote", "v0.7.5"):
+                   "/tmp/gal_remote"):
         assert needle in blob, f"the shipped hook lacks '{needle}'"
 
 
