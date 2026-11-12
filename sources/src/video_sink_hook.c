@@ -3021,7 +3021,8 @@ static void cluster_remote_event(const unsigned char *m, unsigned n)
             if (f == 2u && is_rot == 0) down = v;
             if (f == 1u && is_rot) delta = (int)v;
         } else if (w == 2u) {
-            { unsigned sz = m[i]; ++i; i += sz; }   /* skip string payload */
+            if (i >= n) break;
+            { unsigned sz = m[i]; ++i; if (sz > n - i) break; i += sz; }   /* skip string payload */
             /* the inner field of InputEvent/RelativeEvent: tag 0x08 = code,
              * tag 0x10 = action/delta */
             if (i < n) {
