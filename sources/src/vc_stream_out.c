@@ -1125,12 +1125,20 @@ void vc_stream_out_ack_close(void)
 
 int vc_stream_out_ack_client_connected(void)
 {
-    return (g_ack_client_fd >= 0);
+    int c;
+    pthread_mutex_lock(&g_lock);
+    c = (g_ack_client_fd >= 0);
+    pthread_mutex_unlock(&g_lock);
+    return c;
 }
 
 unsigned long vc_stream_out_ack_accept_count(void)
 {
-    return g_ack_accepts;
+    unsigned long n;
+    pthread_mutex_lock(&g_lock);
+    n = g_ack_accepts;
+    pthread_mutex_unlock(&g_lock);
+    return n;
 }
 
 void vc_stream_out_poll_ack(vc_ack_callback_fn cb)
