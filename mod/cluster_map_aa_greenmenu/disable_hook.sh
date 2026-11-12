@@ -16,11 +16,11 @@ export LD_LIBRARY_PATH
 
 set -eu
 
-CARD_ROOT=`cd "\`dirname "$0"\`" && pwd`
+CARD_ROOT=`cd "\`dirname "$0"\`" && pwd` || { echo "Cannot resolve the payload root" >&2; exit 1; }
 # Same payload-root resolution as enable_hook.sh: the fork's scripts/ copy
 # of this tree still resolves to the folder that holds the payload files.
 if [ ! -f "$CARD_ROOT/libgal_hook.so" ] && [ -f "$CARD_ROOT/../libgal_hook.so" ]; then
-    CARD_ROOT=`cd "$CARD_ROOT/.." && pwd`
+    CARD_ROOT=`cd "$CARD_ROOT/.." && pwd` || { echo "Cannot resolve the payload root" >&2; exit 1; }
 fi
 SYSTEM_MOUNT=/mnt/system
 TARGET_CONFIG=$SYSTEM_MOUNT/etc/eso/production/smartphone_integrator.json

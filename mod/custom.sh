@@ -287,6 +287,7 @@ if [ -f "$TPL" ]; then
 		if [ -f "$ENGDEFS/cluster-map.esd" ]; then
 			cp -p "$ENGDEFS/cluster-map.esd" "$ENGDEFS/cluster-map.esd.prev" || true
 		fi
+		rm -f "$ENGDEFS/cluster-map.esd" 2>/dev/null
 		cp -p "$GEN_PATH" "$ENGDEFS/.cluster-map.new" && \
 			mv "$ENGDEFS/.cluster-map.new" "$ENGDEFS/cluster-map.esd"
 		rm -f "$GEN_PATH" 2>/dev/null
@@ -345,6 +346,7 @@ else
 		if [ -f "$ENGDEFS/cluster-map.esd" ]; then
 			cp -p "$ENGDEFS/cluster-map.esd" "$ENGDEFS/cluster-map.esd.prev" || true
 		fi
+		rm -f "$ENGDEFS/cluster-map.esd" 2>/dev/null
 		cp -p "$GEN_PATH" "$ENGDEFS/.cluster-map.new" && \
 			mv "$ENGDEFS/.cluster-map.new" "$ENGDEFS/cluster-map.esd"
 		rm -f "$GEN_PATH" 2>/dev/null

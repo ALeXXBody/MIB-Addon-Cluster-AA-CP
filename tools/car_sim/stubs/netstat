@@ -1,0 +1,10 @@
+#!/bin/sh
+# Sim netstat stub with canned QNX output (diag §9d parses this).
+# Shows the hook's TCP listener on 127.0.0.1:12346 (0x303A).
+if [ "$1" = "-an" ] || [ $# -eq 0 ]; then
+    echo "Active Internet connections (including servers)"
+    echo "Proto Recv-Q Send-Q  Local Address          Foreign Address        State"
+    echo "tcp        0      0  127.0.0.1:12346        0.0.0.0:*              LISTEN"
+    exit 0
+fi
+exit 0

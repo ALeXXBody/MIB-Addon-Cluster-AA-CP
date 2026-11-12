@@ -30,7 +30,9 @@ done
 mkdir -p /sim/ovl/up /sim/ovl/work
 cp "$CAR_SIM_STUB_DIR/mount" /sim/ovl/up/mount
 cp "$CAR_SIM_STUB_DIR/on"    /sim/ovl/up/on
-chmod 755 /sim/ovl/up/mount /sim/ovl/up/on
+cp "$CAR_SIM_STUB_DIR/pidin" /sim/ovl/up/pidin
+cp "$CAR_SIM_STUB_DIR/netstat" /sim/ovl/up/netstat
+chmod 755 /sim/ovl/up/mount /sim/ovl/up/on /sim/ovl/up/pidin /sim/ovl/up/netstat
 mount -t overlay -o lowerdir=/usr/bin,upperdir=/sim/ovl/up,workdir=/sim/ovl/work overlay /bin
 .venv/bin/pytest -q "tools/car_sim" "$@"
 '

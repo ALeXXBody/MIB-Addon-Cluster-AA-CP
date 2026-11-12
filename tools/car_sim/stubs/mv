@@ -1,0 +1,13 @@
+#!/bin/sh
+# Sim mv stub emulating FAT rename-onto-existing semantics: moving onto an
+# existing destination FAILS (EEXIST) instead of replacing atomically like
+# tmpfs/ext4. The payload's FAT-safe sites (rm -f dest first) still pass;
+# a bare `mv new existing` fails here exactly as on the card.
+# All other mv forms delegate to the real binary.
+if [ $# -eq 2 ]; then
+    if [ -e "$2" ]; then
+        echo "mv: $2: File exists" >&2
+        exit 1
+    fi
+fi
+exec /bin/mv.fat-real "$@"

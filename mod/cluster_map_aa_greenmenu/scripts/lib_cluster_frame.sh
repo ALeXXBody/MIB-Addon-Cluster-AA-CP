@@ -71,7 +71,12 @@ frame_write_conf()
       echo "GAL_SECONDARY_MARGINS=${MARGIN_W}x${MARGIN_H}"
       echo "GAL_SECONDARY_PIXEL_ASPECT_RATIO_E4=$PIXEL_ASPECT_E4"
       echo "CLUSTERMAP_FULL_FRAME=$4"; } >> "$1.new" 2>/dev/null &&
-    mv "$1.new" "$1" 2>/dev/null || { rm -f "$1.new" 2>/dev/null; return 1; }
+    if command -v fat_mv >/dev/null 2>&1; then
+        fat_mv "$1.new" "$1" || { rm -f "$1.new" 2>/dev/null; return 1; }
+    else
+        rm -f "$1" 2>/dev/null
+        mv "$1.new" "$1" 2>/dev/null || { rm -f "$1.new" 2>/dev/null; return 1; }
+    fi
     chmod 644 "$1" 2>/dev/null
     return 0
 }

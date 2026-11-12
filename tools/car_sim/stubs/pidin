@@ -1,0 +1,17 @@
+#!/bin/sh
+# Sim pidin stub with canned QNX output (diag §9c/§9e parse this).
+#   pidin info            -> process list (gal + stream-player present)
+#   pidin -p <pid> env    -> gal runtime environment (LD_PRELOAD armed)
+if [ "$1" = "-p" ]; then
+    echo "LD_PRELOAD=/eso/lib/gal_dualscreen/libgal_hook.so"
+    echo "GAL_DUALSCREEN_ENABLE=1"
+    echo "GAL_DUALSCREEN_DEBUG=0"
+    echo "GAL_SECONDARY_DPI=125"
+    exit 0
+fi
+echo "pid  tid name"
+echo "1    1   proc/boot/procnto"
+echo "1859708 1 gal"
+echo "1859710 1 gal"
+echo "19665019 1 stream-player"
+exit 0

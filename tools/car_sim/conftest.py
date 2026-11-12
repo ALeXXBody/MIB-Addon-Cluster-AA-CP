@@ -27,7 +27,16 @@ SYS_VIEWS = ["/mnt/system", "/net/mmx.mibhigh.net/mnt/system", "/net/mmx/mnt/sys
 CARD_VIEWS = ["/fs/sda0", "/fs/sdb0", "/net/mmx/fs/sda0", "/net/mmx.mibhigh.net/fs/sda0"]
 
 VERSION_TXT = "Current train = MHI2_ER_VWG13_P4521\n"
-JSONLINT_SH = "#!/bin/sh\nexit 0\n"
+# Validating jsonlint stand-in: accepts the unit's `jsonlint --file <path>`
+# form and actually parses the JSON (python), so corrupt configs fail like
+# on the unit instead of silently passing (old stub was `exit 0`).
+JSONLINT_SH = ("#!/bin/sh\n"
+               "f=\"\"\n"
+               "for a in \"$@\"; do case \"$a\" in --file=*) f=\"${a#--file=}\";; --file) shift;; -*) ;; *) f=\"$a\";; esac; done\n"
+               "[ -n \"$f\" ] || f=\"$1\"\n"
+               "exec python3 -c \"import json,re,sys; t=open(sys.argv[1]).read();"
+               " t=re.sub(r',\\\\s*]',']',t); t=re.sub(r',\\\\s*}','}',t);"
+               " json.loads(t)\" \"$f\"\n")
 ON_FAIL_SH = "#!/bin/sh\nexit 1\n"  # no cross-node remount in the sim
 
 
@@ -103,6 +112,36 @@ class Car:
                           ".clustermap_probe"):
                 (pathlib.Path(view, sub, probe)).mkdir(parents=True,
                                                       exist_ok=True)
+
+    def make_root_read_only(self, view):
+        """The car shape: writes at the view ROOT refuse while subdirectory
+        writes work (same boot's engdefs write succeeded through the alias
+        the root probe refused). Only the root-level probe names are blocked;
+        the write-target subdirectories stay writable."""
+        for probe in (".clustermap_rw_probe", ".clustermap_probe",
+                      ".clustermap_restore_probe", ".galconf_probe",
+                      ".clustermap_sys_probe"):
+            (pathlib.Path(view, probe)).mkdir(parents=True, exist_ok=True)
+
+    def reboot(self):
+        """Simulate an ignition cycle: /tmp is RAM, so every hook runtime
+        file, log, diag bundle and install-home marker vanishes. Persisted
+        unit/card state survives. Tests use GAL_RUNTIME_DIR=/sim/rt, which
+        is wiped too (it stands in for /tmp)."""
+        import glob as _g
+        for pat in ("/tmp/gal_*", "/tmp/stream-player.*", "/tmp/cm_*.log",
+                    "/tmp/clustermap_last_paths", "/tmp/cm_custom.log",
+                    "/tmp/gal_dualscreen.log", "/tmp/stream-player.log",
+                    "/sim/rt/gal_*", "/sim/rt/stream-player.*"):
+            for f in _g.glob(pat):
+                try:
+                    pathlib.Path(f).unlink()
+                except IsADirectoryError:
+                    shutil.rmtree(f, ignore_errors=True)
+                except FileNotFoundError:
+                    pass
+        shutil.rmtree("/tmp/clustermap_diag", ignore_errors=True)
+        shutil.rmtree("/tmp/clustermap_unit", ignore_errors=True)
 
     def stage(self, view, rel, content=b"", mode=None):
         """Stage <content> at <view>/<rel>; missing parents are created."""

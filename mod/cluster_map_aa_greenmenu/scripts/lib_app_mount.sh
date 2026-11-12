@@ -184,7 +184,7 @@ carplay_pf_close()
         [ -f "$PF" ] && grep -q "$CARPLAY_PF_MARK" "$PF" || continue
         cp -p "$PF" "$PF.clustermap-new" &&
             grep -v "$CARPLAY_PF_MARK" "$PF" > "$PF.clustermap-new" &&
-            mv "$PF.clustermap-new" "$PF" && echo "Firewall: CarPlay map port closed in $PF"
+            fat_mv "$PF.clustermap-new" "$PF" && echo "Firewall: CarPlay map port closed in $PF"
     done
 }
 
@@ -199,7 +199,7 @@ carplay_pf_open()
             { print }
             !done && /^pass in quick on carplay0 proto tcp / { print rule; done=1 }
         ' "$PF" > "$PF.clustermap-new" && grep -q "$CARPLAY_PF_MARK" "$PF.clustermap-new" &&
-            mv "$PF.clustermap-new" "$PF" && echo "Firewall: CarPlay map port 6031 opened on carplay0 in $PF" ||
+            fat_mv "$PF.clustermap-new" "$PF" && echo "Firewall: CarPlay map port 6031 opened on carplay0 in $PF" ||
             { rm -f "$PF.clustermap-new"; echo "Firewall: could not edit $PF; the CarPlay map may get no video"; }
     done
 }
@@ -333,6 +333,19 @@ system_mount_rw()
 # install, uninstall and the diagnostics never write it (owner rule: the
 # card is read-only media during normal operation).
 
+# fat_mv SRC DST - FAT-safe replace. The card is FAT/exFAT: rename
+# onto an existing name fails (EEXIST) where tmpfs/ext4 replaces
+# atomically. Remove first, then move; fall back to a copy when the
+# move itself is refused. Returns 0 on success.
+fat_mv()
+{
+    rm -f "$2" 2>/dev/null
+    if mv "$1" "$2" 2>/dev/null; then return 0; fi
+    if cat "$1" > "$2" 2>/dev/null; then rm -f "$1" 2>/dev/null; return 0; fi
+    rm -f "$1" 2>/dev/null
+    return 1
+}
+
 # conf_file_apply MODE FILE KEY[=VALUE] ...
 #   MODE = set   (KEY=VALUE): replace/append the key
 #   MODE = clear (KEY)      : remove the key
@@ -377,7 +390,7 @@ $_cfa_k=$_cfa_v"; fi
             for (i = 1; i <= m; i++) if (V[i] != "") print V[i]
         }
     ' "$_cfa_f" > "$_cfa_f.new" 2>/dev/null || { rm -f "$_cfa_f.new"; return 1; }
-    mv "$_cfa_f.new" "$_cfa_f" 2>/dev/null || { rm -f "$_cfa_f.new"; return 1; }
+    fat_mv "$_cfa_f.new" "$_cfa_f" || { rm -f "$_cfa_f.new"; return 1; }
     return 0
 }
 
@@ -479,7 +492,7 @@ conf_card_write()
         [ "$_ccw_remounted" = 1 ] && mount -ur "$_ccw_root" 2>/dev/null
         return 1
     fi
-    if ! mv "$_ccw_new" "$_ccw_conf" 2>/dev/null; then
+    if ! fat_mv "$_ccw_new" "$_ccw_conf"; then
         echo "Could not write $_ccw_conf. Nothing changed." >&2
         rm -f "$_ccw_new" 2>/dev/null
         [ "$_ccw_remounted" = 1 ] && mount -ur "$_ccw_root" 2>/dev/null

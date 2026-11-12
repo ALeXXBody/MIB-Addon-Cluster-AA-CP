@@ -27,13 +27,13 @@ if [ "$_hook_rc" -ne 0 ]; then
     echo "      (shell-level death -- the diag full log names the last completed step)" >&2
 fi' 0
 
-CARD_ROOT=`cd "\`dirname "$0"\`" && pwd`
+CARD_ROOT=`cd "\`dirname "$0"\`" && pwd` || { echo "Cannot resolve the payload root" >&2; exit 1; }
 # One canonical payload root: if this script copy was reached from a NESTED
 # layout (the fork's scripts/ copy of the same tree -- M.I.B.'s cm_aa_*
 # screens run it from there), the card root is one level up. Resolve it by
 # what must exist, not by a layout name.
 if [ ! -f "$CARD_ROOT/libgal_hook.so" ] && [ -f "$CARD_ROOT/../libgal_hook.so" ]; then
-    CARD_ROOT=`cd "$CARD_ROOT/.." && pwd`
+    CARD_ROOT=`cd "$CARD_ROOT/.." && pwd` || { echo "Cannot resolve the payload root" >&2; exit 1; }
 fi
 SYSTEM_MOUNT=/mnt/system
 TARGET_CONFIG=$SYSTEM_MOUNT/etc/eso/production/smartphone_integrator.json
@@ -483,7 +483,7 @@ else
     }
 echo "Note: cmp is not available on this unit; verified staged copy by size only."
 fi
-mv "$PRELOAD_SO_TEMP" "$PRELOAD_SO_REAL" || {
+rm -f "$PRELOAD_SO_REAL" 2>/dev/null; mv "$PRELOAD_SO_TEMP" "$PRELOAD_SO_REAL" || {
     rm -f "$PRELOAD_SO_TEMP"
     echo "Could not atomically install $PRELOAD_SO_REAL" >&2
     exit 1
@@ -597,7 +597,7 @@ if [ -r "$SRC_CONF" ]; then
     if [ -r "$CONF_DEFAULT" ] && [ -r "$CARD_ROOT/scripts/lib_keep_settings.sh" ]; then
         . "$CARD_ROOT/scripts/lib_keep_settings.sh"
         keep_owner_lines "$CONF_COPY" "$CONF_DEFAULT" > "$OWNER_SAVED.new" 2>/dev/null &&
-            mv "$OWNER_SAVED.new" "$OWNER_SAVED" 2>/dev/null || rm -f "$OWNER_SAVED.new" 2>/dev/null
+            rm -f "$OWNER_SAVED" 2>/dev/null; mv "$OWNER_SAVED.new" "$OWNER_SAVED" 2>/dev/null || rm -f "$OWNER_SAVED.new" 2>/dev/null
     fi
 else
     echo "NOTE: no gal_dualscreen.conf beside this script; the hook will run on built-in defaults."
@@ -737,7 +737,7 @@ if [ "$CONF_DPI" = auto ] || [ "$CONF_INSETS" = auto ]; then
     if sed -e "s/^GAL_SECONDARY_DPI=auto[ 	]*$/GAL_SECONDARY_DPI=$CAR_DPI/" \
            -e "s/^GAL_SECONDARY_INSETS=auto[ 	]*$/GAL_SECONDARY_INSETS=$CAR_INSETS/" \
            "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" > "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new" &&
-       mv "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new" "$PRELOAD_WRITE_DIR/gal_dualscreen.conf"; then
+       rm -f "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null; mv "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new" "$PRELOAD_WRITE_DIR/gal_dualscreen.conf"; then
         :
     else
         rm -f "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new"
@@ -750,7 +750,7 @@ if [ "$CAR_CONTEXT" != 70 ] &&
    grep -q '^GAL_VC_CONTEXT=70[ 	]*$' "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null; then
     if sed "s/^GAL_VC_CONTEXT=70[ 	]*$/GAL_VC_CONTEXT=$CAR_CONTEXT/" "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" \
            > "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new" &&
-       mv "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new" "$PRELOAD_WRITE_DIR/gal_dualscreen.conf"; then
+       rm -f "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null; mv "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new" "$PRELOAD_WRITE_DIR/gal_dualscreen.conf"; then
         echo "Cockpit context: $CAR_CONTEXT ($CAR_MAKE)"
     else
         rm -f "$PRELOAD_WRITE_DIR/gal_dualscreen.conf.new"
@@ -783,7 +783,7 @@ if [ -x "$CARD_ROOT/stream-player" ] && [ "$HOOK_ARMED" = 1 ]; then
     fi
     if cp "$CARD_ROOT/stream-player" "$PLAYER_DST.new" 2>/dev/null && \
        [ "`wc -c < $CARD_ROOT/stream-player`" = "`wc -c < $PLAYER_DST.new`" ] && \
-       chmod 755 "$PLAYER_DST.new" && mv "$PLAYER_DST.new" "$PLAYER_DST"; then
+       chmod 755 "$PLAYER_DST.new" && rm -f "$PLAYER_DST" 2>/dev/null; mv "$PLAYER_DST.new" "$PLAYER_DST"; then
         echo "Installed stream-player to: $PLAYER_DST"
     else
         rm -f "$PLAYER_DST.new"
@@ -812,7 +812,7 @@ else
         cp "$CARD_ROOT/carplay/carplay_cluster.sh" "$PRELOAD_WRITE_DIR/carplay_cluster.sh" && \
         [ "`wc -c < $CARD_ROOT/carplay/libcarplay_cluster.so`" = "`wc -c < $PRELOAD_WRITE_DIR/libcarplay_cluster.so.new`" ] && \
         chmod 755 "$PRELOAD_WRITE_DIR/libcarplay_cluster.so.new" "$PRELOAD_WRITE_DIR/carplay_cluster.sh" && \
-        mv "$PRELOAD_WRITE_DIR/libcarplay_cluster.so.new" "$PRELOAD_WRITE_DIR/libcarplay_cluster.so" && CARPLAY_OK=1
+        rm -f "$PRELOAD_WRITE_DIR/libcarplay_cluster.so" 2>/dev/null; mv "$PRELOAD_WRITE_DIR/libcarplay_cluster.so.new" "$PRELOAD_WRITE_DIR/libcarplay_cluster.so" && CARPLAY_OK=1
     if [ "$CARPLAY_OK" -eq 1 ]; then
         echo "Installed the CarPlay map files to: $PRELOAD_WRITE_DIR"
         if [ "$AIRPLAY_NOW" != "$AIRPLAY_SIZE" ]; then
@@ -859,11 +859,11 @@ CP_W=$MAP_W; CP_H=$MAP_H
 # Even sizes: H.264 frames are encoded in 2x2 chroma blocks.
 if [ "$CP_FRAME" -gt 100 ]; then
     CP_SCALE=$CP_FRAME
-    CP_W=`expr $MAP_W \* $CP_FRAME / 200 \* 2`
-    CP_H=`expr $MAP_H \* $CP_FRAME / 200 \* 2`
+    CP_W=`expr $MAP_W \* $CP_FRAME / 200 \* 2` || { echo "Could not compute the CarPlay frame width" >&2; exit 1; }
+    CP_H=`expr $MAP_H \* $CP_FRAME / 200 \* 2` || { echo "Could not compute the CarPlay frame height" >&2; exit 1; }
 fi
-CP_W_MM=`expr 200 \* $CP_SCALE / 100`
-CP_H_MM=`expr $CP_W_MM \* $CP_H / $CP_W`
+CP_W_MM=`expr 200 \* $CP_SCALE / 100` || { echo "Could not compute the CarPlay display width" >&2; exit 1; }
+CP_H_MM=`expr $CP_W_MM \* $CP_H / $CP_W` || { echo "Could not compute the CarPlay display height" >&2; exit 1; }
 if [ "$CARPLAY_OK" -eq 1 ] && [ "$CP_FRAME" -gt 100 ]; then
     echo "CarPlay map: frame ${CP_W}x${CP_H} (${CP_FRAME} %), shown in the ${MAP_W}x${MAP_H} window"
 elif [ "$CARPLAY_OK" -eq 1 ] && [ "$CP_SCALE" -ne 100 ]; then
@@ -923,7 +923,7 @@ cp_setting() {
 rm -f "$CP_NAV-query.enabled" "$CP_NAV.surface" "$CP_NAV.showSpeedLimit" \
       "$CP_NAV.showCompass" "$CP_NAV.showETA" "$CP_NAV.maneuverLayout" 2>/dev/null || true
 if [ "$CARPLAY_OK" -eq 1 ]; then
-    CP_VIEW=`cp_setting VIEW`
+    CP_VIEW=`cp_setting VIEW` || CP_VIEW=""
     case "$CP_VIEW" in
         map)  echo map > "$CP_NAV.surface" ;;
         card) echo instructioncard > "$CP_NAV.surface" ;;
@@ -933,14 +933,14 @@ if [ "$CARPLAY_OK" -eq 1 ]; then
     esac
     CP_QUERY=
     for k in SPEEDLIMIT:showSpeedLimit COMPASS:showCompass ETA:showETA; do
-        v=`cp_setting ${k%%:*}`
+        v=`cp_setting ${k%%:*}` || v=""
         case "$v" in
             yes|no) echo "$v" > "$CP_NAV.${k#*:}"; CP_QUERY="$CP_QUERY ${k#*:}=$v" ;;
             '') ;;
             *) echo "CarPlay map: CLUSTERMAP_CARPLAY_${k%%:*}=$v not understood (yes or no); ignored" ;;
         esac
     done
-    v=`cp_setting CARD_POSITION`
+    v=`cp_setting CARD_POSITION` || v=""
     # Unset on SEAT: top. With a route the iPhone otherwise puts the card on
     # the left and the car under the right dial; owners found top keeps the
     # car centred (#19). "iphone" leaves it to the iPhone, as before.
@@ -1107,7 +1107,7 @@ BEGIN { in_children=0; in_gal=0; in_envs=0; line="" }
     }
 }' "$SOURCE"`
 [ -n "$EXISTING_COUNT" ] || EXISTING_COUNT=0
-ENTRY_COUNT=`expr $INJECTED_COUNT + $EXISTING_COUNT`
+ENTRY_COUNT=`expr $INJECTED_COUNT + $EXISTING_COUNT` || { echo "Could not count the environment entries" >&2; exit 1; }
 echo "Environment entries: $INJECTED_COUNT injected + $EXISTING_COUNT already in the stock config"
 if [ "$ENTRY_COUNT" -gt 10 ]; then
     echo "Refusing to install: $ENTRY_COUNT environment entries." >&2
@@ -1194,7 +1194,7 @@ if [ "$CARPLAY_OK" -eq 1 ]; then
         }
         END { if (!patched) exit 3 }
         ' "$TEMP" > "$TEMP.cp" && grep -q "LD_PRELOAD=$CARPLAY_PRELOAD" "$TEMP.cp" && \
-            grep -q "LD_PRELOAD=$PRELOAD_SO_ALIAS" "$TEMP.cp" && mv "$TEMP.cp" "$TEMP" || {
+            grep -q "LD_PRELOAD=$PRELOAD_SO_ALIAS" "$TEMP.cp" && rm -f "$TEMP" 2>/dev/null; mv "$TEMP.cp" "$TEMP" || {
             rm -f "$TEMP.cp"
             CARPLAY_OK=0; CARPLAY_WHY="the carplay entry could not be edited"
         }
@@ -1311,7 +1311,7 @@ else
             echo "Rebuilt recovery copy failed jsonlint: $PERSISTENT_BACKUP" >&2
             exit 1
         }
-        mv "$PERSISTENT_BACKUP.new.$$" "$PERSISTENT_BACKUP" || {
+        rm -f "$PERSISTENT_BACKUP" 2>/dev/null; mv "$PERSISTENT_BACKUP.new.$$" "$PERSISTENT_BACKUP" || {
             rm -f "$PERSISTENT_BACKUP.new.$$"
             echo "Could not replace the mislabelled recovery copy: $PERSISTENT_BACKUP" >&2
             exit 1
@@ -1339,7 +1339,7 @@ else
         echo "Staged supervisor config failed jsonlint validation" >&2
         exit 1
     }
-    mv "$SYSTEM_TEMP" "$TARGET_CONFIG" || {
+    rm -f "$TARGET_CONFIG" 2>/dev/null; mv "$SYSTEM_TEMP" "$TARGET_CONFIG" || {
         rm -f "$TEMP"
         echo "Could not atomically install $TARGET_CONFIG" >&2
         exit 1
