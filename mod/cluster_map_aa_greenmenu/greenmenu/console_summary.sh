@@ -39,6 +39,9 @@ sed -n \
     -e '/^Installed config/p' \
     -e '/^Rebuilt/p' \
     -e '/^CLUSTERMAP_INSTALL_FAILED/p' \
+    -e '/^.*INSTALL_FAILED/p' \
+    -e '/^Uninstall FAILED/p' \
+    -e '/^NOT SUPPORTED/p' \
     -e '/^CLUSTERMAP_UPDATE_FIRMWARE_FIRST/p' \
     -e '/^Forms tried/p' \
     -e '/^each with/p' \
