@@ -1106,7 +1106,7 @@ BEGIN { in_children=0; in_gal=0; in_envs=0; line="" }
         if (line ~ /^[ 	]*$/) n=0
         print n; exit
     }
-}' "$SOURCE"`
+}' "$SOURCE"` || EXISTING_COUNT=""
 [ -n "$EXISTING_COUNT" ] || EXISTING_COUNT=0
 ENTRY_COUNT=`expr $INJECTED_COUNT + $EXISTING_COUNT` || { echo "Could not count the environment entries" >&2; exit 1; }
 echo "Environment entries: $INJECTED_COUNT injected + $EXISTING_COUNT already in the stock config"
@@ -1174,11 +1174,11 @@ if [ "$CARPLAY_OK" -eq 1 ]; then
             if (line ~ /^[ 	]*$/) n=0
             print n; exit
         }
-    }' "$SOURCE"`
+    }' "$SOURCE"` || CP_EXISTING=""
     if [ "$CP_EXISTING" = preload ]; then
         CARPLAY_OK=0; CARPLAY_WHY="CarPlay already has a preloaded library (another CarPlay mod?)"
     elif [ -z "$CP_EXISTING" ]; then
-        CARPLAY_OK=0; CARPLAY_WHY="no carplay entry in the supervisor config"
+        CARPLAY_OK=0; CARPLAY_WHY="no carplay entry in the supervisor config (or it could not be read)"
     elif [ `expr $CP_EXISTING + $CP_ADDED` -gt 10 ]; then
         CARPLAY_OK=0; CARPLAY_WHY="its environment list would pass the limit of 10"
     else

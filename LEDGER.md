@@ -1714,3 +1714,14 @@ the skip check), by markers (kill-proof position), and by real newlines
 in the ladder errors. The process lesson is recorded in the code
 comment and pinned by static tests: trap count + FAIL presence.
 93/93 green, audit ALL GREEN.
+
+---
+
+## Round 57 — v0.7.20: the class, everywhere
+
+Owner: "check all the code for this kind of issues." Done: trap
+inventory across all 119 shell files (one live clearing bug found in
+disable_hook.sh, fixed), bare-substitution scan across all 7 set -e
+scripts with the precise rule (one live unguarded multi-line awk found
+in the CarPlay block, fixed fail-open). The gates that caught them are
+now permanent: stricter unit tests + audit §10. 93/93 green.

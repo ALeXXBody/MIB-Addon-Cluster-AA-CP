@@ -152,6 +152,62 @@ for needle in 'event=remote.tap' 'event=cluster.remote.live' \
 done
 [ "$rtfail" = 0 ] && ok "shipped hook carries the tap + build marker"
 
+echo "== 10. no silent-death shapes (the v0.7.19 class)"
+# At most one EXIT-trap setter per file, never cleared mid-file: a second
+# setter silently replaced the v0.7.7 safety net and the unit kept dying
+# mute. The enable/disable traps must report (their non-zero exits are
+# always real failures; helper scripts' non-zero exits can be routine, so
+# theirs stay cleanup-only and their callers translate rc into words).
+# Every bare statement-start single-command substitution under set -e must
+# carry its own `||` guard (QNX sh exits the whole script on a failed
+# one); pipes, guards and substitutions inside conditions are proven safe
+# on the car and must not trip the gate.
+silentfail=0
+# lib_app_mount.sh is a sourced library (no set -e, no trap of its own):
+# it runs inside its callers' traps, but its substitutions still execute
+# under the caller's set -e, so they are checked in the second loop.
+for f in $PAYLOAD/enable_hook.sh \
+         $PAYLOAD/disable_hook.sh $PAYLOAD/turn_by_turn.sh \
+         $PAYLOAD/scripts/turn_by_turn.sh $PAYLOAD/lsd_jar.sh \
+         $PAYLOAD/scripts/lsd_jar.sh; do
+    nset=`grep -c '^trap [^-]' "$f" 2>/dev/null || true`
+    if [ "$nset" -gt 1 ]; then
+        fail "`basename $f`: $nset EXIT-trap setters (at most 1)"; silentfail=1
+    fi
+    if grep -q '^trap -' "$f" 2>/dev/null; then
+        fail "`basename $f` clears its EXIT trap mid-file"; silentfail=1
+    fi
+done
+for f in "enable_hook.sh:FAIL: enable_hook stopped" \
+         "disable_hook.sh:FAIL: disable_hook stopped"; do
+    n=${f%%:*}; needle=${f#*:}
+    if ! grep -qF "$needle" "$PAYLOAD/$n" 2>/dev/null; then
+        fail "$n finish() never reports its rc"; silentfail=1
+    fi
+done
+# precise per-line check: VAR=`cmd` at statement start, single command
+# (no pipe inside), unguarded (no || after it). Piped/guarded/conditional
+# forms are safe and must not trip the gate.
+for f in $PAYLOAD/scripts/lib_app_mount.sh $PAYLOAD/enable_hook.sh \
+         $PAYLOAD/disable_hook.sh $PAYLOAD/turn_by_turn.sh \
+         $PAYLOAD/scripts/turn_by_turn.sh $PAYLOAD/lsd_jar.sh \
+         $PAYLOAD/scripts/lsd_jar.sh; do
+    awk '!/^#/ {
+        line=$0
+        if (match(line, /^[ \t]*[A-Za-z_][A-Za-z0-9_]*=`[^`]*`/)) {
+            span=substr(line, RSTART, RLENGTH)
+            rest=substr(line, RSTART+RLENGTH)
+            if (index(span, "|") == 0 && index(rest, "||") == 0)
+                print FILENAME":"FNR": "line
+        }
+    }' "$f" 2>/dev/null || true
+done > /tmp/audit_bare_subst
+if [ -s /tmp/audit_bare_subst ]; then
+    while IFS= read -r ln; do fail "bare substitution: $ln"; silentfail=1; done < /tmp/audit_bare_subst
+fi
+rm -f /tmp/audit_bare_subst
+[ "$silentfail" = 0 ] && ok "traps single+reporting; no bare substitutions under set -e"
+
 if [ "$PASS" = 1 ]; then
     echo "audit_wiring: ALL GREEN (${1:-local})"
     exit 0

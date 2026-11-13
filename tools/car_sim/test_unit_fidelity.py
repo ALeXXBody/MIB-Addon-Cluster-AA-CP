@@ -42,17 +42,35 @@ def _stage(car, card_conf=None):
 # safe: the pipeline's exit is the last stage's (always 0), so only bare
 # single-command substitutions are flagged.
 def test_no_bare_probe_assignment_anywhere():
+    import re
     bad = []
-    for path in [PAYLOAD_SRC / "scripts/lib_app_mount.sh",
-                 PAYLOAD_SRC / "enable_hook.sh",
-                 PAYLOAD_SRC / "disable_hook.sh"]:
-        for i, ln in enumerate(path.read_text().splitlines(), 1):
-            s = ln.strip()
-            if s.startswith("#") or "||" in ln:
-                continue
-            m = re.search(r'=\s*`([^`]*)`', ln)
-            if m and "|" not in m.group(1):
-                bad.append(f"{path.name}:{i}: {ln.strip()}")
+    # Every script that runs under `set -e`: on the unit's sh a failed
+    # bare-statement single-command substitution exits the whole script
+    # with no message. Only that shape is fatal: pipes, `||` guards and
+    # substitutions inside conditions/&&-chains run safely on the car
+    # every boot (extensive diag evidence), so the gate matches exactly
+    # `VAR=`cmd`` at statement start, possibly spanning lines.
+    # (Scripts without set -e cannot die this way; their failures surface
+    # through run_quiet's FAIL line, covered separately.)
+    for rel in ["scripts/lib_app_mount.sh",
+                "enable_hook.sh",
+                "disable_hook.sh",
+                "turn_by_turn.sh",
+                "scripts/turn_by_turn.sh",
+                "lsd_jar.sh",
+                "scripts/lsd_jar.sh"]:
+        path = PAYLOAD_SRC / rel
+        text = path.read_text()
+        for m in re.finditer(
+                r"(?m)^[ \t]*[A-Za-z_][A-Za-z0-9_]*=`[^`]*?`", text):
+            span = m.group(0)
+            if "|" in span:
+                continue  # piped: pipeline rc is the last stage (0)
+            close_line = text[m.end():].split("\n", 1)[0]
+            if "||" in close_line:
+                continue  # guarded
+            bad.append(f"{rel}:{text[:m.start()].count(chr(10)) + 1}: "
+                       f"{span.splitlines()[0].strip()[:100]}")
     assert not bad, "bare assignments (die on the unit's sh):\n" + "\n".join(bad)
 
 
@@ -73,6 +91,10 @@ def test_single_exit_trap_with_fail_report():
             f"{name} must have exactly one EXIT-trap setter, found: {setters}"
         assert marker in body, f"{name} finish() never reports its rc"
         assert "_hook_rc=$?" in body, f"{name} finish() must capture rc first"
+        clearers = [ln.strip() for ln in body.splitlines()
+                    if re.match(r"^trap\s+-", ln.strip())]
+        assert not clearers, \
+            f"{name} must never clear the EXIT trap mid-file: {clearers}"
 
 
 def test_skip_check_is_exit_code_driven():

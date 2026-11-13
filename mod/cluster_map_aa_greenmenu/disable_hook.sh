@@ -240,7 +240,9 @@ if [ -d "$PRELOAD_WRITE_DIR" ] || [ -f "$APP_MOUNT/eso/lib/libdmdt_flush.so" ] |
         echo "  warning: could not remount $APP_MOUNT to clean up $PRELOAD_WRITE_DIR (harmless, unreferenced)" >&2
     fi
 fi
-trap - 0 1 2 15
+# NOTE (same trap rule as enable_hook.sh): no `trap - 0` clearer may ever
+# follow. Clearing the EXIT trap would drop both cleanup and the FAIL
+# report for everything after it -- the exact hole v0.7.19 closed.
 
 # Full revert of the Java start-up script, so the unit ends up as it was before
 # the install: put the turn-by-turn jar's line back if the installer took it

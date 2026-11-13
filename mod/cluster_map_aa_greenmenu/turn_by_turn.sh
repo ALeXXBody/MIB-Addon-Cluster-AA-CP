@@ -13,7 +13,7 @@ PATH=/proc/boot:/bin:/usr/bin:/usr/sbin:/sbin:/mnt/app/armle/bin:/mnt/app/armle/
 export PATH
 set -eu
 
-HERE=`cd "\`dirname "$0"\`" && pwd`
+HERE=`cd "\`dirname "$0"\`" && pwd` || { echo "Cannot resolve the payload root" >&2; exit 1; }
 NAME=VCAndroidAuto.jar
 MARKER=/mnt/app/eso/hmi/lsd/.aacluster_tbt_removed
 ADDED=/mnt/app/eso/hmi/lsd/.aacluster_tbt_added

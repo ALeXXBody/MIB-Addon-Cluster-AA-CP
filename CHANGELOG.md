@@ -861,3 +861,30 @@ Every offline gate missed it because nothing asserted trap composition.
 ### Tests
 - New: exactly one EXIT-trap setter per script + FAIL report present;
   skip check is exit-code driven. 93/93 car-sim green, audit ALL GREEN.
+
+## v0.7.20 — trap audit across every script + one more silent probe fixed
+
+### Fixed — the same two classes, repo-wide (owner: "check all the code")
+Audited every payload script for the v0.7.19 class, not just
+enable_hook.sh:
+- Exactly one EXIT-trap setter per file, never cleared mid-file. Found:
+  `disable_hook.sh` had the same mid-file `trap -` clearer (removed —
+  the Java-revert section keeps cleanup + reporting now). `turn_by_turn`
+  and `lsd_jar` (both copies) correctly have cleanup-only traps — their
+  non-zero exits are routine (`loaded` checks), so a FAIL line there
+  would be noise; their callers already translate rc into words.
+- All 7 `set -e` scripts scanned for bare statement-start single-command
+  substitutions. Found and fixed: an unguarded multi-line `awk` read of
+  the CarPlay entry in enable_hook.sh (fails open to "CarPlay not
+  installed", install proceeds), `HERE` guards in both turn_by_turn
+  copies, `wc -l` guards in both lsd_jar copies.
+- The new gates immediately proved themselves: the stricter scan caught
+  the CarPlay awk instance the old scan had missed.
+
+### Tests
+- The static gate now covers all 7 `set -e` files with the precise rule
+  (statement-start bare substitution; pipes/guards/conditions exempt with
+  car evidence), including multi-line spans.
+- The trap test pins one setter, no mid-file clearer, and the FAIL marker.
+- The audit itself gates the class at release time (§10). 93/93 car-sim
+  green, audit ALL GREEN.

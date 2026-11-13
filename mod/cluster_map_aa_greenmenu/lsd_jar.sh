@@ -76,7 +76,7 @@ case "$ACTION" in
         loaded ;;
     remove)
         if ! loaded; then echo "$NAME is not loaded; nothing to remove."; exit 0; fi
-        BEFORE=`wc -l < "$LSD"`
+        BEFORE=`wc -l < "$LSD"` || { echo "Cannot count lines in $LSD" >&2; exit 1; }
         mount -uw $APP; WRITABLE=1
         # Drop the jar's entry from each patch line. A line left with no
         # entries goes; a line that also lists other jars keeps them.
@@ -118,7 +118,7 @@ case "$ACTION" in
         fi
         [ -r "$JAR" ] || { echo "Missing $JAR and no source file to copy" >&2; exit 1; }
         if loaded; then echo "$NAME is already loaded; nothing to add."; exit 0; fi
-        BEFORE=`wc -l < "$LSD"`
+        BEFORE=`wc -l < "$LSD"` || { echo "Cannot count lines in $LSD" >&2; exit 1; }
         [ "`grep -c '^\$J9 ' "$LSD"`" -ge 1 ] || { echo "No Java launch line found in $LSD; not changed" >&2; exit 1; }
         mount -uw $APP; WRITABLE=1
         awk -v line="$LINE" '/^\$J9 /{print line} {print}' "$LSD" > "$NEW"
