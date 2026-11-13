@@ -246,6 +246,10 @@ script
     label   "Collect porting (55MB)"
 
 script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/virgin.sh"
+    label   "Virgin unit (remove all)"
+
+script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/esd/scripts/reboot.sh"
     label   "Reboot the unit"
 

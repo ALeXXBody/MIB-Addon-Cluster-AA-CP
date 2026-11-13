@@ -816,3 +816,20 @@ otherwise:
   time on the same clock. A press at monotonic_s=X either falls inside a
   live session window or it doesn't — no more guessing whether the wheel
   was pressed while the map ran.
+
+## v0.7.18 — virgin-unit scrubber
+
+### Added — "Virgin unit (remove all)" (ClusterMap_more screen)
+Uninstall left two inert files behind by design (supervisor recovery
+copy, screen backup) — fine for normal use, wrong for testing the app
+as a new user. The new entry runs the standard restore first (and stops
+if that fails, so gal can never be stranded), then scrubs every leftover
+the add-on ever placed on the unit: persistent recovery copies, hook
+payload remnants, flush .so, safe-area conf, player sidecars, lsd
+markers (jars only with our marker — another mod's files are left
+alone), both GEM screens incl. `.prev`, card-root shadow confs (moved
+aside on the card, never deleted), and all `/tmp` addon files. It then
+VERIFIES every path and reports REMOVED / already absent / STILL PRESENT
+with reasons — ending in `VIRGIN UNIT: CLEAN` or a named failure.
+Card payload, logs and backups are intentionally kept (evidence + source).
+A sim test proves scrub-to-zero plus a clean reinstall right after.

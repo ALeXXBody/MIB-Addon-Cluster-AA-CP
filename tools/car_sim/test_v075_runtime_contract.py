@@ -165,6 +165,45 @@ def test_hires_off_keeps_the_hex_override(car):
     assert "GAL_SECONDARY_HIRESEN=0" in text, text
 
 
+def test_virgin_scrubs_everything_and_reinstalls_clean(car):
+    """The virgin-unit function: after an armed install plus planted
+    leftovers (screen backup, markers, card shadow, RAM files), one run
+    must remove every unit trace, verify zero, and a fresh install right
+    after must work — the new-user proof."""
+    cfg_path = _stage_install(car)
+    car.run(["sh", f"{PKG}/enable_hook.sh"], expect_rc=0)
+    assert "libgal_hook.so" in cfg_path.read_text()
+    engdefs = pathlib.Path(APP_VIEWS[0], "eso/hmi/engdefs")
+    engdefs.mkdir(parents=True, exist_ok=True)
+    (engdefs / "cluster-map.esd").write_text("screen ClusterMap Main\n")
+    (engdefs / "cluster-map.esd.prev").write_text("old\n")
+    lsd = pathlib.Path(APP_VIEWS[0], "eso/hmi/lsd")
+    lsd.mkdir(parents=True, exist_ok=True)
+    (lsd / ".aacluster_tbt_removed").write_text("")
+    pathlib.Path("/fs/sda0/gal_dualscreen.conf").write_text(
+        "GAL_CLUSTER_REMOTE=1\n")
+    pathlib.Path("/tmp/gal_remote").write_text("1\n")
+    p = car.run(["sh", f"{PKG}/greenmenu/virgin.sh"], expect_rc=0)
+    out = p.stdout + p.stderr
+    assert "VIRGIN UNIT: CLEAN" in out, out
+    assert "libgal_hook.so" not in cfg_path.read_text()
+    for v in APP_VIEWS:
+        assert not pathlib.Path(v, "eso/lib/gal_dualscreen").exists(), v
+    assert not (engdefs / "cluster-map.esd").exists()
+    assert not (engdefs / "cluster-map.esd.prev").exists()
+    for v in SYS_VIEWS:
+        assert not pathlib.Path(
+            v, CFG_KEY + ".gal-dualscreen.original").exists(), v
+    assert not pathlib.Path("/fs/sda0/gal_dualscreen.conf").exists()
+    assert pathlib.Path(
+        "/fs/sda0/gal_dualscreen.conf.addon-cleanup").exists()
+    assert not pathlib.Path("/tmp/gal_remote").exists()
+    # a new user installs clean right after
+    p = car.run(["sh", f"{PKG}/enable_hook.sh"], expect_rc=0)
+    assert "Hook environment installed" in (p.stdout + p.stderr)
+    assert "libgal_hook.so" in cfg_path.read_text()
+
+
 def test_silent_child_death_gets_a_named_fail_line(car):
     """run_quiet is pattern-based: a child that dies WITHOUT printing its
     own reason used to read as DONE. Now the runner appends a named FAIL

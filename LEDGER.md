@@ -1691,3 +1691,13 @@ collection timestamps. The next diag decides between "pressed outside
 the session" and "firmware bypasses MessageRouter for input" — and the
 fix follows the evidence. 90/90 car-sim green, rebuilt hook v0.7.17
 verified, audit ALL GREEN (aap.out needle added).
+
+---
+
+## Round 55 — v0.7.18: virgin unit
+
+Owner wants to test the app as a new user. New ClusterMap_more entry
+"Virgin unit (remove all)": disable-gated restore, full scrub of every
+unit trace incl. the two files uninstall keeps, card shadow moved aside
+(not deleted), per-path verification report. 91/91 car-sim green (new
+scrub+reinstall test), audit ALL GREEN.

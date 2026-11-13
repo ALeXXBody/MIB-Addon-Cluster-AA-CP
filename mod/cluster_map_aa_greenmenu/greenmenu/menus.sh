@@ -104,6 +104,7 @@ case "$1" in
     esac ;;
 
     verify)    run_quiet verify    "$HERE/verify.sh" ;;
+    virgin)    run_quiet virgin    "$HERE/virgin.sh" ;;
     porting)   run_quiet porting   "$HERE/collect_for_porting.sh" ;;
     portfull)  run_quiet portfull  "$HERE/collect_for_porting_full.sh" ;;
     *) echo "menus.sh: unknown verb: $1" >&2; exit 64 ;;
