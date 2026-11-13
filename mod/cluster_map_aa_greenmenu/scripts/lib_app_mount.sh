@@ -84,16 +84,19 @@ app_probe_view()
             rm -f "$1/eso/lib/gal_dualscreen/.clustermap_rw_probe" 2>/dev/null
             return 0
         fi
-        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1/eso/lib/gal_dualscreen: ${_err:-(no message)}$(echo)"
+        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1/eso/lib/gal_dualscreen: ${_err:-(no message)}
+"
     else
-        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1/eso/lib/gal_dualscreen: (folder absent in this view)$(echo)"
+        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1/eso/lib/gal_dualscreen: (folder absent in this view)
+"
     fi
     _err=`{ ( : > "$1/.clustermap_rw_probe" ); } 2>&1` || true
     if [ -z "$_err" ]; then
         rm -f "$1/.clustermap_rw_probe" 2>/dev/null
         return 0
     fi
-    APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1 root: ${_err:-(no message)}$(echo)"
+    APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1 root: ${_err:-(no message)}
+"
     return 1
 }
 
@@ -116,7 +119,8 @@ app_mount_rw()
                 APP_WRITABLE=1; return 0
             fi
         fi
-        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}mount -uw $_f -> rc=$_rc: ${_err:-no message}$(echo)"
+        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}mount -uw $_f -> rc=$_rc: ${_err:-no message}
+"
     done
     if command -v on >/dev/null 2>&1; then
         for _n in mmx rcc; do
@@ -135,7 +139,8 @@ app_mount_rw()
                     fi
                 done
             fi
-            APP_LADDER_ERRORS="${APP_LADDER_ERRORS}on -f $_n mount -uw /mnt/app -> rc=$_rc: ${_err:-no message}$(echo)"
+            APP_LADDER_ERRORS="${APP_LADDER_ERRORS}on -f $_n mount -uw /mnt/app -> rc=$_rc: ${_err:-no message}
+"
         done
     fi
     return 1
@@ -262,16 +267,19 @@ system_probe_view()
             rm -f "$_sy_dir/.clustermap_sys_probe" 2>/dev/null
             return 0
         fi
-        SYSTEM_LADDER_ERRORS="${SYSTEM_LADDER_ERRORS}write probe at $_sy_dir: ${_sy_err:-(no message)}$(echo)"
+        SYSTEM_LADDER_ERRORS="${SYSTEM_LADDER_ERRORS}write probe at $_sy_dir: ${_sy_err:-(no message)}
+"
     else
-        SYSTEM_LADDER_ERRORS="${SYSTEM_LADDER_ERRORS}write probe at $_sy_dir: (folder absent in this view)$(echo)"
+        SYSTEM_LADDER_ERRORS="${SYSTEM_LADDER_ERRORS}write probe at $_sy_dir: (folder absent in this view)
+"
     fi
     _sy_err=`{ ( : > "$1/.clustermap_sys_probe" ); } 2>&1` || true
     if [ -z "$_sy_err" ]; then
         rm -f "$1/.clustermap_sys_probe" 2>/dev/null
         return 0
     fi
-    SYSTEM_LADDER_ERRORS="${SYSTEM_LADDER_ERRORS}write probe at $1 root: ${_sy_err:-(no message)}$(echo)"
+    SYSTEM_LADDER_ERRORS="${SYSTEM_LADDER_ERRORS}write probe at $1 root: ${_sy_err:-(no message)}
+"
     return 1
 }
 
@@ -289,7 +297,8 @@ system_mount_rw()
             SYSTEM_LADDER_OK="system: read-write via 'mount -uw $_f'"
             return 0
         fi
-        SYSTEM_LADDER_ERRORS="${SYSTEM_LADDER_ERRORS}mount -uw $_f -> rc=$_rc: ${_err:-no message}$(echo)"
+        SYSTEM_LADDER_ERRORS="${SYSTEM_LADDER_ERRORS}mount -uw $_f -> rc=$_rc: ${_err:-no message}
+"
     done
     if command -v on >/dev/null 2>&1; then
         for _n in mmx rcc; do
@@ -304,7 +313,8 @@ system_mount_rw()
                     fi
                 done
             fi
-            SYSTEM_LADDER_ERRORS="${SYSTEM_LADDER_ERRORS}on -f $_n mount -uw /mnt/system -> rc=$_rc: ${_err:-no message}$(echo)"
+            SYSTEM_LADDER_ERRORS="${SYSTEM_LADDER_ERRORS}on -f $_n mount -uw /mnt/system -> rc=$_rc: ${_err:-no message}
+"
         done
     fi
     # Nothing won: leave no form writable behind us.

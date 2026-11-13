@@ -472,7 +472,8 @@ def test_no_probe_assignment_can_die_silently_under_strict_sh():
             bad.append(f"{i}: {ln}")
     assert not bad, "bare probe assignments (die under the unit's sh):\n" + "\n".join(bad)
     eh = (PAYLOAD_SRC / "enable_hook.sh").read_text()
-    assert '2>/dev/null` || true' in eh, "the skip compare lost its errexit guard"
+    assert "_same=`" not in eh, "substitution-based skip compare is back"
+    assert "if awk -v inj=" in eh, "exit-code-driven skip compare missing"
     # and the never-silent trap is in place
     assert "FAIL: enable_hook stopped rc=" in eh, \
         "the shell-level-death trap is missing"

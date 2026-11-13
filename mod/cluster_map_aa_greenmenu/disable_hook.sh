@@ -80,6 +80,7 @@ fi
 
 finish()
 {
+    _hook_rc=$?
     if [ "$SYSTEM_WRITABLE" -eq 1 ]; then
         if [ -n "$SYSTEM_TEMP" ]; then
             rm -f "$SYSTEM_TEMP" 2>/dev/null || true
@@ -89,6 +90,11 @@ finish()
         SYSTEM_WRITABLE=0
     fi
     app_mount_finish
+    # Same single-trap rule as enable_hook.sh: any non-zero stop names
+    # itself, so an uninstall can never end in silence either.
+    if [ "$_hook_rc" -ne 0 ]; then
+        echo "FAIL: disable_hook stopped rc=$_hook_rc (last completed step is the last line above)" >&2
+    fi
 }
 
 trap finish 0 1 2 15

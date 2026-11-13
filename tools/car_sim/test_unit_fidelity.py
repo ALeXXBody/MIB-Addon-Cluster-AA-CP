@@ -58,6 +58,32 @@ def test_no_bare_probe_assignment_anywhere():
 
 # 2. ENOSYS shape: root refuses, subdirectory works — the ladder must still
 # land the write through the work target.
+def test_single_exit_trap_with_fail_report():
+    """The v0.7.7 safety net died on arrival: a second `trap ... 0`
+    setter silently replaced it, so the silent death it was built for
+    stayed silent through v0.7.18. Exactly one EXIT-trap setter may exist
+    per script, and its finish() must report non-zero stops."""
+    import re
+    for name, marker in (("enable_hook.sh", "FAIL: enable_hook stopped"),
+                         ("disable_hook.sh", "FAIL: disable_hook stopped")):
+        body = (PAYLOAD_SRC / name).read_text()
+        setters = [ln.strip() for ln in body.splitlines()
+                   if re.match(r"^trap\s+[^-]", ln.strip())]
+        assert len(setters) == 1, \
+            f"{name} must have exactly one EXIT-trap setter, found: {setters}"
+        assert marker in body, f"{name} finish() never reports its rc"
+        assert "_hook_rc=$?" in body, f"{name} finish() must capture rc first"
+
+
+def test_skip_check_is_exit_code_driven():
+    """The skip compare must not use command substitution at all: a bare
+    `_same=`awk ...`` in the death zone is what the unit killed silently
+    in v0.7.5 (rc=1, no message). awk's exit code drives the branch."""
+    body = (PAYLOAD_SRC / "enable_hook.sh").read_text()
+    assert "_same=`" not in body, "substitution-based skip check is back"
+    assert "if awk -v inj=" in body, "exit-code-driven skip check missing"
+
+
 def test_root_refuses_subdir_works_lands_write(car):
     _stage(car)
     for v in APP_VIEWS:

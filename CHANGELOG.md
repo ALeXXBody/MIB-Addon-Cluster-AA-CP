@@ -833,3 +833,31 @@ VERIFIES every path and reports REMOVED / already absent / STILL PRESENT
 with reasons — ending in `VIRGIN UNIT: CLEAN` or a named failure.
 Card payload, logs and backups are intentionally kept (evidence + source).
 A sim test proves scrub-to-zero plus a clean reinstall right after.
+
+## v0.7.19 — the silent death, actually fixed this time
+
+### Root cause (owner diag 30cae7b3, v0.7.18 run)
+The install died after the 2nd jsonlint OK with no message and no FAIL
+line — on code that had guards plus an EXIT trap. The trap never
+existed at runtime: the v0.7.7 safety net (`trap ... 0`) was silently
+REPLACED by a later `trap finish 0 1 2 15` in the same file, so every
+shell-level death ran cleanup-only `finish()` and exited rc=1 mute.
+Every offline gate missed it because nothing asserted trap composition.
+
+### Fixed
+- ONE exit trap per script: the reporting lives inside `finish()`
+  itself (rc captured first, named FAIL line on any non-zero stop),
+  in both enable_hook.sh and disable_hook.sh. The stray `trap -`
+  mid-file clearer is gone, so the Java section keeps coverage too.
+- The skip compare no longer uses command substitution at all (awk's
+  exit code drives the branch) — the substitution class that killed
+  v0.7.5 is structurally absent from the death zone.
+- Progress markers around the skip check and ladder entry: even a
+  SIGKILL/OOM (which no trap can report) leaves its position in the log.
+- Ladder error lists use real newlines (`$(echo)` contributed nothing —
+  trailing newlines are stripped, so the forms glued into one unreadable
+  line on the console photo).
+
+### Tests
+- New: exactly one EXIT-trap setter per script + FAIL report present;
+  skip check is exit-code driven. 93/93 car-sim green, audit ALL GREEN.

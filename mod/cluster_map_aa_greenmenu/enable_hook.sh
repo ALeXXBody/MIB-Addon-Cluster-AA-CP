@@ -13,19 +13,12 @@ export PATH
 
 set -eu
 
-# v0.7.7 safety net: this script must never stop without a reason. The
-# v0.7.5 car round died here invisibly: a probing assignment whose command
-# failed under the unit's stricter sh exited the whole script (rc=1) with
-# no message at all -- the diag's full log jumped straight from jsonlint-OK
-# to "CLUSTERMAP_INSTALL_FAILED (code 1)". The probes no longer use bare
-# failing assignments, and this trap guarantees that even a shell-level
-# death prints a FAIL line into the run log (and through console_summary /
-# the failed-install tail, onto the GEM console).
-trap '_hook_rc=$?
-if [ "$_hook_rc" -ne 0 ]; then
-    echo "FAIL: enable_hook stopped rc=$_hook_rc without printing its own reason" >&2
-    echo "      (shell-level death -- the diag full log names the last completed step)" >&2
-fi' 0
+# NOTE on traps (learned the hard way, v0.7.19): there must be EXACTLY ONE
+# `trap ... 0` setter in this file. A second setter silently REPLACES the
+# first -- which is how the v0.7.7 safety net died on arrival (it was
+# overwritten by `trap finish` further down) while every offline test
+# stayed green. The single finish() below does BOTH jobs: cleanup and,
+# on any non-zero stop, a named FAIL line. A static test pins this.
 
 CARD_ROOT=`cd "\`dirname "$0"\`" && pwd` || { echo "Cannot resolve the payload root" >&2; exit 1; }
 # One canonical payload root: if this script copy was reached from a NESTED
@@ -192,6 +185,7 @@ fi
 
 finish()
 {
+    _hook_rc=$?
     if [ "$SYSTEM_WRITABLE" -eq 1 ]; then
         if [ -n "$SYSTEM_TEMP" ]; then
             rm -f "$SYSTEM_TEMP" 2>/dev/null || true
@@ -201,6 +195,13 @@ finish()
         SYSTEM_WRITABLE=0
     fi
     app_mount_finish
+    # The single EXIT trap (see the NOTE on traps above): any non-zero stop
+    # -- explicit exit, shell-level death, signal -- names itself here, so
+    # the run log (and through it the verdict, the console tail and the
+    # diag) can never again end in silence.
+    if [ "$_hook_rc" -ne 0 ]; then
+        echo "FAIL: enable_hook stopped rc=$_hook_rc (last completed step is the last line above)" >&2
+    fi
 }
 
 trap finish 0 1 2 15
@@ -1212,46 +1213,53 @@ LD_LIBRARY_PATH="$VALIDATOR_LD_LIBRARY_PATH" "$JSONLINT" --file "$TEMP" || {
 }
 
 # ---------------------------------------------------------------------------
-# v0.7.7: if the supervisor config ALREADY carries this install, there is
-# nothing to remount and nothing to write. The comparison is SEMANTIC now:
-# every entry this install would inject must already be present, verbatim,
-# in the gal child's envs of the live config. The v0.7.5 byte-for-byte awk
-# compare was too strict -- the car's config had been written by an earlier
-# run with harmless differences, so every reinstall went to the system
-# ladder instead of skipping. The recovery copy must exist, and the skip is
-# only taken when no CarPlay firewall marker is present (that marker needs
-# a writable system partition to be taken out).
+# If the supervisor config ALREADY carries this install, there is nothing
+# to remount and nothing to write. The comparison is SEMANTIC: every entry
+# this install would inject must already be present, verbatim, in the gal
+# child's envs of the live config. The recovery copy must exist, and the
+# skip is only taken when no CarPlay firewall marker is present (that
+# marker needs a writable system partition to be taken out).
+#
+# v0.7.19: the check is exit-code driven (awk exits 0/1), never a command
+# substitution. A substitution here is exactly what died silently on the
+# unit in v0.7.5 (rc=1, no message), and the v0.7.7 guard could not save a
+# shell whose quirk is the substitution itself.
 SYSTEM_NOCHANGE=0
 if [ "$CARPLAY_OK" -ne 1 ] && [ "$TARGET_IS_HOOKED" -eq 1 ] && \
    [ -r "$TARGET_CONFIG" ] && [ -r "$PERSISTENT_BACKUP" ]; then
-    _same=`awk -v inj="$INJECTION" '
+    echo "progress: skip-check running (semantic env compare)" >&2
+    if awk -v inj="$INJECTION" '
         { buf = buf $0 "\n" }
         END {
+            ok = 0
             s = index(buf, "\"gal\"")
-            if (s == 0) { print "no"; exit }
-            rest = substr(buf, s)
-            e = index(rest, "\"envs\"")
-            if (e == 0) { print "no"; exit }
-            rest = substr(rest, e)
-            a = index(rest, "[")
-            if (a == 0) { print "no"; exit }
-            rest = substr(rest, a + 1)
-            end = index(rest, "]")
-            if (end == 0) { print "no"; exit }
-            rest = substr(rest, 1, end)
-            n = split(inj, want, "\", \"")
-            for (i = 1; i <= n; i++) {
-                w = want[i]
-                # keep only the characters an env entry is made of; strips
-                # the quote/comma debris the split leaves at both ends
-                gsub(/[^A-Za-z0-9_\/=.:-]/, "", w)
-                if (w == "") continue
-                if (index(rest, "\"" w "\"") == 0) { print "no"; exit }
+            if (s > 0) {
+                rest = substr(buf, s)
+                e = index(rest, "\"envs\"")
+                if (e > 0) {
+                    rest = substr(rest, e)
+                    a = index(rest, "[")
+                    if (a > 0) {
+                        rest = substr(rest, a + 1)
+                        end = index(rest, "]")
+                        if (end > 0) {
+                            rest = substr(rest, 1, end)
+                            ok = 1
+                            n = split(inj, want, "\", \"")
+                            for (i = 1; i <= n; i++) {
+                                w = want[i]
+                                gsub(/[^A-Za-z0-9_\/=.:-]/, "", w)
+                                if (w == "") continue
+                                if (index(rest, "\"" w "\"") == 0) { ok = 0; break }
+                            }
+                        }
+                    }
+                }
             }
-            print "yes"
+            if (ok) exit 0; exit 1
         }
-    ' "$TARGET_CONFIG" 2>/dev/null` || true
-    if [ "$_same" = yes ]; then
+    ' "$TARGET_CONFIG" 2>/dev/null; then
+        echo "progress: skip-check matched (config already carries this install)" >&2
         # A CarPlay firewall marker can only be taken out with a writable
         # system partition, so never skip past one.
         _pfmark=0
@@ -1260,6 +1268,8 @@ if [ "$CARPLAY_OK" -ne 1 ] && [ "$TARGET_IS_HOOKED" -eq 1 ] && \
             grep -q "$CARPLAY_PF_MARK" "$_pf" 2>/dev/null && { _pfmark=1; break; }
         done
         [ "$_pfmark" = 1 ] || SYSTEM_NOCHANGE=1
+    else
+        echo "progress: skip-check did not match (fresh entries to write)" >&2
     fi
 fi
 if [ "$SYSTEM_NOCHANGE" -eq 1 ]; then
@@ -1267,6 +1277,7 @@ if [ "$SYSTEM_NOCHANGE" -eq 1 ]; then
     rm -f "$TEMP"
     SYSTEM_WRITABLE=0
 else
+    echo "progress: entering the system remount ladder" >&2
     if system_mount_rw; then
         echo "$SYSTEM_LADDER_OK"
     else
@@ -1362,7 +1373,10 @@ else
     sync
     mount -ur "$SYSTEM_MOUNT" 2>/dev/null || true
     SYSTEM_WRITABLE=0
-    trap - 0 1 2 15
+    # NOTE: the EXIT trap stays installed past this point (see the NOTE on
+    # traps at the top). Clearing it here would leave the Java-check section
+    # below without cleanup or reporting -- and finish() is silent on rc=0,
+    # so keeping it changes nothing on the success path.
 fi
 
 echo "Hook environment installed for the supervisor-owned GAL."

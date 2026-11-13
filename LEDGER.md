@@ -1701,3 +1701,16 @@ Owner wants to test the app as a new user. New ClusterMap_more entry
 unit trace incl. the two files uninstall keeps, card shadow moved aside
 (not deleted), per-path verification report. 91/91 car-sim green (new
 scrub+reinstall test), audit ALL GREEN.
+
+---
+
+## Round 56 — v0.7.19: the trap that never was
+
+Owner diag 30cae7b3 (v0.7.18) proved the v0.7.7 safety net never
+existed: a later `trap finish` replaced it, so the unit kept dying
+mute after the 2nd jsonlint OK. Fixed by composition (one reporting
+trap in finish(), both scripts), by construction (no substitution in
+the skip check), by markers (kill-proof position), and by real newlines
+in the ladder errors. The process lesson is recorded in the code
+comment and pinned by static tests: trap count + FAIL presence.
+93/93 green, audit ALL GREEN.
