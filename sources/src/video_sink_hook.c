@@ -183,6 +183,11 @@ static unsigned long g_channel_seen[256];
  * "unexpected message" reply can be tied to the message that caused it. */
 static unsigned short g_channel_last_id[256];
 static unsigned char g_channel_traced[256];
+/* Outbound first-sight counter: mirrors g_channel_traced (inbound) so ALL
+ * outbound traffic is visible. Without it, anything the tap filter drops
+ * is invisible by construction — the exact blind spot that hid the wheel
+ * path for three releases. */
+static unsigned char g_channel_otrace[256];
 static char g_service_class[256][40];
 typedef void (*unexpected_fn)(void *, unsigned char);
 static unexpected_fn g_send_unexpected;
@@ -3178,6 +3183,17 @@ static void outbound_sniff(unsigned char channel, const void *buf, unsigned len)
     unsigned id;
 
     if (m == NULL || len < 2u) return;
+    id = ((unsigned)m[0] << 8) | m[1];
+    /*
+     * Outbound first-sight trace, mirroring event=aap.msg (inbound). The
+     * tap below only logs what passes its filter; everything else outbound
+     * was invisible. First 12 messages per channel, always on.
+     */
+    if (g_channel_otrace[channel] < CHANNEL_TRACE_MESSAGES) {
+        ++g_channel_otrace[channel];
+        gal_hook_logf("event=aap.out channel=%u class=%s msg_id=0x%04x bytes=%u",
+                      (unsigned)channel, g_service_class[channel], id, len);
+    }
     /*
      * The class filter is not cosmetic. This unit emits 0x8001 on several
      * services that are NOT the wheel: SensorSource (channel 3,
@@ -3201,13 +3217,12 @@ static void outbound_sniff(unsigned char channel, const void *buf, unsigned len)
             if (!filter_logged) {
                 filter_logged = 1;
                 gal_hook_logf("event=remote.tap result=filtered channel=%u id=0x%04x class=%s reason=no-input-binding-seen",
-                              (unsigned)channel, ((unsigned)m[0] << 8) | m[1], cls);
+                              (unsigned)channel, id, cls);
             }
             return;
         }
         cls = "InputSource(inferred:phone-bound-0x8002)";
     }
-    id = ((unsigned)m[0] << 8) | m[1];
     if (id != 0x8001u) return;                 /* InputReport only */
     if (ob_is_dup(m, len)) return;
     if (remote_trace_on() || cluster_remote_on())

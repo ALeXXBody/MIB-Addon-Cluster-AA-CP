@@ -25,6 +25,16 @@ unset _l
 run_quiet() {
     _child=$2
     _log="/tmp/cm_menu_${1:-unknown}.log"
+    # WHEN the press happened, on the SAME clock the hook log uses
+    # (CLOCK_MONOTONIC seconds — hook event t=). /proc/uptime exists on the
+    # unit; without it fall back to wall clock and say so, so the diag can
+    # still correlate via its own collection date.
+    if [ -r /proc/uptime ]; then
+        _UPT=`awk '{print $1}' /proc/uptime 2>/dev/null` || _UPT=""
+        _UPT="press started at monotonic_s: ${_UPT:-unknown} (same clock as hook t=)"
+    else
+        _UPT="press wall: `date 2>/dev/null || echo unknown` (/proc/uptime absent)"
+    fi
     # optional child argument ($3): zoom up/down, keep_map on/off ...
     if [ -n "$3" ]; then
         sh "$_child" "$3" >"$_log" 2>&1
@@ -40,6 +50,7 @@ run_quiet() {
             -e "^Cannot " -e "^Could not " "$_log" 2>/dev/null; then
         echo "FAIL: $1 child ${_child##*/} stopped rc=$_rc without its own reason" >> "$_log"
     fi
+    echo "$_UPT" >> "$_log" 2>/dev/null
     # FLOOR THE PRESS. Your GEM 4.12st's console screen breaks on re-entry
     # (owner photo: de.audi.gem.?.?.ScreenRenderer "Thread is already
     # started") and shows only "...". Every extra printed line is display

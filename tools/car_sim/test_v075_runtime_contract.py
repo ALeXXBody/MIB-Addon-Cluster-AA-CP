@@ -201,6 +201,10 @@ def test_diag_12b_collects_every_recent_press(car):
     assert "cm_menu_remote.log" in txt, txt[-1500:]
     assert first_log.strip() in txt, \
         "§12b tailed the earlier press instead of keeping it whole"
+    assert "press started at monotonic_s:" in txt, \
+        "presses carry no same-clock timestamp — wheel timing stays guesswork"
+    assert "collected monotonic_s:" in txt, \
+        "collection carries no same-clock timestamp"
 
 
 def test_diag_keeps_full_last_log_console_and_hook_prev(car):

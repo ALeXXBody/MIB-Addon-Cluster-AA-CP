@@ -1676,3 +1676,18 @@ filter line), and run_quiet names silent child deaths so the verdict
 can't read DONE. 90/90 car-sim green (new end-to-end silent-death
 test), rebuilt hook v0.7.16 verified, audit ALL GREEN (needles extended
 to the new lines).
+
+---
+
+## Round 54 — v0.7.17: see every outbound byte, date every press
+
+Owner diag 62cb83de (v0.7.16): tap installed and proven running (one
+filtered Controller discovery line), session live with real map content,
+all switches armed — yet zero wheel taps. The remaining unknowns are
+TIMING (pressed during the session?) and ROUTING (reports via an
+unhooked path?). v0.7.17 instruments both without changing behavior:
+outbound first-sight trace for every channel, same-clock press and
+collection timestamps. The next diag decides between "pressed outside
+the session" and "firmware bypasses MessageRouter for input" — and the
+fix follows the evidence. 90/90 car-sim green, rebuilt hook v0.7.17
+verified, audit ALL GREEN (aap.out needle added).

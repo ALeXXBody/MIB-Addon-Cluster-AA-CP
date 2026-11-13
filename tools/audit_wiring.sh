@@ -144,7 +144,8 @@ grep -q 'GAL_RUNTIME_DIR="\${GAL_RUNTIME_DIR:-/tmp}"' $PAYLOAD/scripts/lib_app_m
 # there goes unexplained again.
 for needle in 'event=remote.tap' 'event=cluster.remote.live' \
               'event=cluster.remote.gate result=closed' '/tmp/gal_remote' 'event=remote.trace parse' \
-              'event=remote.tap result=filtered' 'event=cluster.menu.event' 'result=failed reason=cannot-write'; do
+              'event=remote.tap result=filtered' 'event=cluster.menu.event' 'result=failed reason=cannot-write' \
+              'event=aap.out'; do
     if strings $PAYLOAD/libgal_hook.so | grep -qF "$needle"; then :; else
         fail "shipped hook lacks '$needle'"; rtfail=1
     fi

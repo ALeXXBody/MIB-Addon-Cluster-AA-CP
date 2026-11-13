@@ -141,6 +141,11 @@ for f in /net/rcc/dev/shmem/version.txt /dev/shmem/version.txt; do
 done
 [ -r "$PKG/profiles.conf" ] && \
     put "train supported: `sh "$HERE/../profile_check" "$PKG/profiles.conf" 2>/dev/null || echo 'profile_check not executable here (expected on the unit only)'`"
+# Collection time on BOTH clocks: wall (matches dated photos/notes) and
+# monotonic (the SAME clock as hook event t= and the press lines in §12,
+# so a press at monotonic_s=X either falls inside a live session or not —
+# no more guessing whether the wheel was pressed while the map ran).
+put "collected monotonic_s: `awk '{print $1}' /proc/uptime 2>/dev/null || echo '(no /proc/uptime on this unit)'`"
 
 # ---- 2. payload integrity
 section "2 payload files (cksum)"

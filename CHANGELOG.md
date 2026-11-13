@@ -799,3 +799,20 @@ persist path prints its outcome — but two holes remained, both closed:
   died WITHOUT its own reason read as DONE. It now appends
   `FAIL: <verb> child <script> stopped rc=<n> without its own reason`,
   which flips the verdict to STOPPED and lands in the bundle.
+
+## v0.7.17 — the wheel path becomes fully visible + press/session correlation
+
+### Fixed — one honest blind spot left (owner diag 62cb83de analysis)
+The v0.7.16 diag proved the tap is installed and running (it filtered a
+Controller discovery message) yet zero wheel taps appeared across a live
+session. Two visibility gaps remained, both closed — no behavior change
+otherwise:
+- New `event=aap.out` outbound first-sight trace (first 12 messages per
+  channel, always on), mirroring `event=aap.msg` inbound. Previously
+  anything the tap filter dropped was invisible by construction; now all
+  outbound traffic is named with channel, class and message id.
+- Every GEM press records its time on the SAME clock the hook log uses
+  (`/proc/uptime` monotonic seconds), and the diag records collection
+  time on the same clock. A press at monotonic_s=X either falls inside a
+  live session window or it doesn't — no more guessing whether the wheel
+  was pressed while the map ran.
