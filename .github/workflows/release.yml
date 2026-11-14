@@ -19,9 +19,15 @@ jobs:
       - name: Build the mod zip (same flow as the repo checks)
         # The gate runs the full car-sim suite, which needs a mount
         # namespace: that requires root, so the versioned build runs
-        # under sudo here. Artifacts stay world-readable for the
-        # later steps.
+        # under sudo here.
         run: sudo -E tools/build_release.sh "$GITHUB_REF_NAME"
+
+      - name: Hand the artifacts back to the runner user
+        # The sudo build leaves dist/ root-owned; later steps run as
+        # runner and must read them (a permission error here once masked
+        # itself as a release failure).
+        if: always()
+        run: sudo chown -R $(id -un):$(id -gn) dist/ 2>/dev/null || true
 
       - name: The release body = what this round shipped (the tag commit's)
         run: |
