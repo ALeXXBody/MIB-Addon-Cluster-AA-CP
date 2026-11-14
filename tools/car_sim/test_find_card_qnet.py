@@ -3,10 +3,10 @@ actually shows — the FQDN QNET view included — and a read-only card view
 can no longer stop the discovery itself."""
 import pathlib
 import shutil
+from conftest import REPO
 
 # Source of truth in THIS repo; the ZIP ships it as mod/cluster_aa.
-PAYLOAD_SRC = pathlib.Path(
-    "/tmp/opencode/mib2/mib-mod-repo/mod/cluster_map_aa_greenmenu")
+PAYLOAD_SRC = REPO / "mod/cluster_map_aa_greenmenu"
 
 COMMON_SRC = PAYLOAD_SRC / "greenmenu/common.sh"
 

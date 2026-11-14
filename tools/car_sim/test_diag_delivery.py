@@ -13,11 +13,10 @@ written (the report that started this round). Two properties are pinned:
 import pathlib
 import shutil
 
-from conftest import APP_VIEWS, SYS_VIEWS, CARD_VIEWS
+from conftest import APP_VIEWS, REPO, SYS_VIEWS, CARD_VIEWS
 
-PAYLOAD_SRC = pathlib.Path(
-    "/tmp/opencode/mib2/mib-mod-repo/mod/cluster_map_aa_greenmenu")
-REPO_MOD = pathlib.Path("/tmp/opencode/mib2/mib-mod-repo/mod")
+PAYLOAD_SRC = REPO / "mod/cluster_map_aa_greenmenu"
+REPO_MOD = REPO / "mod"
 PKG_ALT = "/net/mmx/fs/sda0/mod/cluster_aa"
 PKG = "/fs/sda0/mod/cluster_aa"
 

@@ -4,11 +4,10 @@ import pathlib
 import shutil
 import textwrap
 
-from conftest import APP_VIEWS, SYS_VIEWS, JSONLINT_SH
+from conftest import APP_VIEWS, REPO, SYS_VIEWS, JSONLINT_SH
 
 # Source of truth in THIS repo; the ZIP ships it as mod/cluster_aa.
-PAYLOAD_SRC = pathlib.Path(
-    "/tmp/opencode/mib2/mib-mod-repo/mod/cluster_map_aa_greenmenu")
+PAYLOAD_SRC = REPO / "mod/cluster_map_aa_greenmenu"
 
 PKG = "/fs/sda0/mod/cluster_aa"
 

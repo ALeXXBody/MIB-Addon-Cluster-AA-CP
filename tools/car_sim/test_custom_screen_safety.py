@@ -5,10 +5,9 @@ FQDN view. This is the GEM-boot hang regression test."""
 import pathlib
 import shutil
 
-from conftest import APP_VIEWS, SYS_VIEWS
+from conftest import APP_VIEWS, REPO, SYS_VIEWS
 
-PAYLOAD_SRC = pathlib.Path(
-    "/tmp/opencode/mib2/mib-mod-repo")
+PAYLOAD_SRC = REPO
 PKG = "/fs/sda0/mod/cluster_aa"
 CUSTOM = "/fs/sda0/mod/custom.sh"
 ENGDEFS = pathlib.Path(APP_VIEWS[1], "eso/hmi/engdefs")

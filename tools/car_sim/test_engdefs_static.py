@@ -4,7 +4,7 @@ line the owner caught hardcoding /net/mmx/...)."""
 import pathlib
 import re
 
-REPO = pathlib.Path("/tmp/opencode/mib2/mib-mod-repo")
+from conftest import REPO
 CUSTOM = REPO / "mod/custom.sh"
 
 

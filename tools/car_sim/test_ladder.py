@@ -4,9 +4,9 @@ import pathlib
 import shutil
 
 from conftest import APP_VIEWS
+from conftest import REPO
 
-REPO_LIB = ("/tmp/opencode/mib2/mib-mod-repo/"
-            "mod/cluster_map_aa_greenmenu/scripts/lib_app_mount.sh")
+REPO_LIB = str(REPO / "mod/cluster_map_aa_greenmenu/scripts/lib_app_mount.sh")
 DST = "/fs/sda0/mod/cluster_map_aa_greenmenu/scripts/lib_app_mount.sh"
 
 

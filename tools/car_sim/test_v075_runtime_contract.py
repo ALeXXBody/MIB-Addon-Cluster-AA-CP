@@ -26,9 +26,8 @@ import re
 import shutil
 import subprocess
 
-from conftest import APP_VIEWS, SYS_VIEWS
+from conftest import APP_VIEWS, REPO, SYS_VIEWS
 
-REPO = pathlib.Path("/tmp/opencode/mib2/mib-mod-repo")
 PAYLOAD_SRC = REPO / "mod/cluster_map_aa_greenmenu"
 PKG = "/fs/sda0/mod/cluster_aa"
 SW = f"{PKG}/greenmenu"

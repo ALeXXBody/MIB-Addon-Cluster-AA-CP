@@ -8,9 +8,9 @@ beside the live config on the unit (its own partition), not here.
 """
 import pathlib
 import re
+from conftest import REPO
 
-ENABLE = pathlib.Path("/tmp/opencode/mib2/mib-mod-repo/"
-                      "mod/cluster_map_aa_greenmenu/enable_hook.sh")
+ENABLE = REPO / "mod/cluster_map_aa_greenmenu/enable_hook.sh"
 
 
 def _extract():

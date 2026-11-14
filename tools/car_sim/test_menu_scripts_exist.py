@@ -7,9 +7,9 @@ import pathlib
 import re
 import subprocess
 import os
+from conftest import REPO
 
-GREENMENU = pathlib.Path(
-    "/tmp/opencode/mib2/mib-mod-repo/mod/cluster_map_aa_greenmenu/greenmenu")
+GREENMENU = REPO / "mod/cluster_map_aa_greenmenu/greenmenu"
 
 
 def _menus_case():

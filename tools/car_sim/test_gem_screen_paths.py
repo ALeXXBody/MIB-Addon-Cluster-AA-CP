@@ -9,11 +9,10 @@ and only fall back to the console's own view otherwise."""
 import pathlib
 import shutil
 
-from conftest import APP_VIEWS, SYS_VIEWS
+from conftest import APP_VIEWS, REPO, SYS_VIEWS
 
-PAYLOAD_SRC = pathlib.Path(
-    "/tmp/opencode/mib2/mib-mod-repo/mod/cluster_map_aa_greenmenu")
-REPO_MOD = pathlib.Path("/tmp/opencode/mib2/mib-mod-repo/mod")
+PAYLOAD_SRC = REPO / "mod/cluster_map_aa_greenmenu"
+REPO_MOD = REPO / "mod"
 PKG = "/fs/sda0/mod/cluster_aa"
 GEM_PKG = "/net/mmx/fs/sda0/mod/cluster_aa"
 LIVE = pathlib.Path(APP_VIEWS[1], "eso/hmi/engdefs/cluster-map.esd")

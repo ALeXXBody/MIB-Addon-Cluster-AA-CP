@@ -13,10 +13,9 @@ config (that order is what keeps a bad screen from ever meeting a live hook).
 import pathlib
 import shutil
 
-from conftest import APP_VIEWS, SYS_VIEWS
+from conftest import APP_VIEWS, REPO, SYS_VIEWS
 
-PAYLOAD_SRC = pathlib.Path(
-    "/tmp/opencode/mib2/mib-mod-repo/mod/cluster_map_aa_greenmenu")
+PAYLOAD_SRC = REPO / "mod/cluster_map_aa_greenmenu"
 PKG = "/fs/sda0/mod/cluster_aa"
 CFG_KEY = "etc/eso/production/smartphone_integrator.json"
 
