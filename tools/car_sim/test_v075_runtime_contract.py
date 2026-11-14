@@ -22,6 +22,7 @@ GAL_RUNTIME_DIR. The shipped default must stay /tmp, and that is asserted
 separately, without running anything.
 """
 import pathlib
+import os
 import re
 import shutil
 import subprocess
@@ -573,12 +574,18 @@ def test_the_shipped_hook_exports_the_send_path_and_carries_the_tap(car):
     so = PAYLOAD_SRC / "libgal_hook.so"
     data = so.read_bytes()
     blob = data.decode("latin-1")
-    # the outbound interposers must be exported, or the tap never runs
-    env = {"PATH": "/opt/qnx650/host/linux/x86/usr/bin:/usr/bin:/bin"}
-    nm = subprocess.run(["arm-unknown-nto-qnx6.5.0eabi-nm", "-D",
-                         "--defined-only", str(so)],
-                        capture_output=True, text=True, env=env)
-    if nm.returncode == 0:
+    # the outbound interposers must be exported, or the tap never runs.
+    # The QNX toolchain only exists on dev machines; elsewhere the export
+    # check is skipped but the strings below must still hold.
+    env = dict(os.environ)
+    env["PATH"] = "/opt/qnx650/host/linux/x86/usr/bin:/usr/bin:/bin"
+    try:
+        nm = subprocess.run(["arm-unknown-nto-qnx6.5.0eabi-nm", "-D",
+                             "--defined-only", str(so)],
+                            capture_output=True, text=True, env=env)
+    except OSError:
+        nm = None
+    if nm is not None and nm.returncode == 0:
         assert "_ZN13MessageRouter13queueOutgoingEhPvj" in nm.stdout, nm.stdout
         assert "_ZN13MessageRouter24queueOutgoingUnencryptedEhPvj" in nm.stdout
     # the build marker and the tap's own log lines: a v0.7.4 binary has none
