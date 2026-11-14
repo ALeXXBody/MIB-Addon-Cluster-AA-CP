@@ -17,7 +17,11 @@ jobs:
           fetch-depth: 0
 
       - name: Build the mod zip (same flow as the repo checks)
-        run: tools/build_release.sh "$GITHUB_REF_NAME"
+        # The gate runs the full car-sim suite, which needs a mount
+        # namespace: that requires root, so the versioned build runs
+        # under sudo here. Artifacts stay world-readable for the
+        # later steps.
+        run: sudo -E tools/build_release.sh "$GITHUB_REF_NAME"
 
       - name: The release body = what this round shipped (the tag commit's)
         run: |
