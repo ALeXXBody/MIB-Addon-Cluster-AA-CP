@@ -24,6 +24,17 @@ cd "$(dirname "$0")/.."
 TAG=${1:-local-test}
 NAME="MIB-Addon-Cluster-AA-CP-mod"
 DIST=dist
+
+# RELEASE RULE (owner-mandated, highest priority): a versioned build only
+# leaves this machine green. local-test and contract-check builds stay
+# fast for development; anything named like a release goes through the
+# full gate first.
+case "$TAG" in
+    v*) sh tools/release_gate.sh || {
+            echo "ERROR: release gate is RED - refusing to build $TAG" >&2
+            exit 1
+        } ;;
+esac
 : "${DIST:?}"
 rm -rf "${DIST:?}/$NAME" "${DIST:?}/$NAME-"*.zip* 2>/dev/null || true
 mkdir -p "$DIST/$NAME/mod"

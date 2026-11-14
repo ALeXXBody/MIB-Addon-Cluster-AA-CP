@@ -1725,3 +1725,21 @@ disable_hook.sh, fixed), bare-substitution scan across all 7 set -e
 scripts with the precise rule (one live unguarded multi-line awk found
 in the CarPlay block, fixed fail-open). The gates that caught them are
 now permanent: stricter unit tests + audit §10. 93/93 green.
+
+---
+
+## RULE — standing, highest priority (owner-mandated 2026-11-14)
+
+**Nothing ships without proof. Every implementation or change must be
+properly tested BEFORE any release.**
+
+Enforced, not just written:
+- `tools/release_gate.sh` is the rule in executable form: syntax, manifest,
+  screens, card locator, portability, release contract, the FULL car-sim
+  suite, and audit ALL GREEN — or no ship.
+- `tools/build_release.sh` refuses versioned builds when the gate is red
+  (proven: a deliberately broken tree is refused with rc=1, nothing built).
+  `local-test` builds stay fast for development.
+- CI runs the static half (syntax, manifest, screens, locator,
+  portability, audit, contract) on every push. The full sim suite needs a
+  mount namespace, so it is gated locally — never skipped.

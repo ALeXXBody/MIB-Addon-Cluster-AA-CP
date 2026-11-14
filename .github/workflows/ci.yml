@@ -27,3 +27,12 @@ jobs:
 
       - name: find_card locator (all card view/layout combinations)
         run: tools/find_card_test.sh
+
+      - name: portability (no bare missing-tool usage)
+        run: tools/gem_portable_check.sh
+
+      - name: wiring + silent-death audit
+        run: sh tools/audit_wiring.sh ci
+
+      - name: release contract (armed zip, unarmed repo)
+        run: tools/check_release_build.sh
