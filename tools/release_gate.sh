@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # ============================================================================
 # RELEASE RULE — owner-mandated, HIGHEST PRIORITY (2026-11-14).
 #
@@ -9,51 +9,46 @@
 # a v* tag push, a GitHub release) is FORBIDDEN unless every check below
 # passes in the same checkout: syntax of every shell script, payload
 # manifest, screen files, card locator, portability, the release
-# contract, the FULL car-simulation suite, and audit_wiring ALL GREEN.
+# contract, the FULL car-simulation suite, and audit wiring ALL GREEN.
 #
 # This script IS the rule in executable form. tools/build_release.sh
-# refuses versioned builds when this gate is red; CI runs the static
-# half on every push. The full suite needs a mount namespace, so it is
-# enforced locally here — never skipped, never "green enough".
+# refuses versioned builds when this gate is red; CI runs it on every
+# versioned build. The full sim suite needs a mount namespace (root on
+# CI); every step's log is kept, and on failure the tail is printed, so
+# a red gate always names its reason instead of hiding it.
 # ============================================================================
 set -eu
 cd "$(dirname "$0")/.."
 
 FAIL=0
-step() { echo "== gate: $1"; }
-pass() { echo "   PASS $1"; }
-fail() { echo "   FAIL: $1"; FAIL=1; }
+LOGDIR=/tmp/gate-logs
+rm -rf "$LOGDIR"; mkdir -p "$LOGDIR"
 
-step "shell syntax (every .sh)"
-if (find mod tools -name '*.sh' | while IFS= read -r f; do
-        sh -n "$f" || echo "SYNTAX FAIL: $f"
-    done | grep -q .); then fail "sh -n"; else pass "sh -n"; fi
+run() {
+    local id="$1"; shift
+    echo "== gate: $id"
+    if "$@" >"$LOGDIR/$id.log" 2>&1; then
+        echo "   PASS $id"
+    else
+        echo "   FAIL: $id (tail of $LOGDIR/$id.log follows):"
+        tail -25 "$LOGDIR/$id.log" | sed 's/^/   | /'
+        FAIL=1
+    fi
+}
 
-step "payload manifest"
-if tools/check_manifest.sh >/dev/null 2>&1; then pass "manifest"; else fail "manifest"; fi
-
-step "screen files parse"
-if tools/check_gem_esd.sh >/dev/null 2>&1; then pass "gem esd"; else fail "gem esd"; fi
-
-step "card locator"
-if tools/find_card_test.sh >/dev/null 2>&1; then pass "find_card"; else fail "find_card"; fi
-
-step "portability (no bare missing-tool usage)"
-if tools/gem_portable_check.sh >/dev/null 2>&1; then pass "portable"; else fail "portable"; fi
-
-step "release contract (armed zip, unarmed repo, no stale diag)"
-if tools/check_release_build.sh >/dev/null 2>&1; then pass "contract"; else fail "contract"; fi
-
-step "full car-simulation suite"
-if bash tools/venv_test.sh >/dev/null 2>&1; then pass "car-sim"; else fail "car-sim"; fi
-
-step "wiring audit"
-if sh tools/audit_wiring.sh "gate" >/dev/null 2>&1; then pass "audit"; else fail "audit"; fi
+run syntax bash -c 'fail=0; while IFS= read -r -d "" f; do sh -n "$f" || { echo "SYNTAX FAIL: $f"; fail=1; }; done < <(find mod tools -name "*.sh" -print0); exit $fail'
+run manifest tools/check_manifest.sh
+run screens tools/check_gem_esd.sh
+run findcard tools/find_card_test.sh
+run portable tools/gem_portable_check.sh
+run contract tools/check_release_build.sh
+run carsim bash tools/venv_test.sh
+run audit sh tools/audit_wiring.sh local
 
 echo ""
 if [ "$FAIL" = 0 ]; then
     echo "RELEASE GATE: ALL GREEN - this checkout may ship."
     exit 0
 fi
-echo "RELEASE GATE: RED - DO NOT RELEASE. Fix the failures above first." >&2
+echo "RELEASE GATE: RED - DO NOT RELEASE. Full logs in $LOGDIR." >&2
 exit 1
