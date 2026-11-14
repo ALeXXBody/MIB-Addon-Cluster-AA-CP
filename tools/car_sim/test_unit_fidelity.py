@@ -97,6 +97,30 @@ def test_single_exit_trap_with_fail_report():
             f"{name} must never clear the EXIT trap mid-file: {clearers}"
 
 
+def test_no_break_in_and_chains_under_set_e():
+    """v0.7.20: `grep ... && { _pfmark=1; break; }` under set -e killed
+    the install with no message on the unit (the only brace+break ever
+    executed there), while bare `&& continue` and if-form breaks run
+    fine every boot. So: no `break` may ride an &&-chain in a set -e
+    file -- use the proven if-form instead."""
+    bad = []
+    for rel in ["enable_hook.sh",
+                "disable_hook.sh",
+                "turn_by_turn.sh",
+                "scripts/turn_by_turn.sh",
+                "lsd_jar.sh",
+                "scripts/lsd_jar.sh",
+                "scripts/lib_app_mount.sh"]:
+        path = PAYLOAD_SRC / rel
+        for i, ln in enumerate(path.read_text().splitlines(), 1):
+            s = ln.strip()
+            if s.startswith("#") or "break" not in ln:
+                continue
+            if "&&" in ln:
+                bad.append(f"{rel}:{i}: {ln.strip()[:110]}")
+    assert not bad, "break in an &&-chain (dies silently on the unit's sh):\n" + "\n".join(bad)
+
+
 def test_skip_check_is_exit_code_driven():
     """The skip compare must not use command substitution at all: a bare
     `_same=`awk ...`` in the death zone is what the unit killed silently

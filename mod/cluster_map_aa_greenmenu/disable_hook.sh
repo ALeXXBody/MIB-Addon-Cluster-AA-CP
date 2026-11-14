@@ -38,9 +38,14 @@ elif [ -f /tmp/clustermap_last_paths ]; then
 fi
 [ -r "$CARD_ROOT/backups/smartphone_integrator.json.original" ] && BACKUP_DIR="$CARD_ROOT/backups"
 [ -r "$BACKUP_DIR/smartphone_integrator.json.original" ] || {
-    # dir-first, then the FLAT home of a unit whose /tmp disallows subdirs
+    # dir-first, then the FLAT home of a unit whose /tmp disallows subdirs.
+    # Plain if-form: no `A && B && break` -- that shape never ran on the
+    # unit and the sibling shape killed enable_hook silently (v0.7.20).
     for _c in /tmp/clustermap_unit/backups /tmp; do
-        [ -r "$_c/smartphone_integrator.json.original" ] && BACKUP_DIR="$_c" && break
+        if [ -r "$_c/smartphone_integrator.json.original" ]; then
+            BACKUP_DIR="$_c"
+            break
+        fi
     done
 }
 ORIGINAL="$BACKUP_DIR/smartphone_integrator.json.original"

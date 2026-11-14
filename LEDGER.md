@@ -1743,3 +1743,19 @@ Enforced, not just written:
 - CI runs the static half (syntax, manifest, screens, locator,
   portability, audit, contract) on every push. The full sim suite needs a
   mount namespace, so it is gated locally — never skipped.
+
+---
+
+## Round 58 — v0.7.21: six lines, one suspect
+
+Owner diag 30cae7b3 (v0.7.20): the fixed trap fired — FAIL with rc=1
+right after "skip-check matched", no "unchanged" line. That narrows the
+death to the CarPlay-marker check, whose `grep && { ...; break; }` is
+the only construct in the zone that never ran under set -e on the unit
+(bare && continue and if-breaks run every install; the same brace shape
+without set -e runs in every diag). Rewritten as plain nested ifs;
+markers bracket it. The next car round is decisive: progress past the
+block proves the mechanism, death at the same place refutes it and the
+markers will say exactly where. Gates extended (statement-start
+matching, multi-line spans, break-in-&& ban). 94/93+1 green, audit ALL
+GREEN.

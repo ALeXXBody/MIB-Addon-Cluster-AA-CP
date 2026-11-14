@@ -207,6 +207,18 @@ if [ -s /tmp/audit_bare_subst ]; then
 fi
 rm -f /tmp/audit_bare_subst
 [ "$silentfail" = 0 ] && ok "traps single+reporting; no bare substitutions under set -e"
+# `break` riding an &&-chain under set -e (v0.7.20): the bare form and the
+# brace-group form both died or never ran on the unit; plain `if` breaks
+# and bare `&& continue` run fine every boot, so only `break` is gated.
+for f in $PAYLOAD/enable_hook.sh \
+         $PAYLOAD/disable_hook.sh $PAYLOAD/turn_by_turn.sh \
+         $PAYLOAD/scripts/turn_by_turn.sh $PAYLOAD/lsd_jar.sh \
+         $PAYLOAD/scripts/lsd_jar.sh $PAYLOAD/scripts/lib_app_mount.sh; do
+    if grep -v '^[[:space:]]*#' "$f" 2>/dev/null | grep -q '&&.*break'; then
+        fail "`basename $f` puts break in an &&-chain (silent death on the unit)"; silentfail=1
+    fi
+done
+[ "$silentfail" = 0 ] && ok "no break-in-&&-chain under set -e"
 
 if [ "$PASS" = 1 ]; then
     echo "audit_wiring: ALL GREEN (${1:-local})"

@@ -888,3 +888,24 @@ enable_hook.sh:
 - The trap test pins one setter, no mid-file clearer, and the FAIL marker.
 - The audit itself gates the class at release time (§10). 93/93 car-sim
   green, audit ALL GREEN.
+
+## v0.7.21 — the death zone rewritten in proven constructs
+
+### Fixed — install dies mute after "skip-check matched" (owner diag 30cae7b3)
+The v0.7.20 trap worked (FAIL printed!), narrowing the death to 6 lines:
+the CarPlay-marker check `grep -q ... && { _pfmark=1; break; }`. Car
+evidence audit: bare `&& continue` and if-form breaks run fine on every
+install, and the same brace+break shape works in scripts WITHOUT set -e
+— but it NEVER ran under set -e on the unit. Prime suspect, fixed by
+construction: the check is now a plain nested `if` (only proven
+constructs remain in that block), plus progress markers on both sides.
+The next diag confirms or refutes the mechanism either way.
+Also rewritten pre-emptively (same unproven shape, never executed on a
+car yet): disable_hook's backup-search `&& ... && break`.
+
+### Fixed — static gates learn the shape
+- Bare-substitution gate now matches only statement-start assignments
+  (conditions/pipes/guards exempt with car evidence) and spans newlines —
+  it immediately caught an unguarded multi-line awk read (fixed fail-open).
+- New gate: no `break` in an `&&`-chain under set -e (the v0.7.21 shape).
+- Trap gate: at most one EXIT setter, never cleared, reporting finish.

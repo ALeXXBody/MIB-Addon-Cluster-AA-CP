@@ -1261,11 +1261,14 @@ if [ "$CARPLAY_OK" -ne 1 ] && [ "$TARGET_IS_HOOKED" -eq 1 ] && \
     ' "$TARGET_CONFIG" 2>/dev/null; then
         echo "progress: skip-check matched (config already carries this install)" >&2
         # A CarPlay firewall marker can only be taken out with a writable
-        # system partition, so never skip past one.
+        # system partition, so never skip past one. Plain if-form: no
+        # `A && { ...; break; }` here -- that shape died silently on the
+        # unit (v0.7.20), while bare `&& continue` and `if` Breaks run fine.
         _pfmark=0
         for _pf in /mnt/system/etc/pf*.conf; do
-            [ -f "$_pf" ] || continue
-            grep -q "$CARPLAY_PF_MARK" "$_pf" 2>/dev/null && { _pfmark=1; break; }
+            if [ -f "$_pf" ] && grep -q "$CARPLAY_PF_MARK" "$_pf" 2>/dev/null; then
+                _pfmark=1
+            fi
         done
         [ "$_pfmark" = 1 ] || SYSTEM_NOCHANGE=1
     else
