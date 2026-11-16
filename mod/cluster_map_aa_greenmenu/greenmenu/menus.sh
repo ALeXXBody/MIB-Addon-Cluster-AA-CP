@@ -91,6 +91,8 @@ case "$1" in
     etacard)   run_quiet etacard   "$HERE/etacard.sh" "$2" ;;
     clustermenu) run_quiet clustermenu "$HERE/clustermenu.sh" "$2" ;;
     remotetrace) run_quiet remotetrace "$HERE/remote_trace.sh" "$2" ;;
+    wheellisten) run_quiet wheellisten "$HERE/wheel_listen.sh" "$2" ;;
+    wheeltracer) run_quiet wheeltracer "$HERE/wheel_tracer.sh" "$2" ;;
     zoom)      run_quiet zoom      "$HERE/zoom.sh" "$2" ;;
     navstrip)  run_quiet navstrip  "$HERE/navstrip.sh" "$2" ;;
     cardclear) run_quiet cardclear "$HERE/card_clear.sh" "$2" ;;

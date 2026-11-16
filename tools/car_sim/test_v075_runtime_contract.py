@@ -123,7 +123,7 @@ def test_no_switch_writes_a_key_value_line_into_a_runtime_file(car):
     """The exact v0.7.4 bug, as a source assertion: a runtime override must
     be the bare value, never 'GAL_KEY=value'."""
     for name in ("cluster_remote", "remote_trace", "clustermenu", "hiresen",
-                 "idrpump", "position", "etacard"):
+                 "idrpump", "position", "etacard", "wheel_listen"):
         body = (PAYLOAD_SRC / "greenmenu" / f"{name}.sh").read_text()
         for m in re.finditer(r'live_write\s+"\$GAL_RUNTIME_DIR/[a-z_]+"\s+"([^"]*)"',
                              body):
@@ -688,7 +688,7 @@ def test_the_hook_sources_name_the_literal_runtime_paths(car):
 
     # every switch must go through the variable, never a literal /tmp path
     for name in ("cluster_remote", "remote_trace", "clustermenu", "hiresen",
-                 "idrpump", "position"):
+                 "idrpump", "position", "wheel_listen", "wheel_tracer"):
         body = (PAYLOAD_SRC / "greenmenu" / f"{name}.sh").read_text()
         code = "\n".join(ln for ln in body.splitlines()
                           if not ln.lstrip().startswith("#"))

@@ -13,7 +13,7 @@ DIFFTMP=$(mktemp)
 trap 'rm -f "$TMP" "$DIFFTMP"' EXIT
 
 (cd "$PAYLOAD" && find . -type f \( -name '*.sh' -o -name '*.esd' -o -name '*.conf' \
-    -o -name '*.so' -o -name 'stream-player' -o -name 'profile_check' -o -name '*.jar' \) \
+    -o -name '*.so' -o -name 'stream-player' -o -name 'profile_check' -o -name 'wheel_listen' -o -name '*.jar' \) \
     -print0 | LC_ALL=C sort -z | xargs -0 sha256sum) > "$TMP"
 
 if diff -u "$PAYLOAD/SHA256SUMS.txt" "$TMP" >"$DIFFTMP" 2>&1; then

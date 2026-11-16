@@ -523,6 +523,13 @@ cp "$CARD_ROOT/scripts/window_fix.sh" "$PRELOAD_WRITE_DIR/window_fix.sh" 2>/dev/
 chmod 755 "$PRELOAD_WRITE_DIR/window_fix.sh" 2>/dev/null || true
 cp "$CARD_ROOT/scripts/lib_cluster_frame.sh" "$PRELOAD_WRITE_DIR/lib_cluster_frame.sh" 2>/dev/null || true
 chmod 644 "$PRELOAD_WRITE_DIR/lib_cluster_frame.sh" 2>/dev/null || true
+# The steering-wheel listener (reads the HMI DSI tracer, writes the same
+# zoom/card/strip files the hook's own gestures write). Staged, never
+# started here: the greenmenu "Wheel listen" switch starts it, opt-in only.
+if [ -r "$CARD_ROOT/wheel_listen" ]; then
+    cp "$CARD_ROOT/wheel_listen" "$PRELOAD_WRITE_DIR/wheel_listen" 2>/dev/null || true
+    chmod 755 "$PRELOAD_WRITE_DIR/wheel_listen" 2>/dev/null || true
+fi
 
 TRAIN=unknown
 for f in /net/rcc/dev/shmem/version.txt /dev/shmem/version.txt; do

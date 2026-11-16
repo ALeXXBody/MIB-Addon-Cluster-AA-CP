@@ -74,7 +74,27 @@ already shipped in v0.4.0 (`GAL_PLAYER_ZOOM_E4` + the live
 | 1mikew/mst2-altscreen-carplay (25★, WIP) | MIB2 Standard (different SoC) | Watch only |
 | [chefranov/mhi2-au37x-carplay](https://github.com/chefranov/mhi2-au37x-carplay) | Album art on VC, touchpad→D-pad, Siri shortcut (Audi-specific bus) | Not portable to VW Tegra (input/jar layer differs) — noted for a sibling Audi project |
 
-## Status: none of the above adopted yet
+## Status: wheel-zoom path adopted in v0.7.24 (opt-in, unproven live)
+
+The `CLUSTERMAP_WHEEL_ZOOM` design above is implemented as of v0.7.24:
+`sources/tools/wheel_listen.c` (dual-mode: QNX client + host test driver),
+GEM `ClusterMap_wheellisten` screen (Tracer ON/OFF, Wheel listen ON/OFF),
+staged `wheel_listen` binary, diag §9 coverage, status lines. Deviations
+from the proposal, all evidence-driven:
+
+- Wheel press IS mapped (short OK = card presets, long OK = turn strip):
+  the owner's zoom-signs observation proved the wheel never reaches AA,
+  so the press has no AA meaning to preserve; the actions mirror the
+  hook's own bound gestures byte-for-byte.
+- No class-scope lines are invented in traceConfig.properties. The
+  reference documents only class names + `use.appender=telnet,bluepirat`,
+  not the exact key syntax, and its own evidence log admits no
+  traceConfig paste exists. wheel_tracer.sh therefore extends only the
+  file's OWN `use.appender` key (backup `.orig` first, revert restores
+  byte-equal) and refuses with the file quoted verbatim otherwise.
+- Live proof still outstanding: the tracer client has never seen a car
+  port. The owner's next diag (ports 1798/20991 in §9d + gal_wheel.log
+  in §9c) is the end-to-end verdict.
 
 The wheel-zoom design above is written up but **not implemented** — it needs
 a car-test round (its first enablement touches the HMI tracer). When the

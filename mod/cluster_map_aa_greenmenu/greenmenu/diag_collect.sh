@@ -365,7 +365,7 @@ section "9b hook runtime files (/tmp, read live by the hook)"
 for _f in /tmp/gal_remote /tmp/gal_remote_trace /tmp/gal_cluster_menu /tmp/gal_hires \
           /tmp/gal_idr_pump /tmp/gal_uiconfig /tmp/stream-player.menu \
           /tmp/stream-player.zoom /tmp/stream-player.navstrip \
-          /tmp/gal_kombi_ready /tmp/gal_inject; do
+          /tmp/gal_kombi_ready /tmp/gal_inject /tmp/gal_wheellisten; do
     if [ -r "$_f" ]; then
         put "$_f = `sed -n 1p "$_f" 2>/dev/null`"
     else
@@ -399,6 +399,19 @@ if [ -r /tmp/stream-player.log ]; then
     put "-- stream-player log (all lines) --"
     cat /tmp/stream-player.log >> "$TMP" 2>/dev/null
 fi
+put "wheel_listen staged: `([ -x /mnt/app/eso/lib/gal_dualscreen/wheel_listen ] && echo present) || echo absent`"
+if command -v pidin >/dev/null 2>&1; then
+    put "wheel_listen instances: `pidin info 2>/dev/null | grep -c wheel_listen`"
+    pidin info 2>/dev/null | grep -i wheel_listen >> "$TMP" 2>/dev/null || true
+fi
+for _w in /tmp/gal_wheel.log /tmp/gal_wheel.log.prev; do
+    if [ -r "$_w" ]; then
+        put "-- $_w (last 30 lines) --"
+        tail -30 "$_w" 2>/dev/null >> "$TMP" 2>/dev/null
+    else
+        put "$_w = (absent)"
+    fi
+done
 
 # The gal process's ACTUAL runtime environment (not the config file's
 # intent). If LD_PRELOAD is missing here, the hook never loaded even though
@@ -423,8 +436,8 @@ fi
 # ---- 9d. socket state (is the hook's TCP port listening?)
 section "9d socket state (hook TCP port)"
 if command -v netstat >/dev/null 2>&1; then
-    put "-- netstat (port 12346 / stream) --"
-    netstat -an 2>/dev/null | grep -iE "12346|stream|LISTEN" >> "$TMP" 2>/dev/null
+    put "-- netstat (port 12346 / stream / tracer) --"
+    netstat -an 2>/dev/null | grep -iE "12346|1798|20991|stream|LISTEN" >> "$TMP" 2>/dev/null
 elif [ -r /proc/net/tcp ]; then
     put "-- /proc/net/tcp (port 12346 = 0x303A) --"
     grep -i "303A" /proc/net/tcp >> "$TMP" 2>/dev/null || put "(port 12346 not in /proc/net/tcp)"

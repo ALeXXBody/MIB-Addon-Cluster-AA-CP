@@ -156,6 +156,29 @@ script
     value   sys 1 0x0100 "@GREENMENU@gem/remote_off.sh"
     label   "Cluster remote: OFF"
 
+screen ClusterMap_wheellisten ClusterMap_wheel
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "ClusterMap: wheel via HMI tracer"
+    poll    0
+
+script
+    value   sys 1 0x0100 "@GREENMENU@gem/wheeltracer_on.sh"
+    label   "Tracer ON (reboot)"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@gem/wheeltracer_off.sh"
+    label   "Tracer OFF"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@gem/wheellisten_on.sh"
+    label   "Wheel listen ON"
+
+script
+    value   sys 1 0x0100 "@GREENMENU@gem/wheellisten_off.sh"
+    label   "Wheel listen OFF"
+
 screen ClusterMap_presets ClusterMap
 
 keyValue

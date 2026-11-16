@@ -46,4 +46,22 @@ if [ -r /tmp/gal_dualscreen.log ]; then
 else
     echo "No hook log yet (connect a phone after rebooting)."
 fi
+echo "Wheel listen: `cat /tmp/gal_wheellisten 2>/dev/null || echo 'off (flag absent)'`"
+if [ -r /tmp/gal_wheellisten.pid ] && kill -0 "`cat /tmp/gal_wheellisten.pid 2>/dev/null`" 2>/dev/null; then
+    echo "  listener: running (pid `cat /tmp/gal_wheellisten.pid`)"
+elif [ -x "`_unitapp eso/lib/gal_dualscreen/wheel_listen`" ]; then
+    echo "  listener: staged, not running (Wheel listen ON to start)"
+else
+    echo "  listener: not staged (install the map first)"
+fi
+echo "HMI tracer ports 1798/20991:"
+if command -v netstat >/dev/null 2>&1; then
+    if netstat -an 2>/dev/null | grep -qE "[:.]1798 |[:.]20991 "; then
+        echo "  listening (tracer active)"
+    else
+        echo "  silent (Wheel tracer ON, then reboot)"
+    fi
+else
+    echo "  unknown (no netstat on this console)"
+fi
 exit 0

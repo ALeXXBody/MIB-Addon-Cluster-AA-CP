@@ -1821,3 +1821,30 @@ wrong stamp, wrong diagnosis later. Fixed structurally: the release
 build asserts the stamp inside the zip, the audit checks it for
 versioned runs. Lesson logged: verify the artifact, not the command
 I think I ran.
+
+---
+
+## Round 63 — v0.7.24: wheel listens to the HMI tracer (opt-in)
+
+Owner's decisive observation (MIB map's own zoom signs over the AA
+picture on wheel up/down) proved the keys die in native MIB: 7 live
+sessions, zero outbound AA InputReports, so no AA-side fix can ever
+work. New input path, car-proven on the same Harman HMI family
+(joeyQuery/MHI2-altScreen r52/r58 + cluster-controls.md [runtime]):
+read wheel events from the HMI DSI tracer and drive the add-on's own
+zoom/card/strip files.
+
+What shipped: `sources/tools/wheel_listen.c` (dual-mode C99: QNX
+socket client + host `-DWL_TEST_MAIN` driver; exact-substring parsing
+mirroring r52/r58: `1#`-only, `?1#` bluepirat unwrap, latch long-press,
+View/99/100 logged-only), QNX `wheel_listen` binary staged by
+enable_hook.sh beside the player, GEM `ClusterMap_wheellisten` screen
+(Tracer ON/OFF, Wheel listen ON/OFF), `wheel_tracer.sh` extending only
+the file's OWN `use.appender` key (.orig backup, byte-equal revert;
+refuses rather than inventing class-scope syntax the reference never
+published), diag §9 (flag, pid, key log, tracer ports), status lines
+(answering the owner's which-functions-are-active ask for this path),
+uninstall stops the orphan. 109/109 car-sim green (10 new: 6 parser,
+4 switches), both C targets build warning-clean, manifest 106 files.
+Live proof outstanding: next owner diag must show 1798/20991 live and
+gal_wheel.log moving with the wheel.

@@ -22,6 +22,15 @@ if grep -q 'libgal_hook.so' "$CONFIG" 2>/dev/null || [ -d $HOOK_DIR/eso/lib/gal_
 else
     echo "The cluster map is not installed."
 fi
+# The wheel listener outlives the staged dir (it runs from /tmp state):
+# stop it, best-effort, so no orphan keeps writing zoom files for a
+# player that is gone. Never fatal to the uninstall verdict.
+if [ -r /tmp/gal_wheellisten.pid ]; then
+    kill "`cat /tmp/gal_wheellisten.pid 2>/dev/null`" 2>/dev/null || true
+    rm -f /tmp/gal_wheellisten.pid 2>/dev/null || true
+fi
+slay wheel_listen 2>/dev/null || true
+rm -f /tmp/gal_wheellisten 2>/dev/null || true
 # The turn-by-turn arrows, when this package installed them instead of the map.
 if [ -f $HOOK_DIR/eso/hmi/lsd/.aacluster_tbt_added ]; then
     sh "$PKG/turn_by_turn.sh" uninstall || RC=1
