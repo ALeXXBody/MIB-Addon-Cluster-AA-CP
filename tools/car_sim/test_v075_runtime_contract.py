@@ -204,22 +204,6 @@ def test_virgin_scrubs_everything_and_reinstalls_clean(car):
     assert "libgal_hook.so" in cfg_path.read_text()
 
 
-def test_benign_noop_is_not_a_failure(car):
-    """Exit 3 + 'Nothing changed' is the codebase's deliberate no-op
-    (already ON/OFF, already at the edge) -- it must stay DONE, not
-    become STOPPED via the silent-death FAIL line."""
-    _stage(car)
-    _rt()
-    stub = pathlib.Path(PKG, "greenmenu/cluster_remote.sh")
-    stub.write_text("#!/bin/sh\necho 'Cluster remote is already ON. Nothing changed.'\nexit 3\n")
-    p = car.run(["sh", f"{PKG}/greenmenu/gem/remote_on.sh"],
-                env={"GAL_RUNTIME_DIR": "/sim/rt"}, expect_rc=0)
-    out = p.stdout + p.stderr
-    assert "== DONE" in out, out
-    log = pathlib.Path("/tmp/cm_menu_remote.log").read_text()
-    assert "FAIL:" not in log, log
-
-
 def test_position_at_edge_says_so_and_exits_3(car):
     """Narrower at max width changes nothing: the switch must say
     'already at the edge' and exit 3 (benign no-op), not queue a live
@@ -246,6 +230,23 @@ def test_etacard_warns_when_hires_armed(car):
     unit.write_text(unit.read_text().replace("GAL_SECONDARY_HIRESEN=1\n", ""))
     p = _run(car, f"{SW}/etacard.sh", "off", expect_rc=0)
     assert "Hi-res" not in (p.stdout + p.stderr), p.stdout + p.stderr
+
+
+def test_benign_noop_is_not_a_failure(car):
+    """Exit 3 + 'Nothing changed' is the codebase's deliberate no-op
+    (already ON/OFF, already at the edge): it must stay DONE, not turn
+    into a STOPPED via the silent-death FAIL line (false positive the
+    owner's own bundle caught on a navstrip no-op)."""
+    _stage(car)
+    _rt()
+    stub = pathlib.Path(PKG, "greenmenu/cluster_remote.sh")
+    stub.write_text("#!/bin/sh\necho 'Cluster remote is already ON. Nothing changed.'\nexit 3\n")
+    p = car.run(["sh", f"{PKG}/greenmenu/gem/remote_on.sh"],
+                env={"GAL_RUNTIME_DIR": "/sim/rt"}, expect_rc=0)
+    out = p.stdout + p.stderr
+    assert "== DONE" in out, out
+    log = pathlib.Path("/tmp/cm_menu_remote.log").read_text()
+    assert "FAIL:" not in log, log
 
 
 def test_silent_child_death_gets_a_named_fail_line(car):

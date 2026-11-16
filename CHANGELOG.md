@@ -931,3 +931,30 @@ failures.
   press time, not discovered in the log.
 - §11 covers every switch family now (was empty for position/hi-res/
   menu/trace/ETA presses); §9c says outright when gal isn't running.
+
+## v0.7.23 — the fault, found once and for good
+
+### Root cause (owner diag 03806283, v0.7.17, 7 live sessions)
+The aap.out census proved zero outbound InputReports on ANY channel
+across 7 live sessions — with the tap proven working (it filtered a
+Controller discovery line). What remained was timing: nobody, owner
+included, could say whether the wheel was pressed during a live
+session, because the unit has no shell-readable clock (no `date`, no
+/proc/uptime) to correlate presses with sessions.
+
+### Fixed
+- New `event=arm file=<name> state=<new> was=<old>` from the hook's own
+  500 ms ack thread: every switch arming is timestamped on the hook's
+  clock, inside or outside sessions. The next diag proves press-vs-
+  session timing instead of guessing it.
+- run_quiet no longer flags rc=3 + "Nothing changed" as FAIL (that false
+  positive fired on a harmless no-op in the owner's own bundle); silent
+  deaths still get their named FAIL + STOPPED.
+- Position at the clamp edge says "already at the edge" and exits 3
+  instead of queueing a live request to nowhere.
+- ETA card warns when hi-res is armed (the preset suspends it until
+  Hi-res ON clears it again) — the mutual exclusion is now stated at
+  press time, not discovered in the log.
+- §11 covers every switch family (was empty for position/hi-res/menu/
+  trace/ETA presses); §9c says outright when gal isn't running, so a
+  dead bundle identifies itself.

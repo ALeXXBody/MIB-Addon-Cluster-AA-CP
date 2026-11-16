@@ -79,6 +79,10 @@ if [ "$HEX" = "" ]; then
 else
     echo "ETA card: $1 - $POSE."
 fi
+case "$PERSISTED" in
+    1) echo "Persisted in the unit's copy: survives reboots." ;;
+    2) echo "Persisted on the card root: survives reboots (read at gal start)." ;;
+esac
 echo "Lands at the NEXT phone connection (or unit reboot): the phone lays"
 echo "out the turn banner with this edge free; the banner takes that edge."
 echo "If the layout does not move, the phone rejected the pose: run OFF and"

@@ -1797,3 +1797,15 @@ logs every /tmp arm transition on hook time; run_quiet exempts the rc=3
 about armed hi-res; summary covers all switch families; §9c names a dead
 bundle. 99/99 car-sim green, rebuilt hook v0.7.22 verified, audit ALL
 GREEN. Next diag decides timing vs bypass with timestamps on both sides.
+
+---
+
+## Round 61 — v0.7.23: press timing on the hook's own clock
+
+Owner diag 03806283 (7 live sessions, zero outbound 0x8001 anywhere,
+tap proven working, no shell clock on the unit): the only open question
+is whether presses coincided with sessions. arm_poll_tick logs every
+/tmp arm transition from the 500 ms ack thread, so the next diag has
+presses and sessions on one clock. Plus honest no-ops, the ETA/hi-res
+warning, a populated §11, and the gal-stopped verdict. 99/99 car-sim
+green, rebuilt hook v0.7.23 verified, audit ALL GREEN.
