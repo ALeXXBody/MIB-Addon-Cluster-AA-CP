@@ -909,3 +909,25 @@ car yet): disable_hook's backup-search `&& ... && break`.
   it immediately caught an unguarded multi-line awk read (fixed fail-open).
 - New gate: no `break` in an `&&`-chain under set -e (the v0.7.21 shape).
 - Trap gate: at most one EXIT setter, never cleared, reporting finish.
+
+## v0.7.22 — the state of the wheel, proven, not guessed
+
+### Fixed — all wheel switches report honestly, hook watches every arm
+Owner diag 03806283 (v0.7.17, 7 live sessions, zero taps) showed three
+things at once: nothing outbound is ever sent (new aap.out census),
+presses can't be timed (no unit clock), and benign no-ops looked like
+failures.
+- New `event=arm file=<name> state=<new> was=<old>` from the hook's own
+  500 ms tick: every switch press is timestamped on the hook's clock,
+  inside or outside sessions. The next diag proves press-vs-session
+  timing instead of guessing it.
+- `run_quiet` no longer flags rc=3 + "Nothing changed" as FAIL (that
+  false positive fired on a harmless no-op press in the owner's own
+  bundle). Real silent deaths still get their named FAIL line + STOPPED.
+- Position at the clamp edge now says "already at the edge" and exits 3
+  instead of queueing a live request to nowhere.
+- ETA card warns when hi-res is armed (the preset suspends it until
+  Hi-res ON clears it again) — the mutual exclusion is now stated at
+  press time, not discovered in the log.
+- §11 covers every switch family now (was empty for position/hi-res/
+  menu/trace/ETA presses); §9c says outright when gal isn't running.

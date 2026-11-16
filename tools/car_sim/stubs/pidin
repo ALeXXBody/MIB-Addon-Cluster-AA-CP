@@ -2,7 +2,13 @@
 # Sim pidin stub with canned QNX output (diag §9c/§9e parse this).
 #   pidin info            -> process list (gal + stream-player present)
 #   pidin -p <pid> env    -> gal runtime environment (LD_PRELOAD armed)
+#   CB_PIDIN_EMPTY=1      -> gal stopped (phone disconnected): the diag
+#                            must say so instead of implying a live bundle.
 if [ "$1" = "-p" ]; then
+    if [ -n "$CB_PIDIN_EMPTY" ]; then
+        echo "(no such process)"
+        exit 1
+    fi
     echo "LD_PRELOAD=/eso/lib/gal_dualscreen/libgal_hook.so"
     echo "GAL_DUALSCREEN_ENABLE=1"
     echo "GAL_DUALSCREEN_DEBUG=0"
@@ -11,7 +17,9 @@ if [ "$1" = "-p" ]; then
 fi
 echo "pid  tid name"
 echo "1    1   proc/boot/procnto"
-echo "1859708 1 gal"
-echo "1859710 1 gal"
-echo "19665019 1 stream-player"
+if [ -z "$CB_PIDIN_EMPTY" ]; then
+    echo "1859708 1 gal"
+    echo "1859710 1 gal"
+    echo "19665019 1 stream-player"
+fi
 exit 0

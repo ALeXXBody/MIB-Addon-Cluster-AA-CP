@@ -66,7 +66,20 @@ sed -n \
     -e '/^Cluster remote/p' \
     -e '/^Turn info strip:/p' \
     -e '/^Turn-card clear:/p' \
-    -e '/^Nothing to/p' \
+    -e '/^Position:/p' \
+    -e '/^Hi-res trial/p' \
+    -e '/^Sharpness pump/p' \
+    -e '/^Cluster menu:/p' \
+    -e '/^Wheel trace/p' \
+    -e '/^ETA card:/p' \
+    -e '/^Live request queued/p' \
+    -e '/^Persisted /p' \
+    -e '/^NOT persisted/p' \
+    -e '/^app: read-write/p' \
+    -e '/^Map install:/p' \
+    -e '/^Map already live/p' \
+    -e '/^Staged only/p' \
+    -e '/^Unit files:/p' \
     -e '/^Porting bundle/p' \
     -e '/^Install finished/p' \
     -e '/^CLUSTERMAP_INSTALL_OK/p' \

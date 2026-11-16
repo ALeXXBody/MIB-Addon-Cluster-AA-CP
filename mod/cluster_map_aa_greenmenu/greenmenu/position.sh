@@ -81,6 +81,14 @@ case "$ACTION" in
         ;;
 esac
 
+# Already there: the clamp above refuses to leave 0..127, so a press at
+# the edge changes nothing. Say so honestly (rc=3, the no-op convention)
+# instead of queueing a live request to nowhere.
+if [ "$NT,$NB,$NL,$NR" = "$T,$B,$L,$R" ]; then
+    echo "Position: $ACTION - already at the edge ($T,$B,$L,$R with step $STEP px). Nothing changed."
+    exit 3
+fi
+
 # v0.7.5: the LIVE wire send comes FIRST and survives a refused remount.
 # /tmp/gal_uiconfig is what the hook's ui-config sender turns into an
 # immediate UpdateUiConfigRequest to the phone (GAL_UICONFIG=1 in the

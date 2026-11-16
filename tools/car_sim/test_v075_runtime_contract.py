@@ -204,6 +204,50 @@ def test_virgin_scrubs_everything_and_reinstalls_clean(car):
     assert "libgal_hook.so" in cfg_path.read_text()
 
 
+def test_benign_noop_is_not_a_failure(car):
+    """Exit 3 + 'Nothing changed' is the codebase's deliberate no-op
+    (already ON/OFF, already at the edge) -- it must stay DONE, not
+    become STOPPED via the silent-death FAIL line."""
+    _stage(car)
+    _rt()
+    stub = pathlib.Path(PKG, "greenmenu/cluster_remote.sh")
+    stub.write_text("#!/bin/sh\necho 'Cluster remote is already ON. Nothing changed.'\nexit 3\n")
+    p = car.run(["sh", f"{PKG}/greenmenu/gem/remote_on.sh"],
+                env={"GAL_RUNTIME_DIR": "/sim/rt"}, expect_rc=0)
+    out = p.stdout + p.stderr
+    assert "== DONE" in out, out
+    log = pathlib.Path("/tmp/cm_menu_remote.log").read_text()
+    assert "FAIL:" not in log, log
+
+
+def test_position_at_edge_says_so_and_exits_3(car):
+    """Narrower at max width changes nothing: the switch must say
+    'already at the edge' and exit 3 (benign no-op), not queue a live
+    request to nowhere."""
+    _stage(car)
+    _rt()
+    p = _run(car, f"{SW}/position.sh", "narrower", expect_rc=3)
+    out = p.stdout + p.stderr
+    assert "already at the edge" in out, out
+    assert "Nothing changed" in out, out
+
+
+def test_etacard_warns_when_hires_armed(car):
+    """ETA presets suspend hi-res (the hook refuses it with a hex
+    override). Setting one while HIRESEN=1 must say so loudly."""
+    _stage(car)
+    _rt()
+    unit = pathlib.Path(APP_VIEWS[0],
+                        "eso/lib/gal_dualscreen/gal_dualscreen.conf")
+    unit.write_text(unit.read_text() + "GAL_SECONDARY_HIRESEN=1\n")
+    p = _run(car, f"{SW}/etacard.sh", "top", expect_rc=0)
+    assert "Hi-res" in p.stdout + p.stderr and "preset" in (p.stdout + p.stderr).lower(), \
+        p.stdout + p.stderr
+    unit.write_text(unit.read_text().replace("GAL_SECONDARY_HIRESEN=1\n", ""))
+    p = _run(car, f"{SW}/etacard.sh", "off", expect_rc=0)
+    assert "Hi-res" not in (p.stdout + p.stderr), p.stdout + p.stderr
+
+
 def test_silent_child_death_gets_a_named_fail_line(car):
     """run_quiet is pattern-based: a child that dies WITHOUT printing its
     own reason used to read as DONE. Now the runner appends a named FAIL
@@ -524,6 +568,36 @@ def test_the_console_summary_surfacing_never_hides_a_failure():
         "FAIL: probe",
     ]
     log = "/tmp/audit_summary_log"
+    pathlib.Path(log).write_text("\n".join(lines) + "\n")
+    out = subprocess.run(["sh",
+                          str(PAYLOAD_SRC / "greenmenu/console_summary.sh"),
+                          log], capture_output=True, text=True).stdout
+    for ln in lines:
+        assert ln in out, f"summary hid: {ln}\n--- summary ---\n{out}"
+
+
+def test_the_console_summary_shows_press_outcomes():
+    """Switch outcomes (not just failures) must reach the curated
+    summary -- §11 was empty for every position/hi-res/menu/trace/ETA
+    press because no pattern matched them."""
+    import subprocess
+    lines = [
+        "Position: content UP a step",
+        "Hi-res trial: ON (LIVE ARMED)",
+        "Sharpness pump: fresh keyframes",
+        "Cluster menu: ON (wheel overlay)",
+        "Wheel trace: ON (diagnose)",
+        "ETA card: TOP strip",
+        "Live request queued",
+        "Persisted in the unit's copy",
+        "NOT persisted (both write paths refused)",
+        "Map install: DONE. Reboot",
+        "Map install: FAILED - the reason follows",
+        "Staged only (not armed)",
+        "Map already live on this unit",
+        "Unit files: present",
+    ]
+    log = "/tmp/audit_summary_log2"
     pathlib.Path(log).write_text("\n".join(lines) + "\n")
     out = subprocess.run(["sh",
                           str(PAYLOAD_SRC / "greenmenu/console_summary.sh"),

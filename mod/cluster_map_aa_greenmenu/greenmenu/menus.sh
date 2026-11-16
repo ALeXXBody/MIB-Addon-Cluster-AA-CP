@@ -47,7 +47,8 @@ run_quiet() {
     # non-zero exit would otherwise read as DONE.
     if [ "$_rc" -ne 0 ] && ! grep -q -e "^FAIL" -e "^ERROR" -e "^CRITICAL" \
             -e "^MISSING" -e "INSTALL_FAILED" -e "NOT SUPPORTED" \
-            -e "^Cannot " -e "^Could not " "$_log" 2>/dev/null; then
+            -e "^Cannot " -e "^Could not " "$_log" 2>/dev/null \
+            && ! grep -q "Nothing changed" "$_log" 2>/dev/null; then
         echo "FAIL: $1 child ${_child##*/} stopped rc=$_rc without its own reason" >> "$_log"
     fi
     echo "$_UPT" >> "$_log" 2>/dev/null

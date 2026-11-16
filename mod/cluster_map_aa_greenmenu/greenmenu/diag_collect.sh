@@ -376,10 +376,19 @@ done
 # ---- 9c. is the map renderer (stream-player) actually running?
 section "9c map renderer (stream-player process)"
 if command -v pidin >/dev/null 2>&1; then
-    put "stream-player instances: `pidin info 2>/dev/null | grep -c stream-player`"
-    put "gal instances: `pidin info 2>/dev/null | grep -c ' gal '`"
+    _SPN=`pidin info 2>/dev/null | grep -c stream-player`
+    _GALN=`pidin info 2>/dev/null | grep -c ' gal '`
+    put "stream-player instances: $_SPN"
+    put "gal instances: $_GALN"
     put "matching lines:"
     pidin info 2>/dev/null | grep -iE "stream-player| gal " >> "$TMP" 2>/dev/null
+    if [ "$_GALN" = 0 ]; then
+        put "VERDICT: gal is NOT running right now -- the phone is likely"
+        put "disconnected (gal starts with the AA connection). Wheel presses"
+        put "and live switches only mean anything during a live session:"
+        put "reconnect the phone, wait for the map, press the wheel, THEN"
+        put "Save logs again for a live bundle."
+    fi
 else
     put "(pidin not available on this unit)"
 fi

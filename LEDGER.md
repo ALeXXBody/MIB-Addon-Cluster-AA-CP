@@ -1784,3 +1784,16 @@ artifacts verified). The investigation has now been done properly:
 The rule now holds everywhere, including CI. No faulty code shipped at
 any point: every payload byte in v0.7.21 passed the full gate locally
 before the tag, and the CI gap was environmental, then fixed and proven.
+
+---
+
+## Round 60 — v0.7.22: arm transitions on the hook clock
+
+Owner diag 03806283: 7 live sessions, zero outbound 0x8001 anywhere, no
+unit clock for correlation, a false FAIL on a benign no-op, an empty §11,
+a silent hires-kill, and no gal-running verdict. All fixed: arm_poll_tick
+logs every /tmp arm transition on hook time; run_quiet exempts the rc=3
+"Nothing changed" no-op; position reports the clamped edge; ETA warns
+about armed hi-res; summary covers all switch families; §9c names a dead
+bundle. 99/99 car-sim green, rebuilt hook v0.7.22 verified, audit ALL
+GREEN. Next diag decides timing vs bypass with timestamps on both sides.

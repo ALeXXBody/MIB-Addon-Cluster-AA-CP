@@ -202,6 +202,18 @@ def test_corrupt_supervisor_config_fails_install(car):
 
 
 # 6. pidin/netstat fixtures: diag §9c/§9d parse the canned QNX output.
+def test_diag_says_so_when_gal_is_stopped(car):
+    """A bundle taken with gal stopped (phone disconnected) must SAY so:
+    wheel presses and live switches mean nothing without a live session."""
+    _stage(car, card_conf="GAL_PLAYER_WINDOW=1010x376\n")
+    car.run(["sh", f"/fs/sda0/mod/cluster_aa/greenmenu/gem/remote_on.sh"],
+            env={"GAL_RUNTIME_DIR": "/tmp"}, expect_rc=0)
+    car.run(["sh", f"/fs/sda0/mod/cluster_aa/greenmenu/gem/logs.sh"],
+            env={"CB_PIDIN_EMPTY": "1"}, expect_rc=0)
+    txt = pathlib.Path("/tmp/clustermap_diag/diag.txt").read_text()
+    assert "gal is NOT running right now" in txt, txt[-800:]
+
+
 def test_diag_parses_process_and_socket_fixtures(car):
     _stage(car, card_conf="GAL_PLAYER_WINDOW=1010x376\n")
     car.run(["sh", f"{PKG}/greenmenu/gem/remote_on.sh"],

@@ -45,6 +45,17 @@ if [ "$HEX" != "" ] && [ "$NOW" = "$HEX" ]; then
     echo "ETA card ($1) already set. Nothing changed."
     exit 0
 fi
+# Mutual exclusion the owner hit on the car: hi-res is refused while ANY
+# UI_CONFIG_HEX override is present (the hook logs
+# "result=skipped reason=ui_config_hex_present"), so setting a preset
+# while hi-res is armed silently kills it. Say so, loudly.
+HIRES_WARN=""
+if [ "$HEX" != "" ]; then
+    _HIRES_NOW=`sed -n 's/^GAL_SECONDARY_HIRESEN=\([01]\)[ 	]*$/\1/p' "$CONF_READ" 2>/dev/null | tail -1`
+    if [ "$_HIRES_NOW" = 1 ]; then
+        HIRES_WARN="WARNING: Hi-res trial is armed, and this preset suspends it (the hook refuses hi-res with a hex override). Press Hi-res ON again afterwards if you want both: it clears this preset and re-declares 1280x720."
+    fi
+fi
 
 # v0.7.5: no live channel exists for this hex pose, so persistence IS the
 # arm. The settings file the hook actually loads is updated (card root
@@ -73,3 +84,4 @@ echo "out the turn banner with this edge free; the banner takes that edge."
 echo "If the layout does not move, the phone rejected the pose: run OFF and"
 echo "send the Save-logs bundle. The hex overrides the plain insets and the"
 echo "theme - a Position preset clears it automatically when you go back."
+if [ -n "$HIRES_WARN" ]; then echo "$HIRES_WARN"; fi

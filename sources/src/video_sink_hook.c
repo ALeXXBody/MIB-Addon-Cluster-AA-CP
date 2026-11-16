@@ -2024,6 +2024,53 @@ static void on_frames_rendered(unsigned count)
     }
 }
 
+/* Switch-arm transition log: the green-menu switches arm /tmp files that
+ * the hook reads per gesture -- but a press that lands while no session
+ * runs leaves no other trace, and the unit has no shell clock to
+ * correlate presses with sessions (no date, no /proc/uptime). So the
+ * 500 ms ack tick snapshots the six live files and logs every transition
+ * on the hook's own clock (t=): the next diag proves whether a press
+ * happened inside a live session or not. One line per change; silent
+ * while nothing moves. First sight logs the boot state as was=(boot). */
+static void arm_poll_tick(void)
+{
+    static const char *paths[6] = {
+        "/tmp/gal_remote", "/tmp/gal_remote_trace",
+        "/tmp/gal_cluster_menu", "/tmp/gal_hires",
+        "/tmp/gal_idr_pump", "/tmp/gal_uiconfig"
+    };
+    static const char *names[6] = {
+        "remote", "trace", "menu", "hires", "pump", "uiconfig"
+    };
+    static char last[6][64];
+    static int primed = 0;
+    int i;
+    for (i = 0; i < 6; i++) {
+        char cur[64]; cur[0] = 0;
+        FILE *f = fopen(paths[i], "r");
+        if (f != NULL) {
+            if (fgets(cur, sizeof cur, f) == NULL) cur[0] = 0;
+            fclose(f);
+        }
+        {
+            size_t l = strlen(cur);
+            while (l > 0u && (cur[l - 1u] == '\n' || cur[l - 1u] == '\r' ||
+                              cur[l - 1u] == ' ')) cur[--l] = 0;
+        }
+        if (!primed) {
+            if (cur[0] != 0)
+                gal_hook_logf("event=arm file=%s state=%s was=(boot)", names[i], cur);
+        } else if (strcmp(cur, last[i]) != 0) {
+            gal_hook_logf("event=arm file=%s state=%s was=%s", names[i],
+                          cur[0] ? cur : "(absent)",
+                          last[i][0] ? last[i] : "(absent)");
+        }
+        memcpy(last[i], cur, sizeof last[i] - 1u);
+        last[i][sizeof last[i] - 1u] = 0;
+    }
+    primed = 1;
+}
+
 static void *ack_poll_thread(void *arg)
 {
     unsigned tick_counter = 0;
@@ -2042,6 +2089,7 @@ static void *ack_poll_thread(void *arg)
             ack_silence_ms = (now.tv_sec - g_last_real_ack_rx_time.tv_sec) * 1000 +
                              (now.tv_nsec - g_last_real_ack_rx_time.tv_nsec) / 1000000;
             vc_player_supervisor_tick(frame_silence_ms, ack_silence_ms);
+            arm_poll_tick();
         }
         usleep(20000); /* 20ms poll interval = 50 Hz */
     }
