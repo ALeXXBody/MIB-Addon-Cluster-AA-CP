@@ -1855,3 +1855,14 @@ rebuilt). Rebuilt natively with -DGAL_HOOK_BUILD='"v0.7.24"',
 verified symbols-identical except the stamp, recommitted, retagged,
 release published. Zip verified: sha256 OK, VERSION + hook stamp
 v0.7.24, wheel_listen ARM binary bit-identical.
+
+---
+
+## Idea backlog (owner, v0.7.24 car round pending)
+
+- Guided button-capture tool: if the wheel-via-tracer path fails live,
+  build a GEM capture switch that prompts the owner to press one
+  specific button and records a timestamped window of the raw tracer
+  stream around it — each press mapped to its exact lines, so the real
+  key shapes (not the reference's) drive the next fix. (The raw
+  material already exists: /tmp/gal_wheel.log in the diag bundle.)
