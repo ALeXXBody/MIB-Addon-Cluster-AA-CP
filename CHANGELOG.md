@@ -958,3 +958,15 @@ session, because the unit has no shell-readable clock (no `date`, no
 - §11 covers every switch family (was empty for position/hi-res/menu/
   trace/ETA presses); §9c says outright when gal isn't running, so a
   dead bundle identifies itself.
+
+## v0.7.23 — the fault, found once and for good (rebuild: correct build stamp)
+
+### Fixed — audit of the audit (owner: "check all the code")
+The v0.7.19 trap fix was verified against its own stale assumption:
+rebuilt correctly, then the release zip was found carrying a v0.7.22
+build stamp (manual `-D` flag, copied from the previous round). No
+functional difference — identical sources — but a wrong stamp
+misidentifies the running build in every future diag.
+- `tools/build_release.sh` now asserts the zipped hook carries the tag
+  as its build stamp (fails the build otherwise).
+- `tools/audit_wiring.sh` checks the stamp when run for a version.

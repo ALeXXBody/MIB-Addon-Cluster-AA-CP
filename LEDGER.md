@@ -1809,3 +1809,15 @@ is whether presses coincided with sessions. arm_poll_tick logs every
 presses and sessions on one clock. Plus honest no-ops, the ETA/hi-res
 warning, a populated §11, and the gal-stopped verdict. 99/99 car-sim
 green, rebuilt hook v0.7.23 verified, audit ALL GREEN.
+
+---
+
+## Round 62 — v0.7.23 rebuilt: trust, but verify the stamp
+
+While verifying v0.7.23 for release, the shipped .so carried the
+previous round's build stamp (manual -D flag). Functionally identical
+sources, but the stamp is what names the running build in the diag --
+wrong stamp, wrong diagnosis later. Fixed structurally: the release
+build asserts the stamp inside the zip, the audit checks it for
+versioned runs. Lesson logged: verify the artifact, not the command
+I think I ran.

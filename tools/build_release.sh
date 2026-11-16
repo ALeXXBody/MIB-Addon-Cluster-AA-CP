@@ -175,6 +175,15 @@ grep -qx "$TAG" "$DIST/$NAME/mod/cluster_aa/VERSION" || {
 [ -f "mod/cluster_map_aa_greenmenu/VERSION" ] && {
     echo "ERROR: the REPOSITORY payload carries a VERSION (stale marker)" >&2
     exit 1; }
+# ... and the shipped hook binary must carry this tag as its build stamp
+# (the diag's `event=init build=` line names it; a stale stamp once
+# misidentified a whole release, so the artifact itself is checked).
+if [ -n "${TAG##local-test}" ] && [ -n "${TAG##contract-check}" ]; then
+    unzip -p "$DIST/$NAME-$TAG.zip" \
+        "$NAME/mod/cluster_aa/libgal_hook.so" 2>/dev/null \
+        | strings 2>/dev/null | grep -qF "$TAG" || {
+        echo "ERROR: shipped hook is not stamped $TAG (rebuild it with -DGAL_HOOK_BUILD='\"$TAG\"')" >&2; exit 1; }
+fi
 
 (cd "$DIST" && sha256sum "$NAME-$TAG.zip" > "$NAME-$TAG.zip.sha256")
 

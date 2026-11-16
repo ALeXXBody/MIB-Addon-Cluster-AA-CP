@@ -151,6 +151,15 @@ for needle in 'event=remote.tap' 'event=cluster.remote.live' \
     fi
 done
 [ "$rtfail" = 0 ] && ok "shipped hook carries the tap + build marker"
+# when the audit runs for a version (not local/ci/gate), the build stamp
+# must name it -- a stale stamp once misidentified a whole release.
+case "${1:-local}" in
+    v*) if strings $PAYLOAD/libgal_hook.so 2>/dev/null | grep -qF "$1"; then
+            ok "shipped hook stamped $1"
+        else
+            fail "shipped hook is not stamped $1 (rebuild it first)"; rtfail=1
+        fi ;;
+esac
 
 echo "== 10. no silent-death shapes (the v0.7.19 class)"
 # At most one EXIT-trap setter per file, never cleared mid-file: a second
