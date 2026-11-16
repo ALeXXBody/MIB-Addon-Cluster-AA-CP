@@ -1848,3 +1848,10 @@ uninstall stops the orphan. 109/109 car-sim green (10 new: 6 parser,
 4 switches), both C targets build warning-clean, manifest 106 files.
 Live proof outstanding: next owner diag must show 1798/20991 live and
 gal_wheel.log moving with the wheel.
+
+First v0.7.24 tag failed CI the honest way: gate ALL GREEN but the
+shipped .so still stamped v0.7.23 (sources unchanged, stamp not
+rebuilt). Rebuilt natively with -DGAL_HOOK_BUILD='"v0.7.24"',
+verified symbols-identical except the stamp, recommitted, retagged,
+release published. Zip verified: sha256 OK, VERSION + hook stamp
+v0.7.24, wheel_listen ARM binary bit-identical.
