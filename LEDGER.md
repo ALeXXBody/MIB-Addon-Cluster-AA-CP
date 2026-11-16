@@ -1866,3 +1866,17 @@ v0.7.24, wheel_listen ARM binary bit-identical.
   stream around it — each press mapped to its exact lines, so the real
   key shapes (not the reference's) drive the next fix. (The raw
   material already exists: /tmp/gal_wheel.log in the diag bundle.)
+
+---
+
+## Round 64 — v0.7.25: the listener's silent death, made loud
+
+Owner diag (v0.7.24, map renders fine): Tracer ON was never pressed
+(ports 1798/20991 silent — the listener had nothing to read), AND the
+listener died silently (flag=1, staged present, instances=0, no key
+log, and its stderr was never collected). Two fixes: wheel_listen.sh
+re-checks the daemon 2 s after start and FAILs loudly with the
+listener output on death (reverting the flag); diag §9 collects
+/tmp/gal_wheel.out + the pid value. New sim test pins the dead-start
+FAIL. If the next round still fails, the guided button-capture tool
+(backlog) is next. 110/110 car-sim green.

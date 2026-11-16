@@ -412,6 +412,17 @@ for _w in /tmp/gal_wheel.log /tmp/gal_wheel.log.prev; do
         put "$_w = (absent)"
     fi
 done
+if [ -r /tmp/gal_wheellisten.pid ]; then
+    put "/tmp/gal_wheellisten.pid = `cat /tmp/gal_wheellisten.pid 2>/dev/null`"
+else
+    put "/tmp/gal_wheellisten.pid = (absent)"
+fi
+if [ -r /tmp/gal_wheel.out ]; then
+    put "-- /tmp/gal_wheel.out (listener stderr, last 30 lines) --"
+    tail -30 /tmp/gal_wheel.out 2>/dev/null >> "$TMP" 2>/dev/null
+else
+    put "/tmp/gal_wheel.out = (absent)"
+fi
 
 # The gal process's ACTUAL runtime environment (not the config file's
 # intent). If LD_PRELOAD is missing here, the hook never loaded even though

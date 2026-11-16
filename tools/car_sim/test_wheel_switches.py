@@ -81,6 +81,18 @@ def test_listen_on_starts_daemon_and_persists(car):
     assert "GAL_WHEEL_LISTEN=0" in _conf_text()
 
 
+def test_listen_on_reports_a_daemon_that_dies_at_once(car):
+    _stage(car)
+    rt = _rt()
+    car.stage(APP_VIEWS[0], "eso/lib/gal_dualscreen/wheel_listen",
+              "#!/bin/sh\nexit 0\n", 0o755)
+    p = _run(car, f"{SW}/wheel_listen.sh", "on", expect_rc=1)
+    assert "FAIL: wheel listener died on start" in p.stdout, \
+        p.stdout + p.stderr
+    assert (rt / "gal_wheellisten").read_text() == "0\n", \
+        "a dead start must not leave the arm flag behind"
+
+
 def test_listen_on_refuses_without_a_binary(car):
     _stage(car)
     rt = _rt()

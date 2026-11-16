@@ -56,9 +56,22 @@ if [ "$WANT" = "on" ]; then
     if _pid_alive; then
         echo "Wheel listen: ON (already running, pid `cat "$PIDF"`)."
     else
+        rm -f "$PIDF" 2>/dev/null || true
         "$BIN" </dev/null >"$RT/gal_wheel.out" 2>&1 &
         echo "$!" > "$PIDF" 2>/dev/null || true
-        echo "Wheel listen: ON (listener started, pid `cat "$PIDF" 2>/dev/null`)."
+        # The listener must still be alive after its first breath: a
+        # dead exec (bad view, missing lib) used to read as "started".
+        sleep 2
+        if _pid_alive; then
+            echo "Wheel listen: ON (listener started, pid `cat "$PIDF" 2>/dev/null`)."
+        else
+            echo "FAIL: wheel listener died on start (pid `cat "$PIDF" 2>/dev/null`)."
+            echo "-- listener output ($RT/gal_wheel.out) --"
+            sed -n '1,15p' "$RT/gal_wheel.out" 2>/dev/null
+            rm -f "$PIDF" 2>/dev/null || true
+            live_write "$FLAG" "0" 2>/dev/null || true
+            exit 1
+        fi
     fi
     echo "  rotary      -> zoom the cluster map +-"
     echo "  short OK    -> cycle the card-clear preset"
