@@ -98,3 +98,61 @@ def test_install_then_uninstall_via_fqdn_view(car):
     restored = cfg.read_text()
     assert "libgal_hook.so" not in restored, f"uninstall left the hook:\n{restored}"
     assert "children" in restored, f"restore dropped the original content:\n{restored}"
+
+
+def _stage_armed_with_conf(car, extra_conf):
+    _stage(car)
+    (pathlib.Path(PKG) / "HOOK_ARMED").write_text("")
+    with open(f"{PKG}/gal_dualscreen.conf", "a") as f:
+        f.write(extra_conf)
+    car.mount_views(rw=[*APP_VIEWS, *SYS_VIEWS])
+    car.stage_jsonlint_all_app_views()
+    car.stage_version("rcc")
+    for v in APP_VIEWS:
+        car.stage(v, "navigation/stream-player", b"unit-player-stub")
+        car.stage(v, "eso/lib/libairplay.so", bytes(703688))
+    sys_prod = "etc/eso/production/smartphone_integrator.json"
+    json_cfg = ("{\n"
+                ' "children": {\n'
+                '  "gal": {\n'
+                '   "envs":[]\n'
+                "  }\n"
+                " }\n"
+                "}\n")
+    for v in SYS_VIEWS:
+        car.stage(v, sys_prod, json_cfg)
+
+
+def _live_sys_conf():
+    """The supervisor config the install actually injected (the system
+    ladder takes the first writable view spelling)."""
+    for v in SYS_VIEWS:
+        p = pathlib.Path(v, "etc/eso/production/smartphone_integrator.json")
+        if p.exists() and "LD_PRELOAD" in p.read_text():
+            return p.read_text()
+    raise AssertionError("no injected supervisor config under any sys view")
+
+
+def test_install_injects_wheel_opt_out(car):
+    """GAL_WHEEL_LISTEN=0 on the card reaches gal's envs (the only slot
+    the wheel ever spends); the hook defaults to ON otherwise."""
+    _stage_armed_with_conf(car, "GAL_WHEEL_LISTEN=0\n")
+    p = car.run(["sh", f"{PKG}/enable_hook.sh"], expect_rc=0)
+    assert p.returncode == 0, f"--stdout--\n{p.stdout}\n--stderr--\n{p.stderr}"
+    assert '"GAL_WHEEL_LISTEN=0"' in _live_sys_conf()
+
+
+def test_install_injects_explicit_wheel_opt_in(car):
+    _stage_armed_with_conf(car, "GAL_WHEEL_LISTEN=1\n")
+    p = car.run(["sh", f"{PKG}/enable_hook.sh"], expect_rc=0)
+    assert p.returncode == 0, f"--stdout--\n{p.stdout}\n--stderr--\n{p.stderr}"
+    assert '"GAL_WHEEL_LISTEN=1"' in _live_sys_conf()
+
+
+def test_install_emits_no_wheel_slot_when_absent(car):
+    """No key on the card: nothing is injected (the hook's built-in
+    default already starts the listener)."""
+    _stage_armed_with_conf(car, "")
+    p = car.run(["sh", f"{PKG}/enable_hook.sh"], expect_rc=0)
+    assert p.returncode == 0, f"--stdout--\n{p.stdout}\n--stderr--\n{p.stderr}"
+    assert "GAL_WHEEL_LISTEN" not in _live_sys_conf()

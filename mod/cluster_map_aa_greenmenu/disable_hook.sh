@@ -239,6 +239,24 @@ if [ -d "$PRELOAD_WRITE_DIR" ] || [ -f "$APP_MOUNT/eso/lib/libdmdt_flush.so" ] |
                 echo "  warning: could not remove $PRELOAD_WRITE_DIR (harmless, unreferenced)" >&2
             fi
         fi
+        # Wheel tracer revert: the install (or Wheel control ON) extended
+        # use.appender and kept the original as .orig. Restore it
+        # byte-equal and drop the marker, so uninstall leaves the HMI
+        # config exactly as found.
+        for _tv in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+            for _tl in "$_tv/eso/hmi/lsd/traceConfig.properties" "$_tv/eso/hmi/traceConfig.properties"; do
+                if [ -r "$_tl.orig" ]; then
+                    if cp "$_tl.orig" "$_tl.new" 2>/dev/null && mv "$_tl.new" "$_tl" 2>/dev/null; then
+                        echo "  restored HMI tracer config: $_tl (from .orig)"
+                    else
+                        echo "  warning: could not restore $_tl from .orig (tracer appenders stay)" >&2
+                        rm -f "$_tl.new" 2>/dev/null || true
+                    fi
+                    rm -f "${_tl%/*}/dsitracer_activated" 2>/dev/null || true
+                fi
+            done
+        done
+        unset _tv _tl
         mount -ur "$APP_MOUNT" 2>/dev/null || true
         APP_WRITABLE=0
     else

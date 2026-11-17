@@ -2,6 +2,7 @@
 #include "gal_hook.h"
 #include "vc_stream_out.h"
 #include "focus_ctl.h"
+#include "wheel_autostart.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -605,6 +606,15 @@ int gal_hook_init(const gal_secondary_config *config)
      */
     if (environment_flag_default_on("GAL_STREAM_ENABLE")) {
         (void)vc_stream_out_open();
+    }
+    /*
+     * The steering-wheel listener starts here when enabled (default on,
+     * GAL_WHEEL_LISTEN=0 opts out): install + the one reboot the install
+     * already needs, zero presses. Cheap no-op otherwise (one getenv, a
+     * pid check, a few access probes); never waited on, never a zombie.
+     */
+    if (wheel_want_start(getenv("GAL_WHEEL_LISTEN"))) {
+        wheel_autostart(gal_hook_logf);
     }
 
     g_initialized = 1;

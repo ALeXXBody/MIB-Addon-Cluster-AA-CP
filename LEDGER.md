@@ -1880,3 +1880,30 @@ listener output on death (reverting the flag); diag §9 collects
 /tmp/gal_wheel.out + the pid value. New sim test pins the dead-start
 FAIL. If the next round still fails, the guided button-capture tool
 (backlog) is next. 110/110 car-sim green.
+
+---
+
+## Round 65 — v0.7.26: zero presses, states on the main menu
+
+Owner, rightly impatient: too many switches, unclear what each needs,
+states hidden in submenus. "Not one press" -- zero. What changed:
+
+- Zero-press installs: enable_hook auto-enables the tracer appenders
+  (.orig backup, own-key extend only, announced, revert switch kept),
+  and the hook autostarts the listener at gal init (new
+  sources/src/wheel_autostart.c: default ON unless GAL_WHEEL_LISTEN=0,
+  so the common install spends no env slot; pid check + candidate
+  probing, detached spawn with NOZOMBIE + own session, one
+  event=wheel.spawn log line). Host unit test in the repo's C style,
+  now a release-gate step. Symbols hidden, NEEDED unchanged.
+- One repair switch: Wheel control ON/OFF (tracer + listener together).
+  Granular scripts stay for diagnosis but left the menu screen.
+- Main menu shows a States row (remote, wheel [+reboot-once reminder],
+  zoom, strip, card, hires, pump), refreshed after every press from
+  menus.sh run_quiet, baked at generation by custom.sh; write-probed,
+  verified, renamed -- a read-only view keeps its old label, the press
+  outcome never changes.
+- Uninstall restores the tracer .orig; opt-out (Wheel control OFF)
+  survives reinstalls via the owner-keys mechanism.
+- 117/117 car-sim green (7 new), C host test green, both QNX targets
+  clean, export allowlist clean.

@@ -28,6 +28,11 @@ keyValue
     label   "SD card must be in slot 1. Reboot after install."
     poll    0
 
+keyValue
+    value   String sys 0x00000000 0
+    label   "States: --"
+    poll    0
+
 script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/status.sh"
     label   "Status & compat check"
@@ -164,20 +169,12 @@ keyValue
     poll    0
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/wheeltracer_on.sh"
-    label   "Tracer ON (reboot)"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/wheelcontrol_on.sh"
+    label   "Wheel control ON"
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/wheeltracer_off.sh"
-    label   "Tracer OFF"
-
-script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/wheellisten_on.sh"
-    label   "Wheel listen ON"
-
-script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/wheellisten_off.sh"
-    label   "Wheel listen OFF"
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/wheelcontrol_off.sh"
+    label   "Wheel control OFF"
 
 screen ClusterMap_presets ClusterMap
 

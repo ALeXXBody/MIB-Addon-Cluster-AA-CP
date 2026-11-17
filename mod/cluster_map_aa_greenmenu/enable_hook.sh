@@ -530,6 +530,22 @@ if [ -r "$CARD_ROOT/wheel_listen" ]; then
     cp "$CARD_ROOT/wheel_listen" "$PRELOAD_WRITE_DIR/wheel_listen" 2>/dev/null || true
     chmod 755 "$PRELOAD_WRITE_DIR/wheel_listen" 2>/dev/null || true
 fi
+# Wheel tracer, auto-enabled since v0.7.26 (zero-press rule): the staged
+# listener above is useless without the HMI ports, and no owner should
+# have to find a second switch for the same wheel. Best-effort only: a
+# refused tracer changes nothing about the map, and Wheel control ON in
+# the menu repairs it. The child sets its own EXIT trap (own process).
+if [ -r "$CARD_ROOT/greenmenu/wheel_tracer.sh" ]; then
+    _TRC=0
+    sh "$CARD_ROOT/greenmenu/wheel_tracer.sh" on </dev/null >/tmp/clustermap_tracer_auto.log 2>&1 || _TRC=$?
+    if [ "$_TRC" != 0 ] && [ "$_TRC" != 3 ]; then
+        echo "Wheel tracer auto-enable did not land (the map is unaffected;"
+        echo "  run Wheel control ON from the menu if the wheel stays dead)."
+    fi
+    sed -n '1,6p' /tmp/clustermap_tracer_auto.log 2>/dev/null | sed 's/^/  tracer: /'
+    rm -f /tmp/clustermap_tracer_auto.log 2>/dev/null || true
+    unset _TRC
+fi
 
 TRAIN=unknown
 for f in /net/rcc/dev/shmem/version.txt /dev/shmem/version.txt; do
@@ -1082,13 +1098,21 @@ DPI_ENV=
 # whether the tooling finds it. Emitted only when --log asked for a path.
 LOG_ENV=
 [ -n "$LOG_PATH_REQUESTED" ] && LOG_ENV="\"GAL_HOOK_LOG=$HOOK_LOG_PATH\", "
+# GAL_WHEEL_LISTEN costs a slot only when the owner set it: the hook
+# defaults to ON (zero-press installs), so an absent key emits nothing
+# and only an explicit 0 opts out. Read from the installed copy, which
+# already carries the owner's kept lines.
+WHEEL_ENV=
+WHEEL_VAL=`sed -n 's/^GAL_WHEEL_LISTEN=\([01]\)[ 	]*$/\1/p' "$PRELOAD_WRITE_DIR/gal_dualscreen.conf" 2>/dev/null | tail -1` || WHEEL_VAL=""
+[ "$WHEEL_VAL" = 0 ] && WHEEL_ENV="\"GAL_WHEEL_LISTEN=0\", "
+[ "$WHEEL_VAL" = 1 ] && WHEEL_ENV="\"GAL_WHEEL_LISTEN=1\", "
 if [ "$HOOK_ARMED" = 1 ]; then
-    INJECTION="\"LD_PRELOAD=$PRELOAD_SO_ALIAS\", \"GAL_DUALSCREEN_ENABLE=1\", \"GAL_DUALSCREEN_DEBUG=$DEBUG\", $OPT_ENV$LOG_ENV$DPI_ENV"
+    INJECTION="\"LD_PRELOAD=$PRELOAD_SO_ALIAS\", \"GAL_DUALSCREEN_ENABLE=1\", \"GAL_DUALSCREEN_DEBUG=$DEBUG\", $OPT_ENV$LOG_ENV$DPI_ENV$WHEEL_ENV"
 else
     # Boot-safe stage: the files are in place, the hook is simply
     # not preloaded into gal; no enable switch exists either, so a
     # later enable has nothing to undo.
-    INJECTION="\"GAL_DUALSCREEN_DEBUG=$DEBUG\", $OPT_ENV$LOG_ENV$DPI_ENV"
+    INJECTION="\"GAL_DUALSCREEN_DEBUG=$DEBUG\", $OPT_ENV$LOG_ENV$DPI_ENV$WHEEL_ENV"
 fi
 
 # Refuse to write an array that smartphone_integrator would silently

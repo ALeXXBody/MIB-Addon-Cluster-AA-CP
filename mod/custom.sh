@@ -245,6 +245,16 @@ if [ -f "$TPL" ]; then
 	GEN_ERR="0"
 	sed "s|@GREENMENU@|$GEN_PREFIX|g" "$TPL" \
 		> "$GEN_PATH"
+	# 0. bake the main menu's States row: the screen shows what is on the
+	# moment it opens, computed from the card's own settings copy plus the
+	# unit's live flags. Best-effort: a failure keeps the "--" placeholder.
+	STATES="States: --"
+	if [ -x "$SD/$PAYLOAD_NAME/greenmenu/menu_states.sh" ]; then
+		STATES=`sh "$SD/$PAYLOAD_NAME/greenmenu/menu_states.sh" "$SD/$PAYLOAD_NAME/gal_dualscreen.conf" 2>/dev/null` || STATES="States: --"
+		[ -n "$STATES" ] || STATES="States: --"
+	fi
+	awk -v states="$STATES" '{ if ($0 ~ /^ *label *"States:/) print "    label   \"" states "\""; else print }' "$GEN_PATH" > "$GEN_PATH.new" 2>/dev/null && \
+		mv "$GEN_PATH.new" "$GEN_PATH" 2>/dev/null || rm -f "$GEN_PATH.new" 2>/dev/null || true
 	# 1. non-empty
 	if [ ! -s "$GEN_PATH" ]; then
 		say "    ERROR: the generated file is EMPTY; keeping the unit's"

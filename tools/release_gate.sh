@@ -42,6 +42,7 @@ run screens tools/check_gem_esd.sh
 run findcard tools/find_card_test.sh
 run portable tools/gem_portable_check.sh
 run contract tools/check_release_build.sh
+run wheelunit bash -c 'cc -Wall -Wextra -I sources/src sources/tests/wheel_autostart_test.c sources/src/wheel_autostart.c -o /tmp/gate_wlstart && /tmp/gate_wlstart'
 run carsim bash tools/venv_test.sh
 run audit sh tools/audit_wiring.sh local
 

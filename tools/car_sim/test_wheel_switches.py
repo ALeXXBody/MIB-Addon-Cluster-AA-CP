@@ -122,6 +122,66 @@ def test_tracer_on_extends_appender_and_off_restores(car):
     assert not (cfg.parent / "dsitracer_activated").exists()
 
 
+def test_control_on_repairs_dead_wheel(car):
+    _stage(car)
+    rt = _rt()
+    car.stage(APP_VIEWS[0], "eso/hmi/lsd/traceConfig.properties", TRACER_CONF)
+    car.stage(APP_VIEWS[0], "eso/lib/gal_dualscreen/wheel_listen",
+              LISTENER_STUB, 0o755)
+
+    p = _run(car, f"{SW}/wheel_control.sh", "on", expect_rc=0)
+    assert "Wheel control: ON" in p.stdout, p.stdout + p.stderr
+    assert (rt / "gal_wheellisten").read_text() == "1\n"
+    cfg = pathlib.Path(APP_VIEWS[0], "eso/hmi/lsd/traceConfig.properties")
+    assert "telnet" in cfg.read_text() and "bluepirat" in cfg.read_text()
+    pid = int((rt / "gal_wheellisten.pid").read_text().strip())
+    os.kill(pid, 0)
+
+
+def test_control_off_reverts_everything(car):
+    _stage(car)
+    rt = _rt()
+    car.stage(APP_VIEWS[0], "eso/hmi/lsd/traceConfig.properties", TRACER_CONF)
+    car.stage(APP_VIEWS[0], "eso/lib/gal_dualscreen/wheel_listen",
+              LISTENER_STUB, 0o755)
+    _run(car, f"{SW}/wheel_control.sh", "on", expect_rc=0)
+
+    p = _run(car, f"{SW}/wheel_control.sh", "off", expect_rc=0)
+    assert "Wheel control: OFF" in p.stdout, p.stdout + p.stderr
+    assert (rt / "gal_wheellisten").read_text() == "0\n"
+    cfg = pathlib.Path(APP_VIEWS[0], "eso/hmi/lsd/traceConfig.properties")
+    assert cfg.read_text() == TRACER_CONF
+    assert not (cfg.parent / "dsitracer_activated").exists()
+
+
+def test_states_row_refreshes_on_the_main_menu(car):
+    _stage(car)
+    rt = _rt()
+    screen = ('screen ClusterMap Main\n'
+              '\n'
+              'keyValue\n'
+              '    value   String sys 0x00000000 0\n'
+              '    label   "States: --"\n'
+              '    poll    0\n')
+    for v in APP_VIEWS:
+        car.stage(v, "eso/hmi/engdefs/cluster-map.esd", screen)
+    # through the GEM wrapper, exactly like the car (the refresh lives in
+    # menus.sh run_quiet, not in the switch itself)
+    _run(car, f"{SW}/gem/remote_on.sh", expect_rc=0)
+    for v in APP_VIEWS:
+        text = pathlib.Path(v, "eso/hmi/engdefs/cluster-map.esd").read_text()
+        assert 'label   "States: remote' in text, \
+            f"main menu not refreshed through {v}:\n{text}"
+        assert "screen ClusterMap" in text
+
+
+def test_press_stays_green_without_any_screen_file(car):
+    _stage(car)
+    _rt()
+    p = _run(car, f"{SW}/cluster_remote.sh", "on", expect_rc=0)
+    assert "Cluster remote: ON" in p.stdout, p.stdout + p.stderr
+
+
 def test_tracer_on_refuses_without_an_appender_key(car):
     _stage(car)
     _rt()

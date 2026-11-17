@@ -65,6 +65,31 @@ run_quiet() {
         echo "-- the run's ERROR lines:"
         sh "$HERE/console_summary.sh" "$_log"
     fi
+    # STATES ROW (zero-press rule): the main menu shows what is on, so
+    # nobody has to hunt for it. After a press that changed something,
+    # rewrite the "States:" label in every writable copy of the live
+    # screen. Best-effort and silent: guard every step, never touch the
+    # press outcome, never remount (a read-only view simply keeps its
+    # previous label).
+    if [ -r "$HERE/menu_states.sh" ] && [ "$_rc" = 0 ]; then
+        _ST=`sh "$HERE/menu_states.sh" 2>/dev/null` || _ST=""
+        if [ -n "$_ST" ]; then
+            for _ev in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+                _ef="$_ev/eso/hmi/engdefs/cluster-map.esd"
+                [ -r "$_ef" ] || continue
+                ( : > "$_ev/eso/hmi/engdefs/.clustermap_states_probe" ) 2>/dev/null || continue
+                rm -f "$_ev/eso/hmi/engdefs/.clustermap_states_probe" 2>/dev/null || true
+                awk -v states="$_ST" '{ if ($0 ~ /^ *label *"States:/) print "    label   \"" states "\""; else print }' "$_ef" > "$_ef.new" 2>/dev/null || continue
+                if grep -q "^screen ClusterMap" "$_ef.new" 2>/dev/null; then
+                    mv "$_ef.new" "$_ef" 2>/dev/null || rm -f "$_ef.new" 2>/dev/null || true
+                else
+                    rm -f "$_ef.new" 2>/dev/null || true
+                fi
+            done
+            unset _ev _ef _ST
+        fi
+        unset _ST
+    fi
 }
 
 case "$1" in
@@ -93,6 +118,7 @@ case "$1" in
     remotetrace) run_quiet remotetrace "$HERE/remote_trace.sh" "$2" ;;
     wheellisten) run_quiet wheellisten "$HERE/wheel_listen.sh" "$2" ;;
     wheeltracer) run_quiet wheeltracer "$HERE/wheel_tracer.sh" "$2" ;;
+    wheelcontrol) run_quiet wheelcontrol "$HERE/wheel_control.sh" "$2" ;;
     zoom)      run_quiet zoom      "$HERE/zoom.sh" "$2" ;;
     navstrip)  run_quiet navstrip  "$HERE/navstrip.sh" "$2" ;;
     cardclear) run_quiet cardclear "$HERE/card_clear.sh" "$2" ;;
