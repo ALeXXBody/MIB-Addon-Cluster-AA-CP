@@ -1907,3 +1907,22 @@ states hidden in submenus. "Not one press" -- zero. What changed:
   survives reinstalls via the owner-keys mechanism.
 - 117/117 car-sim green (7 new), C host test green, both QNX targets
   clean, export allowlist clean.
+
+---
+
+## Round 66 — v0.7.27: the States row stays true across reboots
+
+Owner photo proved the row renders on the car ("States: wheel (reboot
+once)") but exposed a lie: after a reboot /tmp wipes the live flags, so
+remote/strip/pump would vanish from the row while persisted ON. The row
+now falls back to the settings keys (GAL_CLUSTER_REMOTE,
+GAL_NAV_INFO_STRIP, GAL_IDR_PUMP) when the live files are gone -- conf
+sources were verified against the switches that write them. New sim test
+pins the reboot shape (empty runtime dir, conf-only). 118/118 green.
+
+Plus, before shipping: the owner's stuck "(reboot once)" proved the
+diag never collects the tracer config itself -- every hypothesis about
+silent ports was a guess. §9 now dumps both traceConfig spellings
+(appender + scope lines), .orig presence and the marker, so the next
+diag answers which of the three faults it is (no file / no key /
+appenders on but ports dead). No hook change since the v0.7.27 stamp.

@@ -41,8 +41,12 @@ add() {
     if [ -z "$S" ]; then S="$1"; else S="$S, $1"; fi
 }
 
-# remote: the hook reads the live flag at every gesture.
+# remote: the hook reads the live flag at every gesture; after a reboot
+# /tmp is wiped, so fall back to the persisted settings key.
 R=`lkey gal_remote` || R=""
+if [ -z "$R" ]; then
+    R=`ckey GAL_CLUSTER_REMOTE` || R=""
+fi
 [ "$R" = 1 ] && add "remote"
 
 # wheel: enabled unless the conf explicitly opts out; needs the HMI
@@ -74,15 +78,22 @@ else
     esac
 fi
 
-# turn strip: live file present and 1.
+# turn strip: live file first (the running player polls it), persisted
+# key after a reboot wiped /tmp.
 N=`lkey stream-player.navstrip` || N=""
+if [ -z "$N" ]; then
+    N=`ckey GAL_NAV_INFO_STRIP` || N=""
+fi
 [ "$N" = 1 ] && add "strip"
 
 # card clear: any armed uiconfig (absent = full window, nothing to show).
 if [ -r "$RT/gal_uiconfig" ]; then add "card"; fi
 
-# sharpness pump: positive level.
+# sharpness pump: live level first, persisted key after a reboot.
 P=`lkey gal_idr_pump` || P=""
+if [ -z "$P" ]; then
+    P=`ckey GAL_IDR_PUMP` || P=""
+fi
 case "$P" in ''|0) ;; *) add "pump" ;; esac
 
 # hi-res: live flag or conf key.

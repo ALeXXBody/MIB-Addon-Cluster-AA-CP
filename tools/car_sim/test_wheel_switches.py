@@ -175,6 +175,34 @@ def test_states_row_refreshes_on_the_main_menu(car):
         assert "screen ClusterMap" in text
 
 
+def test_states_row_survives_a_reboot_from_conf(car):
+    """After a reboot /tmp (and the live flags) is wiped: the row must
+    still show what the persisted settings say (remote/strip/pump)."""
+    _stage(car)
+    car.stage(APP_VIEWS[0], "eso/lib/gal_dualscreen/gal_dualscreen.conf",
+              "GAL_PLAYER_WINDOW=1010x376\n"
+              "GAL_CLUSTER_REMOTE=1\n"
+              "GAL_NAV_INFO_STRIP=1\n"
+              "GAL_IDR_PUMP=25\n"
+              "GAL_WHEEL_LISTEN=0\n")
+    rt = _rt()  # empty: no live flags, as after a reboot
+    screen = ('screen ClusterMap Main\n'
+              '\n'
+              'keyValue\n'
+              '    value   String sys 0x00000000 0\n'
+              '    label   "States: stock (all off)"\n'
+              '    poll    0\n')
+    for v in (APP_VIEWS[0],):
+        car.stage(v, "eso/hmi/engdefs/cluster-map.esd", screen)
+    p = car.run(["sh", f"{SW}/gem/status.sh"], env={"GAL_RUNTIME_DIR": str(rt)},
+                expect_rc=0)
+    assert p.returncode == 0
+    text = pathlib.Path(APP_VIEWS[0],
+                        "eso/hmi/engdefs/cluster-map.esd").read_text()
+    assert 'label   "States: remote, strip, pump"' in text, \
+        f"persisted states lost after reboot-shape run:\n{text}"
+
+
 def test_press_stays_green_without_any_screen_file(car):
     _stage(car)
     _rt()

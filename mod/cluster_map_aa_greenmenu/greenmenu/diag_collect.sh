@@ -423,6 +423,25 @@ if [ -r /tmp/gal_wheel.out ]; then
 else
     put "/tmp/gal_wheel.out = (absent)"
 fi
+# The HMI tracer config the wheel depends on (both spellings seen in the
+# wild). Decides the "(reboot once)" question with evidence: no file, no
+# use.appender key, or appenders on but ports still silent are three
+# different faults with three different fixes.
+for _tc in /mnt/app/eso/hmi/lsd/traceConfig.properties /mnt/app/eso/hmi/traceConfig.properties \
+           /net/mmx.mibhigh.net/mnt/app/eso/hmi/lsd/traceConfig.properties /net/mmx.mibhigh.net/mnt/app/eso/hmi/traceConfig.properties; do
+    if [ -r "$_tc" ]; then
+        put "-- $_tc --"
+        grep -e "^use\.appender" -e "DSIKeyPanel" -e "DSIKOMO" -e "DSIMapViewerZoom" "$_tc" 2>/dev/null >> "$TMP" 2>/dev/null || put "(no appender/scope lines)"
+        if [ -r "$_tc.orig" ]; then put "backup: $_tc.orig present"; else put "backup: $_tc.orig ABSENT"; fi
+    else
+        put "$_tc = (absent)"
+    fi
+done
+unset _tc
+for _mk in /mnt/app/eso/hmi/lsd/dsitracer_activated /mnt/app/eso/hmi/dsitracer_activated; do
+    if [ -r "$_mk" ]; then put "marker: $_mk present"; fi
+done
+unset _mk
 
 # The gal process's ACTUAL runtime environment (not the config file's
 # intent). If LD_PRELOAD is missing here, the hook never loaded even though
