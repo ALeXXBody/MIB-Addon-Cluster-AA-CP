@@ -203,6 +203,26 @@ def test_states_row_survives_a_reboot_from_conf(car):
         f"persisted states lost after reboot-shape run:\n{text}"
 
 
+def test_status_lists_every_family_compactly(car):
+    _stage(car)
+    rt = _rt()
+    car.stage(APP_VIEWS[0], "eso/lib/gal_dualscreen/gal_dualscreen.conf",
+              "GAL_PLAYER_WINDOW=1010x376\n"
+              "GAL_CLUSTER_REMOTE=1\n"
+              "GAL_CLUSTER_MENU=1\n"
+              "GAL_IDR_PUMP=25\n"
+              "GAL_WHEEL_LISTEN=0\n")
+    (rt / "gal_hires").write_text("1\n")
+    p = _run(car, f"{SW}/status.sh", expect_rc=0)
+    for line in ("Features (setting -> when it lands):",
+                 "Cluster remote: ON (live)",
+                 "Wheel control: OFF",
+                 "Cluster menu: ON (live)",
+                 "Hi-res: ON (next session)",
+                 "Pump: 25s (live)"):
+        assert line in p.stdout, f"{line!r} missing:\n{p.stdout}"
+
+
 def test_press_stays_green_without_any_screen_file(car):
     _stage(car)
     _rt()

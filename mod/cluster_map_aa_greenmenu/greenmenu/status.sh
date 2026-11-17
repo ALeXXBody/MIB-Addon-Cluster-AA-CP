@@ -39,6 +39,11 @@ else echo "NavActiveIgnore: not loaded (Install adds it on tested firmware)"; fi
 if sh "$PKG/lsd_jar.sh" loaded VCAndroidAuto.jar; then echo "Turn-by-turn arrows (VCAndroidAuto.jar): loaded. Installing the map turns this off."; else echo "Turn-by-turn arrows (VCAndroidAuto.jar): not loaded"; fi
 echo "Java patch lines:"
 grep -n 'Xbootclasspath/p' "$LSD" 2>/dev/null | sed 's|.*/p:||; s|\$BASE_DIR/lsd/jars/||g; s|"$||; s|^|  |'
+_STV=`sh "$PKG/greenmenu/menu_states.sh" -v 2>/dev/null` || _STV=""
+if [ -n "$_STV" ]; then
+    echo "$_STV"
+fi
+unset _STV
 if [ -r /tmp/gal_dualscreen.log ]; then
     echo "Last hook events:"
     grep -e "event=focus.state" -e "event=player.spawn" -e "event=focus.loss" \

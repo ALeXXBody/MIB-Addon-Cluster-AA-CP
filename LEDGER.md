@@ -1926,3 +1926,15 @@ silent ports was a guess. §9 now dumps both traceConfig spellings
 (appender + scope lines), .orig presence and the marker, so the next
 diag answers which of the three faults it is (no file / no key /
 appenders on but ports dead). No hook change since the v0.7.27 stamp.
+
+---
+
+## Round 67 — v0.7.28: Status lists every family, compactly
+
+Owner: Status must show all activated functions in compact form. Status
+now prints a Features block from the same menu_states.sh (new -v mode,
+single source of truth): remote, wheel (+live/reboot), zoom, strip,
+card, cluster menu, AA tap trace, hi-res, pump, keep map, ETA card --
+each with setting and when it lands. Every timing verified against the
+hook sources (per-gesture fopen, 1 Hz pump/player polls, per-session
+hires, gal-start HEX). One-line States row unchanged. 119/119 green.
