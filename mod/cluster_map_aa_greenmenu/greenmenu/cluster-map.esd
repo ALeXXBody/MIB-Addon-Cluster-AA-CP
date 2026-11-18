@@ -138,37 +138,6 @@ keyValue
     poll    0
 
 script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/clustermenu_on.sh"
-    label   "Wheel menu ON"
-
-script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/clustermenu_off.sh"
-    label   "Wheel menu OFF"
-
-script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/trainer_on.sh"
-    label   "Wheel trace ON"
-
-script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/trainer_off.sh"
-    label   "Wheel trace OFF"
-
-script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/remote_on.sh"
-    label   "Cluster remote: ON"
-
-script
-    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/remote_off.sh"
-    label   "Cluster remote: OFF"
-
-screen ClusterMap_wheellisten ClusterMap_wheel
-
-keyValue
-    value   String sys 0x00000000 0
-    label   "ClusterMap: wheel via HMI tracer"
-    poll    0
-
-script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/wheelcontrol_on.sh"
     label   "Wheel control ON"
 

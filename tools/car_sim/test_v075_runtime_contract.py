@@ -496,9 +496,15 @@ def test_the_gem_screen_is_nested_with_max_nine_rows_per_screen():
     # the tabs the owner looked for are now one level inside ClusterMap
     for needle in ('ClusterMap_hires', 'ClusterMap_wheel'):
         assert f'screen {needle} ClusterMap' in tpl, needle
-    # and every family is still wired: hires, pump, wheel trace, cluster remote
-    for wrapper in ('hiresen_on.sh', 'idrpump_on.sh', 'trainer_on.sh',
-                    'remote_on.sh', 'clustermenu_on.sh', 'logs.sh',
+    # and every family is still wired: hires, pump, wheel control.
+    # NOTE (v0.7.30): the AA-path trio (trainer, remote, clustermenu) is
+    # deliberately NOT on the screen anymore. Its hook code feeds
+    # exclusively on outbound 0x8001 InputReports and this unit never
+    # emits one (8 sessions, zero sightings), so those rows promised a
+    # function that cannot fire. Scripts + verbs stay on the card for
+    # diagnosis; the screen carries only what works.
+    for wrapper in ('hiresen_on.sh', 'idrpump_on.sh', 'wheelcontrol_on.sh',
+                    'logs.sh',
                     'uninstall.sh', 'status.sh', 'install.sh', 'arm.sh'):
         assert f'gem/{wrapper}"' in tpl, wrapper
 

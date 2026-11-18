@@ -1957,3 +1957,18 @@ Fixed both, no new questions asked:
   collects it; §6c dumps the live screen's own screens+labels (what GEM
   actually parsed); §9 already had tracer conf/ports/key log/out.
 - 119/119 green.
+
+---
+
+## Round 69 — v0.7.30: the wheel screen tells the truth (one switch)
+
+Owner: "why 3 functions, why not 1" -- and right again. The wheel
+screen still carried the AA-path trio (menu / trace / remote) while I
+had consolidated only the sub-screen. Code audit this round proved
+what the 8 sessions already said: cluster_remote_event fires ONLY on
+outbound 0x8001 (video_sink_hook.c:3860 + tap gate :3274), which this
+unit never emits -- all three switches armed a parser with no input.
+Removed their rows (scripts + verbs stay for diagnosis); the wheel
+screen is now Wheel control ON/OFF only. Status marks the trio idle
+when the hook log provably lacks 0x8001, live if one ever appears.
+120/120 green.

@@ -152,6 +152,19 @@ TT=`lkey gal_remote_trace` || TT=""
 if [ -z "$TT" ]; then
     TT=`ckey GAL_REMOTE_TRACE` || TT=""
 fi
+# AA-path liveness: the remote/menu/tap trio feeds EXCLUSIVELY on
+# outbound 0x8001 InputReports (video_sink_hook.c: the gesture parser is
+# called only for id == 0x8001). This unit never emits one (8 sessions,
+# zero sightings), so a switch left ON there is armed but idle. Definitive
+# only when a hook log exists and carries no 0x8001 line at all.
+AA_IDLE=0
+_HL="${GAL_HOOK_LOG:-/tmp/gal_dualscreen.log}"
+for _hl in "$_HL" "$_HL.prev"; do
+    [ -r "$_hl" ] || continue
+    if grep -q "0x8001" "$_hl" 2>/dev/null; then AA_IDLE=0; break; fi
+    AA_IDLE=1
+done
+unset _hl _HL
 # keep map + ETA card: settings keys only (no live files).
 KM=`ckey GAL_KEEP_MAP` || KM=""
 EC=`ckey GAL_SECONDARY_UI_CONFIG_HEX` || EC=""
@@ -163,7 +176,11 @@ if [ "$VERBOSE" = 1 ]; then
     # session for hi-res, gal start for the HEX card, boot ports live
     # for the wheel).
     echo "Features (setting -> when it lands):"
-    if [ "$R" = 1 ]; then echo "  Cluster remote: ON (live)"; else echo "  Cluster remote: off"; fi
+    if [ "$R" = 1 ]; then
+        if [ "$AA_IDLE" = 1 ]; then echo "  Cluster remote: ON (idle: no wheel reports)"; else echo "  Cluster remote: ON (live)"; fi
+    else
+        echo "  Cluster remote: off"
+    fi
     if [ ! -r "$CONF" ]; then
         echo "  Wheel control: unknown (no settings readable)"
     elif [ "$W" = 0 ]; then
@@ -189,8 +206,16 @@ if [ "$VERBOSE" = 1 ]; then
     else
         case "$ICV" in ''|'40,40,127,127') echo "  Card clear: off" ;; *) echo "  Card clear: armed (next session)" ;; esac
     fi
-    if [ "$CM" = 1 ]; then echo "  Cluster menu: ON (live)"; else echo "  Cluster menu: off"; fi
-    if [ "$TT" = 1 ]; then echo "  AA tap trace: ON (live)"; else echo "  AA tap trace: off"; fi
+    if [ "$CM" = 1 ]; then
+        if [ "$AA_IDLE" = 1 ]; then echo "  Cluster menu: ON (idle: no wheel reports)"; else echo "  Cluster menu: ON (live)"; fi
+    else
+        echo "  Cluster menu: off"
+    fi
+    if [ "$TT" = 1 ]; then
+        if [ "$AA_IDLE" = 1 ]; then echo "  AA tap trace: ON (idle: no wheel reports)"; else echo "  AA tap trace: ON (live)"; fi
+    else
+        echo "  AA tap trace: off"
+    fi
     if [ "$H" = 1 ] || [ "$HE" = 1 ]; then echo "  Hi-res: ON (next session)"; else echo "  Hi-res: off"; fi
     case "$P" in
         ''|0) echo "  Pump: off" ;;

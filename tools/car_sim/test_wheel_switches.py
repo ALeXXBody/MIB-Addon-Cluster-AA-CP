@@ -224,6 +224,30 @@ def test_status_lists_every_family_compactly(car):
         assert line in p.stdout, f"{line!r} missing:\n{p.stdout}"
 
 
+def test_status_marks_dead_aa_path_idle(car):
+    """The remote/menu/tap trio feeds only on outbound 0x8001 reports.
+    A hook log full of session traffic but zero 0x8001 must say idle,
+    not live; a single 0x8001 line flips it back."""
+    _stage(car)
+    rt = _rt()
+    car.stage(APP_VIEWS[0], "eso/lib/gal_dualscreen/gal_dualscreen.conf",
+              "GAL_PLAYER_WINDOW=1010x376\n"
+              "GAL_CLUSTER_REMOTE=1\n"
+              "GAL_CLUSTER_MENU=1\n")
+    hooklog = rt / "hook.log"
+    hooklog.write_text("gal_dualscreen t=26.098 event=aap.out msg_id=0x0003\n"
+                       "gal_dualscreen t=26.405 event=aap.out msg_id=0x8003\n")
+    p = _run(car, f"{SW}/status.sh", env={"GAL_HOOK_LOG": str(hooklog)},
+             expect_rc=0)
+    assert "Cluster remote: ON (idle: no wheel reports)" in p.stdout, p.stdout
+    assert "Cluster menu: ON (idle: no wheel reports)" in p.stdout, p.stdout
+    with open(hooklog, "a") as f:
+        f.write("gal_dualscreen t=30.1 event=aap.out msg_id=0x8001 bytes=9\n")
+    p = _run(car, f"{SW}/status.sh", env={"GAL_HOOK_LOG": str(hooklog)},
+             expect_rc=0)
+    assert "Cluster remote: ON (live)" in p.stdout, p.stdout
+
+
 def test_press_stays_green_without_any_screen_file(car):
     _stage(car)
     _rt()
