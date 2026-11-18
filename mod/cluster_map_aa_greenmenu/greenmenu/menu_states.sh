@@ -46,17 +46,49 @@ add() {
     if [ -z "$S" ]; then S="$1"; else S="$S, $1"; fi
 }
 
-# remote: the hook reads the live flag at every gesture; after a reboot
-# /tmp is wiped, so fall back to the persisted settings key.
+# THE ROW (one line for the main menu) is CONFIGURATION ONLY, never live
+# state: /tmp wipes on every reboot and ports only exist after one, so any
+# live-derived word would go stale until the next press -- the exact lie
+# the owner caught. Conf never changes except through a press, and every
+# press refreshes the row, so this is always true. Live truth (ports,
+# pids, running map) belongs to Status -v below, which is computed fresh
+# on every press.
+if [ -r "$CONF" ]; then
+    RC=`ckey GAL_CLUSTER_REMOTE` || RC=""
+    [ "$RC" = 1 ] && add "remote"
+    WC=`ckey GAL_WHEEL_LISTEN` || WC=""
+    [ "$WC" != 0 ] && add "wheel"
+    ZE=`ckey GAL_PLAYER_ZOOM_E4` || ZE=""
+    case "$ZE" in
+        11500) add "zoom 1.15" ;;
+        13500) add "zoom 1.35" ;;
+    esac
+    NC=`ckey GAL_NAV_INFO_STRIP` || NC=""
+    [ "$NC" = 1 ] && add "strip"
+    IC=`ckey GAL_SECONDARY_INSETS` || IC=""
+    case "$IC" in ''|'40,40,127,127') ;; *) add "card" ;; esac
+    PC=`ckey GAL_IDR_PUMP` || PC=""
+    case "$PC" in ''|0) ;; *) add "pump" ;; esac
+    HC=`ckey GAL_SECONDARY_HIRESEN` || HC=""
+    [ "$HC" = 1 ] && add "hires"
+    CMC=`ckey GAL_CLUSTER_MENU` || CMC=""
+    [ "$CMC" = 1 ] && add "clustermenu"
+    TTC=`ckey GAL_REMOTE_TRACE` || TTC=""
+    [ "$TTC" = 1 ] && add "tap trace"
+    KMC=`ckey GAL_KEEP_MAP` || KMC=""
+    [ "$KMC" = phone ] && add "keep map"
+    ECC=`ckey GAL_SECONDARY_UI_CONFIG_HEX` || ECC=""
+    [ -n "$ECC" ] && add "eta $ECC"
+fi
+
+# Live values for the Status block below (freshly computed per press).
 R=`lkey gal_remote` || R=""
 if [ -z "$R" ]; then
     R=`ckey GAL_CLUSTER_REMOTE` || R=""
 fi
-[ "$R" = 1 ] && add "remote"
 
-# wheel: enabled unless the conf explicitly opts out; needs the HMI
-# tracer ports, so a silent port pair earns the reboot reminder. Without
-# any readable conf there is nothing to report (never assume ON).
+# Live values for the Status block below (freshly computed per press).
+# The one-liner above uses conf only; these add nothing to $S.
 W=""
 PORTS_LIVE="unknown"
 [ -r "$CONF" ] && W=`ckey GAL_WHEEL_LISTEN` || W=""
@@ -64,53 +96,52 @@ if [ -r "$CONF" ] && [ "$W" != 0 ]; then
     if command -v netstat >/dev/null 2>&1; then
         if netstat -an 2>/dev/null | grep -qE "[:.]1798 |[:.]20991 "; then
             PORTS_LIVE=1
-            add "wheel"
         else
             PORTS_LIVE=0
-            add "wheel (reboot once)"
         fi
-    else
-        add "wheel"
     fi
 fi
 
-# zoom: the live file wins (the player polls it); else the conf E4 value.
+# zoom: the live file first (the player polls it), else the conf value.
 Z=`lkey stream-player.zoom` || Z=""
-if [ -n "$Z" ]; then
-    add "zoom $Z"
-else
-    ZE=`ckey GAL_PLAYER_ZOOM_E4` || ZE=""
-    case "$ZE" in
-        11500) add "zoom 1.15" ;;
-        13500) add "zoom 1.35" ;;
+ZLIVE=0
+[ -n "$Z" ] && ZLIVE=1
+if [ -z "$Z" ]; then
+    Z=`ckey GAL_PLAYER_ZOOM_E4` || Z=""
+    case "$Z" in
+        11500) Z="1.15" ;;
+        13500) Z="1.35" ;;
+        10000|'') Z="" ;;
+        *) Z="" ;;
     esac
 fi
 
 # turn strip: live file first (the running player polls it), persisted
-# key after a reboot wiped /tmp.
+# key after a reboot wiped /tmp. Adds nothing to $S (row is conf-only).
 N=`lkey stream-player.navstrip` || N=""
+NLIVE=0
+[ -n "$N" ] && NLIVE=1
 if [ -z "$N" ]; then
     N=`ckey GAL_NAV_INFO_STRIP` || N=""
 fi
-[ "$N" = 1 ] && add "strip"
 
-# card clear: any armed uiconfig (absent = full window, nothing to show).
-if [ -r "$RT/gal_uiconfig" ]; then add "card"; fi
+# card clear: live uiconfig file (written per press/cycle). The row uses
+# the persisted insets instead; this adds nothing to $S.
+UIC_ARMED=0
+[ -r "$RT/gal_uiconfig" ] && UIC_ARMED=1
 
 # sharpness pump: live level first, persisted key after a reboot.
 P=`lkey gal_idr_pump` || P=""
+PLIVE=0
+[ -n "$P" ] && PLIVE=1
 if [ -z "$P" ]; then
     P=`ckey GAL_IDR_PUMP` || P=""
 fi
-case "$P" in ''|0) ;; *) add "pump" ;; esac
 
-# hi-res: live flag or conf key.
+# hi-res: live flag or conf key. Adds nothing to $S (row is conf-only).
 H=`lkey gal_hires` || H=""
-[ "$H" = 1 ] && add "hires"
-if [ "$H" != 1 ]; then
-    HE=`ckey GAL_SECONDARY_HIRESEN` || HE=""
-    [ "$HE" = 1 ] && add "hires"
-fi
+[ "$H" = 1 ] && HLIVE=1 || HLIVE=0
+HE=`ckey GAL_SECONDARY_HIRESEN` || HE=""
 
 # cluster menu + AA tap trace: same live-then-conf shape as remote.
 CM=`lkey gal_cluster_menu` || CM=""
@@ -142,13 +173,29 @@ if [ "$VERBOSE" = 1 ]; then
     else
         echo "  Wheel control: ON (needs 1 reboot)"
     fi
-    if [ -n "$Z" ]; then echo "  Zoom: $Z (live)"; else echo "  Zoom: off"; fi
-    if [ "$N" = 1 ]; then echo "  Turn strip: ON (live)"; else echo "  Turn strip: off"; fi
-    if [ -r "$RT/gal_uiconfig" ]; then echo "  Card clear: armed (live)"; else echo "  Card clear: off"; fi
+    if [ -n "$Z" ]; then
+        if [ "$ZLIVE" = 1 ]; then echo "  Zoom: $Z (live)"; else echo "  Zoom: $Z (next session)"; fi
+    else
+        echo "  Zoom: off"
+    fi
+    if [ "$N" = 1 ]; then
+        if [ "$NLIVE" = 1 ]; then echo "  Turn strip: ON (live)"; else echo "  Turn strip: ON (next session)"; fi
+    else
+        echo "  Turn strip: off"
+    fi
+    ICV=`ckey GAL_SECONDARY_INSETS` || ICV=""
+    if [ "$UIC_ARMED" = 1 ]; then
+        echo "  Card clear: armed (live)"
+    else
+        case "$ICV" in ''|'40,40,127,127') echo "  Card clear: off" ;; *) echo "  Card clear: armed (next session)" ;; esac
+    fi
     if [ "$CM" = 1 ]; then echo "  Cluster menu: ON (live)"; else echo "  Cluster menu: off"; fi
     if [ "$TT" = 1 ]; then echo "  AA tap trace: ON (live)"; else echo "  AA tap trace: off"; fi
     if [ "$H" = 1 ] || [ "$HE" = 1 ]; then echo "  Hi-res: ON (next session)"; else echo "  Hi-res: off"; fi
-    case "$P" in ''|0) echo "  Pump: off" ;; *) echo "  Pump: ${P}s (live)" ;; esac
+    case "$P" in
+        ''|0) echo "  Pump: off" ;;
+        *) if [ "$PLIVE" = 1 ]; then echo "  Pump: ${P}s (live)"; else echo "  Pump: ${P}s (next session)"; fi ;;
+    esac
     case "$KM" in phone) echo "  Keep map: phone (next session)" ;; *) echo "  Keep map: off" ;; esac
     if [ -n "$EC" ]; then echo "  ETA card: $EC (next start)"; else echo "  ETA card: off"; fi
     exit 0

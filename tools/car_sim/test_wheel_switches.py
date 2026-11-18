@@ -213,6 +213,7 @@ def test_status_lists_every_family_compactly(car):
               "GAL_IDR_PUMP=25\n"
               "GAL_WHEEL_LISTEN=0\n")
     (rt / "gal_hires").write_text("1\n")
+    (rt / "gal_idr_pump").write_text("25\n")
     p = _run(car, f"{SW}/status.sh", expect_rc=0)
     for line in ("Features (setting -> when it lands):",
                  "Cluster remote: ON (live)",

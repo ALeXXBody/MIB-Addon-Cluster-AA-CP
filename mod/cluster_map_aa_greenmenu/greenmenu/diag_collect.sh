@@ -256,6 +256,15 @@ if [ -f "$_live" ]; then
 else
     put "(no live screen file to check)"
 fi
+# 6c. WHAT THE MENU SHOWS: the live screen's own rows (screens + labels).
+# When the owner reports a row missing or stale, this -- not the template
+# on the card -- is what the GEM actually parsed.
+if [ -f "$_live" ]; then
+    put "-- live screens and labels (what the GEM shows) --"
+    grep -e "^screen" -e "label" "$_live" 2>/dev/null >> "$TMP" 2>/dev/null
+else
+    put "(no live screen file to dump)"
+fi
 
 # ---- 7. installed settings (the fine-tune facts)
 section "7 installed settings (the file the hook actually loads)"
@@ -480,6 +489,15 @@ section "10 install home record"
 [ -r "$PKG/last_install_paths.txt" ] && cat "$PKG/last_install_paths.txt" >> "$TMP" || \
     put "(no last_install_paths.txt)"
 [ -r /tmp/clustermap_last_paths ] && cat /tmp/clustermap_last_paths >> "$TMP"
+# 10b. THE INSTALL TRANSCRIPT (what enable_hook actually did: tracer
+# lines, staging, refusals). Without it every install-time question is
+# a guess.
+if [ -r "$PKG/install.log" ]; then
+    put "-- install.log (last install transcript, all lines) --"
+    cat "$PKG/install.log" >> "$TMP" 2>/dev/null
+else
+    put "install.log = (absent: this card never ran install.sh v0.7.29+)"
+fi
 
 # ---- 11. last run summary (appended by custom.sh / menus.sh)
 section "11 last run summary (curated result lines)"

@@ -1938,3 +1938,22 @@ card, cluster menu, AA tap trace, hi-res, pump, keep map, ETA card --
 each with setting and when it lands. Every timing verified against the
 hook sources (per-gesture fopen, 1 Hz pump/player polls, per-session
 hires, gal-start HEX). One-line States row unchanged. 119/119 green.
+
+---
+
+## Round 68 — v0.7.29: the diag gets everything, the row stops lying
+
+Owner verdict: the diag never carried all the info, and the States row
+broke the zero-press promise (live-derived words go stale after boot).
+Fixed both, no new questions asked:
+
+- States row is CONFIGURATION ONLY now: conf-derived items only, no
+  /tmp, no ports, no "(reboot once)". Conf changes only via presses and
+  every press refreshes the row, so it cannot go stale. Live truth
+  (ports, pids, live-vs-session effects, each verified against the hook
+  sources this round) stays in Status -v, computed fresh per press.
+- Diag gaps closed in one go: install.sh saves the enable_hook
+  transcript to install.log on the card (tracer lines, refusals) and §10
+  collects it; §6c dumps the live screen's own screens+labels (what GEM
+  actually parsed); §9 already had tracer conf/ports/key log/out.
+- 119/119 green.

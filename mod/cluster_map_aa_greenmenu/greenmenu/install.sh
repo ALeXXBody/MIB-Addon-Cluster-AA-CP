@@ -69,8 +69,13 @@ if train_supported; then
     [ -z "$PROBE_OUT" ] || echo "$PROBE_OUT"
     echo "Compatibility: $SUPPORT_NOTE"
     echo "Installing: the Android Auto map on the cluster"
-    sh "$PKG/enable_hook.sh"
+    # The install transcript is evidence, not console decoration: the
+    # tracer auto-enable lines and every refusal land here, and Save
+    # logs picks this file up -- a later diag never has to guess what
+    # the install did. Printed as well, so the console story is unchanged.
+    sh "$PKG/enable_hook.sh" >"$PKG/install.log" 2>&1
     RC=$?
+    cat "$PKG/install.log" 2>/dev/null
     echo
     if [ $RC -eq 0 ]; then
         echo "CLUSTERMAP_INSTALL_OK"
