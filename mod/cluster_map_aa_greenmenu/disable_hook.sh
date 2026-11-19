@@ -215,11 +215,21 @@ for _pv in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/a
 done
 if [ -d "$PRELOAD_WRITE_DIR" ] || [ -f "$APP_MOUNT/eso/lib/libdmdt_flush.so" ] ||
    [ -f "$APP_MOUNT/navigation/stream-player" ] || [ -r "$PLAYER_ORIG" ]; then
-    if mount -uw "$APP_MOUNT" 2>/dev/null; then
+    # v0.7.34 ROOT CAUSE of the surviving leftovers: this cleanup opened a
+    # writable window with a single `mount -uw /mnt/app`. On the owner's
+    # MHI2 the app partition is addressable through the QNET FQDN view and
+    # refuses both the local spelling and a write at the view root, so the
+    # whole block was skipped with one "harmless" warning: the menu screen,
+    # the tracer config and the player backup all survived uninstall. Use
+    # the SAME ladder the installer uses; fall back to a probe in eso/hmi
+    # for a unit where the preload folder was never staged.
+    if app_mount_rw || app_mount_rw_at "eso/hmi/engdefs"; then
+        echo "$APP_LADDER_OK"
         APP_WRITABLE=1
-        rm -f "$APP_MOUNT/eso/lib/libdmdt_flush.so" 2>/dev/null || true
+        _AV="$APP_RW"
+        rm -f "$_AV/eso/lib/libdmdt_flush.so" 2>/dev/null || true
         # The CarPlay map's safe area, read only by its hook.
-        rm -f "$APP_MOUNT/root/mibr-carplay111-safearea.conf" 2>/dev/null || true
+        rm -f "$_AV/root/mibr-carplay111-safearea.conf" 2>/dev/null || true
         # Rule 1's undo: the armed install kept the unit's stock player
         # BESIDE the live one; restore it (byte-identical stock file), then
         # drop the sidecar only. Without the sidecar, remove our copy
@@ -227,16 +237,18 @@ if [ -d "$PRELOAD_WRITE_DIR" ] || [ -f "$APP_MOUNT/eso/lib/libdmdt_flush.so" ] |
         if [ -n "$PLAYER_ORIG" ] && [ -d "$PLAYER_ORIG_DIR" ]; then
             cp -p "$PLAYER_ORIG" "$PLAYER_ORIG_DIR/stream-player" 2>/dev/null \
                 && echo "Unit's stock stream-player restored from the install's backup."
-            rm -f /mnt/app/navigation/stream-player.aacluster-original 2>/dev/null || true
-            rm -f /net/mmx.mibhigh.net/mnt/app/navigation/stream-player.aacluster-original 2>/dev/null || true
-        elif rm -f "$APP_MOUNT/navigation/stream-player" 2>/dev/null; then
-            echo "  removed player: $APP_MOUNT/navigation/stream-player"
+            for _pv in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+                rm -f "$_pv/navigation/stream-player.aacluster-original" 2>/dev/null || true
+            done
+            unset _pv
+        elif rm -f "$_AV/navigation/stream-player" 2>/dev/null; then
+            echo "  removed player: $_AV/navigation/stream-player"
         fi
-        if [ -d "$PRELOAD_WRITE_DIR" ]; then
-            if rm -rf "$PRELOAD_WRITE_DIR" 2>/dev/null; then
-                echo "  removed preload copy: $PRELOAD_WRITE_DIR"
+        if [ -d "$_AV/eso/lib/gal_dualscreen" ]; then
+            if rm -rf "$_AV/eso/lib/gal_dualscreen" 2>/dev/null; then
+                echo "  removed preload copy: $_AV/eso/lib/gal_dualscreen"
             else
-                echo "  warning: could not remove $PRELOAD_WRITE_DIR (harmless, unreferenced)" >&2
+                echo "  warning: could not remove $_AV/eso/lib/gal_dualscreen (harmless, unreferenced)" >&2
             fi
         fi
         # Wheel tracer revert: the install (or Wheel control ON) extended
@@ -257,10 +269,11 @@ if [ -d "$PRELOAD_WRITE_DIR" ] || [ -f "$APP_MOUNT/eso/lib/libdmdt_flush.so" ] |
             done
         done
         unset _tv _tl
-        mount -ur "$APP_MOUNT" 2>/dev/null || true
+        mount -ur "$_AV" 2>/dev/null || true
         APP_WRITABLE=0
     else
-        echo "  warning: could not remount $APP_MOUNT to clean up $PRELOAD_WRITE_DIR (harmless, unreferenced)" >&2
+        echo "  warning: no writable app view for cleanup ($PRELOAD_WRITE_DIR and the HMI tracer backup survive)." >&2
+        echo "$APP_LADDER_ERRORS" | sed 's/^/    /' >&2
     fi
 fi
 # NOTE (same trap rule as enable_hook.sh): no `trap - 0` clearer may ever

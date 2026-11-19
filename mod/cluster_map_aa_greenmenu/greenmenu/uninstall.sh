@@ -61,4 +61,7 @@ if [ $RC -eq 0 ]; then
 else
     echo "CLUSTERMAP_UNINSTALL_FAILED (code $RC). Read the messages above."
 fi
-exit 0
+# The old `exit 0` made a failed restore print FAILED and then tell the GEM
+# verdict "DONE". Propagate the real result: the run log already names the
+# failure, and run_verdict must not call a broken uninstall a success.
+exit "$RC"

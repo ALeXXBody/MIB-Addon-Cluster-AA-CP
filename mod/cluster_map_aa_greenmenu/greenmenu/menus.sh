@@ -35,18 +35,29 @@ run_quiet() {
     else
         _UPT="press wall: `date 2>/dev/null || echo unknown` (/proc/uptime absent)"
     fi
+    # A child may scrub /tmp as part of its own job (virgin.sh removes
+    # /tmp/cm_menu_*.log). Redirecting the child STRAIGHT into $_log then
+    # means it deletes the file its own stdout is open on: every reason it
+    # printed goes to an unlinked inode, and the `>>` below recreates the
+    # file with only our synthetic FAIL line. That is exactly what the
+    # owner's v0.7.33 diag showed. Stage under a name the scrub cannot
+    # match, then publish the COMPLETE transcript after the child exits.
+    _stage="/tmp/cm_menu_${1:-unknown}.run.$$"
     # optional child argument ($3): zoom up/down, keep_map on/off ...
     if [ -n "$3" ]; then
-        sh "$_child" "$3" >"$_log" 2>&1
+        sh "$_child" "$3" >"$_stage" 2>&1
     else
-        sh "$_child" >"$_log" 2>&1
+        sh "$_child" >"$_stage" 2>&1
     fi
     _rc=$?
+    cat "$_stage" >"$_log" 2>/dev/null || : >"$_log" 2>/dev/null
+    rm -f "$_stage" 2>/dev/null || true
     # A child that dies WITHOUT printing its own reason must still land a
     # named FAIL line: the verdict below is pattern-based, so a silent
     # non-zero exit would otherwise read as DONE.
     if [ "$_rc" -ne 0 ] && ! grep -q -e "^FAIL" -e "^ERROR" -e "^CRITICAL" \
             -e "^MISSING" -e "INSTALL_FAILED" -e "NOT SUPPORTED" \
+            -e "STILL PRESENT" -e "VIRGIN UNIT: INCOMPLETE" \
             -e "^Cannot " -e "^Could not " "$_log" 2>/dev/null \
             && ! grep -q "Nothing changed" "$_log" 2>/dev/null; then
         echo "FAIL: $1 child ${_child##*/} stopped rc=$_rc without its own reason" >> "$_log"

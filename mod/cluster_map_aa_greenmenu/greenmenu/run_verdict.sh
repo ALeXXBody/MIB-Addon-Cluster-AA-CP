@@ -25,6 +25,11 @@ if [ -r "$LOG" ]; then
     if grep -q "^MISSING" "$LOG" 2>/dev/null; then BAD=1; fi
     if grep -q "INSTALL_FAILED" "$LOG" 2>/dev/null; then BAD=1; fi
     if grep -q "NOT SUPPORTED" "$LOG" 2>/dev/null; then BAD=1; fi
+    # A virgin scrub names each leftover as "STILL PRESENT" and ends with
+    # "INCOMPLETE"; those lines are indented, so the ^FAIL family above
+    # never saw them and the menu said DONE over a failed scrub.
+    if grep -q "STILL PRESENT" "$LOG" 2>/dev/null; then BAD=1; fi
+    if grep -q "VIRGIN UNIT: INCOMPLETE" "$LOG" 2>/dev/null; then BAD=1; fi
     if grep -q "Uninstall FAILED" "$LOG" 2>/dev/null; then BAD=1; fi
     if grep -q "Cannot remount" "$LOG" 2>/dev/null; then BAD=1; fi
     if grep -q "Cannot write" "$LOG" 2>/dev/null; then BAD=1; fi

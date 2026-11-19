@@ -2019,3 +2019,51 @@ is written by INSTALL, not boot) is corrected. New sim test uses a
 read-only card root and FAILS with the old code -- the exact shape
 that slipped past 120 writable-card tests. 122/122 green.
 Car proof: UNVERIFIED (owner round pending).
+
+---
+
+## Round 73 — v0.7.34: ROOT CAUSES of the broken uninstall/virgin lifecycle
+
+Owner: "ANOTHER HALF-BAKED CODE... NOT EVEN UNINSTALL/VIRGIN IS WORKING
+PROPERLY" — and the v0.7.33 diag proved it. Three separate root causes,
+all found in the owner's own evidence and each pinned by a sim test that
+FAILS on the old code:
+
+1. **The virgin press ate its own reason.** `menus.sh run_quiet` redirected
+   the child straight into `/tmp/cm_menu_virgin.log`; `virgin.sh` step 2
+   scrubs `/tmp/cm_menu_*.log`. The child unlinked the file its own stdout
+   was open on, so every `STILL PRESENT` reason went to an unlinked inode.
+   `run_quiet` then recreated the file with ONLY its synthetic
+   "stopped rc=1 without its own reason" — exactly the owner's §12.
+   Fix: stage the child transcript under a name the scrub cannot match
+   (`.run.$$`) and publish the complete log after the child exits.
+   `run_verdict.sh` now also treats an indented `STILL PRESENT` /
+   `VIRGIN UNIT: INCOMPLETE` as STOPPED instead of DONE.
+
+2. **The app writability probe looked in the wrong directory.** It only
+   probed `eso/lib/gal_dualscreen` (or the view root), which is already
+   GONE on a stock-ish unit; the root write is refused, so virgin declared
+   the app read-only and left `cluster-map.esd` + `.prev` behind — the two
+   files the owner's diag still showed. Added `app_mount_rw_at()`, which
+   retries the same ladder with a probe in the ACTUAL scrub target
+   (`eso/hmi/engdefs`). The tracer's byte-equal `.orig` and its marker are
+   now scrubbed too; a `.orig` that differs from the live config is NAMED
+   and left alone (never delete another mod's file).
+
+3. **Uninstall said OK even when the restore failed.** `uninstall.sh`
+   ended in `exit 0` unconditionally; a failed `disable_hook` printed
+   `CLUSTERMAP_UNINSTALL_FAILED` and the GEM still said DONE. It now
+   propagates the real rc. Deeper cause of surviving leftovers:
+   `disable_hook.sh` opened one writable window with a bare
+   `mount -uw /mnt/app` instead of the proven four-view ladder. On this
+   unit that spelling is refused, so the player backup, tracer config and
+   preload cleanup were all skipped with one "harmless" warning. It now
+   uses `app_mount_rw` (with the engdefs-target fallback) and names the
+   view it used.
+
+Car proof: **UNVERIFIED** — all fixes are code/test proven (127 sim
+tests, 5 new: log survival, engdefs scrub, foreign-backup guard, QNET
+cleanup, uninstall rc). The owner must run uninstall + virgin on the car
+and send a fresh diag before this release is called fixed. Phone
+recognition after uninstall is the good baseline; nothing here reintroduces
+the preload when the unit is meant to be stock.

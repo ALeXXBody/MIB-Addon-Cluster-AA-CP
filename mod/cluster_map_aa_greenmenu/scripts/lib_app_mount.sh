@@ -70,32 +70,39 @@ app_probe_view()
     #   2. writes at the app view's ROOT refuse while SUBDIRECTORY writes
     #      work (the same boot's engdefs write succeeded through the very
     #      alias the root probe refused);
-    #   3. the write target of every app write in this payload is
-    #      $1/eso/lib/gal_dualscreen (settings copy, hook, backups).
+    #   3. the default write target is eso/lib/gal_dualscreen (settings
+    #      copy, hook, backups) -- BUT a scrub whose only job is deleting
+    #      the GEM screen works in eso/hmi/engdefs, which is a DIFFERENT
+    #      subdirectory. Probing only the preload folder declares the app
+    #      unwritable on a stock-ish unit where that folder was already
+    #      removed, so virgin cannot delete the leftover screen. The
+    #      caller may therefore name the target subdirectory ($2).
     # So probe AT THE WORK TARGET first, fall back to the view root.
     # (Subshell: dash aborts on a special builtin's failed redirect.)
     # The v0.7.3 refinement: the probe also RECORDS why every one of its
     # attempts refused - one per form in $APP_LADDER_ERRORS. A car diag
     # therefore names the reason (ENO.../Permission) rather than the
     # same "every form failed" verdict.
-    if [ -d "$1/eso/lib/gal_dualscreen" ]; then
-        _err=`{ ( : > "$1/eso/lib/gal_dualscreen/.clustermap_rw_probe" ); } 2>&1` || true
+    _pv="$1"
+    _pd="${2:-eso/lib/gal_dualscreen}"
+    if [ -d "$_pv/$_pd" ]; then
+        _err=`{ ( : > "$_pv/$_pd/.clustermap_rw_probe" ); } 2>&1` || true
         if [ -z "$_err" ]; then
-            rm -f "$1/eso/lib/gal_dualscreen/.clustermap_rw_probe" 2>/dev/null
+            rm -f "$_pv/$_pd/.clustermap_rw_probe" 2>/dev/null
             return 0
         fi
-        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1/eso/lib/gal_dualscreen: ${_err:-(no message)}
+        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $_pv/$_pd: ${_err:-(no message)}
 "
     else
-        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1/eso/lib/gal_dualscreen: (folder absent in this view)
+        APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $_pv/$_pd: (folder absent in this view)
 "
     fi
-    _err=`{ ( : > "$1/.clustermap_rw_probe" ); } 2>&1` || true
+    _err=`{ ( : > "$_pv/.clustermap_rw_probe" ); } 2>&1` || true
     if [ -z "$_err" ]; then
-        rm -f "$1/.clustermap_rw_probe" 2>/dev/null
+        rm -f "$_pv/.clustermap_rw_probe" 2>/dev/null
         return 0
     fi
-    APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $1 root: ${_err:-(no message)}
+    APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $_pv root: ${_err:-(no message)}
 "
     return 1
 }
@@ -106,16 +113,21 @@ app_probe_view()
 # the form that worked.
 APP_LADDER_ERRORS=""
 APP_LADDER_OK=""
-app_mount_rw()
+app_mount_rw_probing()
 {
+    _probe_dir="${1:-}"
     for _f in $APP_VIEWS; do
         [ -d "$_f" ] || continue
         _rc=0
         _err=`mount -uw "$_f" 2>&1` || _rc=$?
         if [ "$_rc" -eq 0 ] && [ -z "$_err" ]; then
-            if app_probe_view "$_f"; then
+            if app_probe_view "$_f" "$_probe_dir"; then
                 APP_RW="$_f"; APP_LADDER_FORM="mount -uw $_f"
-                APP_LADDER_OK="app: read-write via 'mount -uw $_f'"
+                if [ -n "$_probe_dir" ]; then
+                    APP_LADDER_OK="app: read-write via 'mount -uw $_f' (probe $_probe_dir)"
+                else
+                    APP_LADDER_OK="app: read-write via 'mount -uw $_f'"
+                fi
                 APP_WRITABLE=1; return 0
             fi
         fi
@@ -132,7 +144,7 @@ app_mount_rw()
                     # must go through a view THIS node can actually address
                     # (the local /mnt/app spelling may be absent here even
                     # when the owning node's mount just went rw).
-                    if [ -d "$_pf" ] && app_probe_view "$_pf"; then
+                    if [ -d "$_pf" ] && app_probe_view "$_pf" "$_probe_dir"; then
                         APP_RW="$_pf"; APP_LADDER_FORM="on -f $_n mount -uw /mnt/app (write view: $_pf)"
                         APP_LADDER_OK="app: read-write via 'on -f $_n mount -uw /mnt/app' (view $_pf)"
                         APP_WRITABLE=1; return 0
@@ -144,6 +156,21 @@ app_mount_rw()
         done
     fi
     return 1
+}
+
+app_mount_rw()
+{
+    app_mount_rw_probing ""
+}
+
+# app_mount_rw_at TARGET_REL - retry the SAME ladder but prove writability
+# in a different subdirectory. Needed by a scrub that must delete
+# eso/hmi/engdefs/cluster-map.esd on a unit where the preload folder is
+# already gone: probing only the preload folder would report "read-only"
+# although engdefs itself accepts writes.
+app_mount_rw_at()
+{
+    app_mount_rw_probing "$1"
 }
 
 # Callers should call this from their own finish()/trap handler, after

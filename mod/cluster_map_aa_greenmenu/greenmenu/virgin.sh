@@ -63,11 +63,19 @@ fi
 
 # ---- step 2: open one app rw window + one system rw window ---------------
 APP_OK=0; SYS_OK=0
-if app_mount_rw; then APP_OK=1; APP_WRITABLE=1; else APP_OK=0; fi
+if app_mount_rw; then
+    APP_OK=1; APP_WRITABLE=1
+elif app_mount_rw_at "eso/hmi/engdefs"; then
+    # The preload folder is gone on a stock-ish unit, so the default probe
+    # cannot see that engdefs is writable. Probe the REAL scrub target.
+    APP_OK=1; APP_WRITABLE=1
+else
+    APP_OK=0
+fi
 if system_mount_rw; then SYS_OK=1; SYSTEM_WRITABLE=1; else SYS_OK=0; fi
 trap 'app_mount_finish; if [ "$SYS_OK" = 1 ]; then mount -ur "$SYSTEM_RW" 2>/dev/null || true; fi' 0 1 2 15
-[ "$APP_OK" = 1 ] && echo "app: read-write via '$APP_LADDER_OK'"
-[ "$SYS_OK" = 1 ] && echo "system: read-write via '$SYSTEM_LADDER_OK'"
+[ "$APP_OK" = 1 ] && echo "$APP_LADDER_OK"
+[ "$SYS_OK" = 1 ] && echo "$SYSTEM_LADDER_OK"
 
 scrub_file() {
     # scrub_file PATH : remove one unit file when a rw window exists.
@@ -78,6 +86,21 @@ scrub_file() {
         note "  removed: $1"; return 0
     fi
     hit "$1" "remove refused"; return 1
+}
+
+scrub_own_backup() {
+    # $1 = a .orig backup, $2 = the restored live file. The wheel tracer
+    # leaves a byte-equal .orig after uninstall restored the config, so that
+    # copy is ours and may go. A DIFFERENT .orig is not ours to delete: name
+    # it instead of guessing (owner rule - never touch another mod's file).
+    [ -f "$1" ] || { gone "$1" "already absent"; return 0; }
+    _a=`cksum "$1" 2>/dev/null | awk '{print $1, $2}'`
+    _b=`cksum "$2" 2>/dev/null | awk '{print $1, $2}'`
+    if [ -n "$_a" ] && [ "$_a" = "$_b" ]; then
+        scrub_file "$1" app
+    else
+        hit "$1" "backup differs from the live config - left alone (not proven ours)"
+    fi
 }
 
 echo "-- supervisor recovery copies (safety nets, unreferenced) --"
@@ -105,6 +128,12 @@ for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/ap
     scrub_file "$_v/eso/hmi/lsd/.aacluster_tbt_removed" app
     scrub_file "$_v/eso/hmi/lsd/.aacluster_tbt_added" app
     scrub_file "$_v/eso/hmi/lsd/.aacluster_navignore_added" app
+    scrub_file "$_v/eso/hmi/lsd/dsitracer_activated" app
+    scrub_file "$_v/eso/hmi/dsitracer_activated" app
+    scrub_own_backup "$_v/eso/hmi/lsd/traceConfig.properties.orig" \
+                     "$_v/eso/hmi/lsd/traceConfig.properties"
+    scrub_own_backup "$_v/eso/hmi/traceConfig.properties.orig" \
+                     "$_v/eso/hmi/traceConfig.properties"
     # jars only when OUR marker said we put them there; another mod's
     # jars are not ours to delete.
     if [ -f "$_v/eso/hmi/lsd/jars/NavActiveIgnore.jar" ]; then
