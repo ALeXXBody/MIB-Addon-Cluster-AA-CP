@@ -161,7 +161,10 @@ for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/ap
 done
 
 echo "-- card-root shadow settings (moved aside on the card, never deleted) --"
-for _c in /fs/sda0/gal_dualscreen.conf /fs/sdb0/gal_dualscreen.conf; do
+for _c in /fs/sda0/gal_dualscreen.conf /fs/sdb0/gal_dualscreen.conf \
+           /net/mmx/fs/sda0/gal_dualscreen.conf /net/mmx/fs/sdb0/gal_dualscreen.conf \
+           /net/mmx.mibhigh.net/fs/sda0/gal_dualscreen.conf \
+           /net/mmx.mibhigh.net/fs/sdb0/gal_dualscreen.conf; do
     if [ ! -f "$_c" ]; then gone "$_c" "already absent"; continue; fi
     _aside="$_c.addon-cleanup"
     if mv "$_c" "$_aside" 2>/dev/null && [ ! -f "$_c" ] && [ -f "$_aside" ]; then
@@ -178,7 +181,8 @@ for _t in /tmp/gal_remote /tmp/gal_remote_trace /tmp/gal_cluster_menu \
           /tmp/stream-player.navstrip /tmp/gal_kombi_ready /tmp/gal_inject \
           /tmp/gal_nav_info /tmp/gal_dualscreen.log /tmp/gal_dualscreen.log.prev \
           /tmp/stream-player.log /tmp/clustermap_last_paths \
-          /tmp/cm_custom.log /tmp/clustermap_diag/console.log; do
+          /tmp/cm_custom.log /tmp/clustermap_diag/console.log \
+          /tmp/clustermap_install.log /tmp/clustermap_tracer_auto.log; do
     if [ -e "$_t" ]; then
         if rm -f "$_t" 2>/dev/null; then note "  removed: $_t"; else hit "$_t" "remove refused"; fi
     fi

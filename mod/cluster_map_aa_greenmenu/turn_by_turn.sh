@@ -15,10 +15,50 @@ set -eu
 
 HERE=`cd "\`dirname "$0"\`" && pwd` || { echo "Cannot resolve the payload root" >&2; exit 1; }
 NAME=VCAndroidAuto.jar
-MARKER=/mnt/app/eso/hmi/lsd/.aacluster_tbt_removed
-ADDED=/mnt/app/eso/hmi/lsd/.aacluster_tbt_added
-mark() { mount -uw /mnt/app 2>/dev/null || true; if [ "$1" = set ]; then : > "$MARKER"; else rm -f "$MARKER"; fi; mount -ur /mnt/app 2>/dev/null || true; }
-mark_added() { mount -uw /mnt/app 2>/dev/null || true; if [ "$1" = set ]; then : > "$ADDED"; else rm -f "$ADDED"; fi; mount -ur /mnt/app 2>/dev/null || true; }
+# View-aware markers: the console may resolve the app partition only through
+# the FQDN spelling. Probe every view for an existing marker; write through
+# the first writable one.
+_marker_find() {
+    for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+        if [ -f "$_v/eso/hmi/lsd/$1" ]; then echo "$_v/eso/hmi/lsd/$1"; return 0; fi
+    done
+    echo "/mnt/app/eso/hmi/lsd/$1"
+    return 1
+}
+_marker_write() {
+    # $1 = set|clear, $2 = filename. Writes through the first view that
+    # accepts a file write; falls back to a bare remount attempt per view.
+    for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
+        [ -d "$_v/eso/hmi/lsd" ] || continue
+        if ( : > "$_v/eso/hmi/lsd/.clustermap_tbt_probe" ) 2>/dev/null; then
+            rm -f "$_v/eso/hmi/lsd/.clustermap_tbt_probe" 2>/dev/null
+            if [ "$1" = set ]; then : > "$_v/eso/hmi/lsd/$2" 2>/dev/null || continue
+            else rm -f "$_v/eso/hmi/lsd/$2" 2>/dev/null; fi
+            return 0
+        fi
+        mount -uw "$_v" 2>/dev/null || continue
+        if ( : > "$_v/eso/hmi/lsd/.clustermap_tbt_probe" ) 2>/dev/null; then
+            rm -f "$_v/eso/hmi/lsd/.clustermap_tbt_probe" 2>/dev/null
+            if [ "$1" = set ]; then : > "$_v/eso/hmi/lsd/$2" 2>/dev/null || { mount -ur "$_v" 2>/dev/null; continue; }
+            else rm -f "$_v/eso/hmi/lsd/$2" 2>/dev/null; fi
+            mount -ur "$_v" 2>/dev/null || true
+            return 0
+        fi
+        mount -ur "$_v" 2>/dev/null || true
+    done
+    return 1
+}
+MARKER=`_marker_find .aacluster_tbt_removed || true`
+ADDED=`_marker_find .aacluster_tbt_added || true`
+mark() { _marker_write "$1" .aacluster_tbt_removed || true; MARKER=`_marker_find .aacluster_tbt_removed || true`; }
+mark_added() { _marker_write "$1" .aacluster_tbt_added || true; ADDED=`_marker_find .aacluster_tbt_added || true`; }
+_sys_cfg() {
+    for _v in /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
+        [ -r "$_v/etc/eso/production/smartphone_integrator.json" ] && { echo "$_v/etc/eso/production/smartphone_integrator.json"; return 0; }
+    done
+    echo "/mnt/system/etc/eso/production/smartphone_integrator.json"
+    return 1
+}
 
 case "${1:-}" in
     remove)
@@ -36,7 +76,8 @@ case "${1:-}" in
             echo "The installer did not remove a turn-by-turn jar on this unit; nothing to restore."
         fi ;;
     install)
-        if grep -q 'libgal_hook.so' /mnt/system/etc/eso/production/smartphone_integrator.json 2>/dev/null; then
+        _cfg=`_sys_cfg || true`
+        if grep -q 'libgal_hook.so' "$_cfg" 2>/dev/null; then
             echo "The cluster map is installed. Uninstall it first; the two cannot run together." >&2; exit 1
         fi
         if sh "$HERE/lsd_jar.sh" loaded $NAME; then

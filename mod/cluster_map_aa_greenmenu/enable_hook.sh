@@ -987,7 +987,7 @@ if [ "$CARPLAY_OK" -eq 1 ]; then
     fi
 fi
 
-mount -ur "$APP_MOUNT" 2>/dev/null || true
+mount -ur "$APP_WR" 2>/dev/null || true
 APP_WRITABLE=0
 echo "Installed preload target: $PRELOAD_SO_ALIAS"
 

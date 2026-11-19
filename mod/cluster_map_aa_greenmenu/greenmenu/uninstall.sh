@@ -46,9 +46,15 @@ fi
 slay wheel_listen 2>/dev/null || true
 rm -f /tmp/gal_wheellisten 2>/dev/null || true
 # The turn-by-turn arrows, when this package installed them instead of the map.
-if [ -f $HOOK_DIR/eso/hmi/lsd/.aacluster_tbt_added ]; then
+# View-aware: the marker may live under any app spelling, not just HOOK_DIR.
+_TBT_HIT=0
+for _tv in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+    if [ -f "$_tv/eso/hmi/lsd/.aacluster_tbt_added" ]; then _TBT_HIT=1; break; fi
+done
+if [ "$_TBT_HIT" = 1 ]; then
     sh "$PKG/turn_by_turn.sh" uninstall || RC=1
 fi
+unset _TBT_HIT _tv
 # The menu screen the update copied. Its files stay on the card, and a
 # COLLECT.txt update brings it back for Save logs. Removal needs a WRITE,
 # so open a window HERE: the disable_hook process above remounted the app
@@ -68,16 +74,25 @@ ENGDEFS_REMOVED=0
 for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
     [ "$APP_OK" = 1 ] || break
     _edefs="$_v/eso/hmi/engdefs"
-    [ -f "$_edefs/cluster-map.esd" ] || continue
-    # write-probe (this unit REFUSES mkdir; file writes beside it work)
+    [ -d "$_edefs" ] || continue
+    # This unit REFUSES mkdir but file writes beside the screen work; the
+    # ladder already proved one view writable, this per-view probe only
+    # skips spellings that refuse.
     ( : > "$_edefs/.clustermap_probe" ) 2>/dev/null || continue
     rm -f "$_edefs/.clustermap_probe" 2>/dev/null
-    if rm -f "$_edefs/cluster-map.esd"; then
-        echo "Removed the menu screen (view: $_v)."
-        ENGDEFS_REMOVED=1
-    fi
-    break
+    for _es in cluster-map.esd cluster-map.esd.prev; do
+        if [ -f "$_edefs/$_es" ]; then
+            if rm -f "$_edefs/$_es" 2>/dev/null && [ ! -f "$_edefs/$_es" ]; then
+                echo "Removed the menu screen file $_es (view: $_v)."
+                ENGDEFS_REMOVED=1
+            else
+                echo "WARNING: could not remove $_edefs/$_es (view refused the delete)." >&2
+                RC=1
+            fi
+        fi
+    done
 done
+unset _edefs _es
 if [ "$ENGDEFS_REMOVED" = 0 ] && [ $RC -eq 0 ]; then
     echo "Menu screen not found under any app view (nothing to remove)."
 fi

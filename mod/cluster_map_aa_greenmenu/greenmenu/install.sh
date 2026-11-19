@@ -8,19 +8,27 @@ echo "Phone map on the digital cluster: install"
 # The menu screen of v1.0.0 was called aa-cluster-map.esd and runs scripts from
 # an AAClusterMap folder that newer cards do not have. Once this version's
 # screen is on the unit, the old one only leads nowhere, so it goes.
-# Legacy-screen cleanup is view-aware: MHI2's app partition may only be
-# addressable through the FQDN QNET spelling from this console node.
+# Legacy-screen cleanup is view-aware AND ladder-probed: MHI2's app
+# partition may only be writable through the FQDN QNET spelling, and a bare
+# `mount -uw /mnt/app` is refused there. A failure here never fails the install.
+HERE=`dirname "$0"`
+if [ -r "$HERE/../scripts/lib_app_mount.sh" ]; then
+    . "$HERE/../scripts/lib_app_mount.sh"
+elif [ -r "$HERE/lib_app_mount.sh" ]; then
+    . "$HERE/lib_app_mount.sh"
+fi
 _ENGV_CLEANED=
-for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
-    if [ -f "$_v/eso/hmi/engdefs/aa-cluster-map.esd" ] && [ -f "$_v/eso/hmi/engdefs/cluster-map.esd" ]; then
-        mount -uw "$_v" 2>/dev/null \
-            && rm -f "$_v/eso/hmi/engdefs/aa-cluster-map.esd" \
-            && echo "Removed the old AAClusterMap menu screen (view: $_v)." \
-            && _ENGV_CLEANED=1
-        mount -ur "$_v" 2>/dev/null
-        break
-    fi
-done
+if app_mount_rw_at "eso/hmi/engdefs" 2>/dev/null; then
+    for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
+        if [ -f "$_v/eso/hmi/engdefs/aa-cluster-map.esd" ] && [ -f "$_v/eso/hmi/engdefs/cluster-map.esd" ]; then
+            if rm -f "$_v/eso/hmi/engdefs/aa-cluster-map.esd" 2>/dev/null; then
+                echo "Removed the old AAClusterMap menu screen (view: $_v)."
+                _ENGV_CLEANED=1
+            fi
+        fi
+    done
+    app_mount_finish 2>/dev/null || true
+fi
 [ -n "$_ENGV_CLEANED" ] || true
 echo "Head unit: $FAMILY"
 echo "Firmware train: $TRAIN"
@@ -34,7 +42,7 @@ if [ -n "$UNIT_MISSING" ]; then
     nothing_installed
     echo "Please post this message in a new issue."
     echo "CLUSTERMAP_TOOLS_MISSING$UNIT_MISSING"
-    exit 0
+    exit 1
 fi
 # The card being read-only must NOT block the install any more: the
 # installer only READS from the card; backups/logs get a fallback folder on
@@ -63,7 +71,7 @@ case "$TRAIN" in
         echo "Updating firmware is at your own risk."
         echo "=================================================================="
         echo "CLUSTERMAP_UPDATE_FIRMWARE_FIRST"
-        exit 0 ;;
+        exit 1 ;;
 esac
 if train_supported; then
     [ -z "$PROBE_OUT" ] || echo "$PROBE_OUT"
@@ -92,7 +100,7 @@ if train_supported; then
         echo "CLUSTERMAP_INSTALL_FAILED (code $RC). Read the messages above."
     fi
     [ $RC -eq 0 ] && echo "Hold the power button for 10 seconds to reboot the unit."
-    exit 0
+    exit $RC
 fi
 echo "The cluster map is not available on this firmware yet ($SUPPORT_NOTE)."
 if tbt_supported; then
@@ -106,7 +114,7 @@ if tbt_supported; then
     else
         echo "CLUSTERMAP_INSTALL_FAILED (code $RC). Read the messages above."
     fi
-    exit 0
+    exit $RC
 fi
 echo "NOT SUPPORTED: neither the cluster map nor the turn-by-turn arrows are known"
 echo "to work on $TRAIN."
@@ -115,4 +123,4 @@ case "$TRAIN" in
     MHI2Q_*) echo "For Audi MHI2Q units see github.com/kamgurgul/mib2q-carplay (CarPlay and Android Auto)." ;;
     MST2_*)  echo "MIB2 Standard units are a different design; nothing in this package applies." ;;
 esac
-exit 0
+exit 1

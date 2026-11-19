@@ -213,8 +213,13 @@ for _pv in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/a
         break
     fi
 done
-if [ -d "$PRELOAD_WRITE_DIR" ] || [ -f "$APP_MOUNT/eso/lib/libdmdt_flush.so" ] ||
-   [ -f "$APP_MOUNT/navigation/stream-player" ] || [ -r "$PLAYER_ORIG" ]; then
+_HAVE_APP_WORK=0
+for _hv in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+    if [ -d "$_hv/eso/lib/gal_dualscreen" ] || [ -f "$_hv/eso/lib/libdmdt_flush.so" ] || \
+       [ -f "$_hv/navigation/stream-player" ]; then _HAVE_APP_WORK=1; break; fi
+done
+unset _hv
+if [ "$_HAVE_APP_WORK" = 1 ] || [ -r "$PLAYER_ORIG" ]; then
     # v0.7.34 ROOT CAUSE of the surviving leftovers: this cleanup opened a
     # writable window with a single `mount -uw /mnt/app`. On the owner's
     # MHI2 the app partition is addressable through the QNET FQDN view and
@@ -286,25 +291,32 @@ fi
 # with --keep-jar-removed. A failure leaves lsd.sh untouched and is reported.
 if [ "${1:-}" != "--keep-jar-removed" ] && [ -r "$CARD_ROOT/lsd_jar.sh" ]; then
     echo
-    if [ -f /mnt/app/eso/hmi/lsd/.aacluster_tbt_removed ]; then
+    _TBT_MARK=""; _NAV_MARK=""
+    for _mv in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+        [ -z "$_TBT_MARK" ] && [ -f "$_mv/eso/hmi/lsd/.aacluster_tbt_removed" ] && _TBT_MARK="$_mv/eso/hmi/lsd/.aacluster_tbt_removed"
+        [ -z "$_NAV_MARK" ] && [ -f "$_mv/eso/hmi/lsd/.aacluster_navignore_added" ] && _NAV_MARK="$_mv/eso/hmi/lsd/.aacluster_navignore_added"
+    done
+    if [ -n "$_TBT_MARK" ]; then
         sh "$CARD_ROOT/turn_by_turn.sh" restore || \
             echo "WARNING: could not restore the turn-by-turn jar line; lsd.sh is unchanged." >&2
     fi
-    if [ -f /mnt/app/eso/hmi/lsd/.aacluster_navignore_added ] && [ -d /mnt/app/carplaymaps ] && \
+    if [ -n "$_NAV_MARK" ] && [ -d /mnt/app/carplaymaps ] && \
        ! sh "$CARD_ROOT/lsd_jar.sh" loaded CarPlayNavigationPatch.jar; then
         # CarPlay Maps VC found this patch at its install and uses it instead
         # of its own copy. The marker stays, so a later uninstall removes it.
         echo "Kept NavActiveIgnore: the CarPlay map needs it too."
-    elif [ -f /mnt/app/eso/hmi/lsd/.aacluster_navignore_added ]; then
+    elif [ -n "$_NAV_MARK" ]; then
         if sh "$CARD_ROOT/lsd_jar.sh" remove NavActiveIgnore.jar; then
-            mount -uw /mnt/app 2>/dev/null && {
-                rm -f /mnt/app/eso/hmi/lsd/.aacluster_navignore_added /mnt/app/eso/hmi/lsd/jars/NavActiveIgnore.jar
-                mount -ur /mnt/app 2>/dev/null || true
-            }
+            # The jar helper already remounts through the resolving view;
+            # drop the marker + jar copy through every view (same file).
+            for _mv in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+                rm -f "$_mv/eso/hmi/lsd/.aacluster_navignore_added" "$_mv/eso/hmi/lsd/jars/NavActiveIgnore.jar" 2>/dev/null || true
+            done
             echo "Removed the NavActiveIgnore patch the installer had added."
         else
             echo "WARNING: could not remove the NavActiveIgnore line; lsd.sh is unchanged." >&2
         fi
     fi
+    unset _TBT_MARK _NAV_MARK _mv
 fi
 echo "Reboot the unit to run GAL without the hook."

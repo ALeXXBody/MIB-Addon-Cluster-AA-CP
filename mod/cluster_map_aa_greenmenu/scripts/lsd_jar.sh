@@ -16,7 +16,14 @@ PATH=/proc/boot:/bin:/usr/bin:/usr/sbin:/sbin:/mnt/app/armle/bin:/mnt/app/armle/
 export PATH
 set -eu
 
-APP=/mnt/app
+# View-aware: the GEM console may resolve the app partition ONLY through
+# the FQDN QNET spelling. A hardcoded /mnt/app made every lsd edit fail
+# there while reporting success paths. Pick the first view that exists.
+APP=""
+for _av in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+    if [ -d "$_av/eso/hmi/lsd" ]; then APP="$_av"; break; fi
+done
+[ -n "$APP" ] || APP=/mnt/app
 LSD_DIR=$APP/eso/hmi/lsd
 LSD=$LSD_DIR/lsd.sh
 NEW=$LSD_DIR/lsd.sh.jar_new

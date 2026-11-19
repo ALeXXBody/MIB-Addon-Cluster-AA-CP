@@ -2082,3 +2082,45 @@ Fix: uninstall sources `scripts/lib_app_mount.sh`, opens the window with
 remounts read-only on exit. New sim test fails on v0.7.34 and passes here.
 Car proof: STILL UNVERIFIED. Phone-break component and wheel remote are
 still unresolved — no claim that everything is fixed.
+
+---
+
+## Round 75 — v0.7.36: FULL lifecycle sweep (install/uninstall/virgin/everything)
+
+Owner: "DID I ASK ONLY FOR THOSE 3? ... EVERYTHING! NOW!" Full audit of
+every lifecycle path, not just the three reported failures. Found and
+fixed:
+
+1. install.sh legacy screen cleanup: bare `mount -uw` per view + `break`.
+   Now `app_mount_rw_at engdefs`, all views, never fatal.
+2. install.sh exited 0 on EVERY path (tools-missing, NOT SUPPORTED,
+   INSTALL_FAILED, turn-by-turn fail). Now exits 1 / $RC, so menus
+   run_quiet sees the real rc, STATES does not refresh after failure,
+   and custom.sh propagates it.
+3. enable_hook.sh closed the wrong view (`mount -ur $APP_MOUNT` while the
+   window was opened on `$APP_WR`): the app partition stayed writable
+   after install. Now remounts the view it opened.
+4. disable_hook.sh app-work gate only tested the /mnt/app spelling:
+   FQDN-only hook dirs were skipped entirely. Now probes all views.
+   Its lsd tail was hardcoded /mnt/app: markers resolved per view now,
+   jar removal goes through every view.
+5. lsd_jar.sh (BOTH copies: root live one + scripts/ one) hardcoded
+   APP=/mnt/app, so every Java check/edit failed on FQDN consoles.
+   Now resolves the first existing view (if-form, no &&-break: the
+   unit-fidelity test pins that shape).
+6. turn_by_turn.sh (both copies) markers + supervisor-config check
+   hardcoded. Now view-aware with a write-probing marker writer.
+7. uninstall.sh removed cluster-map.esd from ONE view and never
+   cluster-map.esd.prev. Now removes both from ALL writable views;
+   a refused delete sets RC=1. tbt marker lookup is view-aware.
+8. virgin.sh card shadow checked 2 local spellings only; stale
+   /tmp/clustermap_install.log survived virgin and poisoned the next
+   diag §10b. Now all 6 card views + transcript/tracer logs scrubbed.
+9. custom.sh left the app partition writable after the engdefs copy
+   (no remount-ro on the winning view). Now closes it on both copy paths.
+
+Proof: 131 sim tests green (4 new lifecycle tests). Old code fails the
+new FQDN-lsd test (`Missing /mnt/app/eso/hmi/lsd/lsd.sh`) and leaves
+`.prev` behind (`STILL PRESENT`-class: `.prev survived uninstall`).
+Car proof: UNVERIFIED. Phone-break component + wheel remote still have
+no live car proof and are not claimed fixed.

@@ -175,8 +175,10 @@ if [ "$GEM_ARMED" = 1 ]; then
 # (the unit ALSO refuses `mkdir` where a file write succeeds - diag
 # 2026-11-08: "mkdir: /tmp/...: Function not implemented"), and engdefs
 # may itself be missing in one view but present in another.
+_ENGV_RW=""
 for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
 	mount -uw "$_v" 2>/dev/null
+	[ -n "$_ENGV_RW" ] || _ENGV_RW="$_v"
 	_edefs="$_v/eso/hmi/engdefs"
 	mkdir "$_edefs" 2>/dev/null
 	[ -d "$_edefs" ] || continue
@@ -302,6 +304,7 @@ if [ -f "$TPL" ]; then
 			mv "$ENGDEFS/.cluster-map.new" "$ENGDEFS/cluster-map.esd"
 		rm -f "$GEN_PATH" 2>/dev/null
 		sync 2>/dev/null || true
+		mount -ur "$_ENGV_RW" 2>/dev/null || true
 		say "  GEM screen generated from the card: $ENGDEFS/cluster-map.esd"
 		say "  (previous screen kept as cluster-map.esd.prev)"
 	else
@@ -361,6 +364,7 @@ else
 			mv "$ENGDEFS/.cluster-map.new" "$ENGDEFS/cluster-map.esd"
 		rm -f "$GEN_PATH" 2>/dev/null
 		sync 2>/dev/null || true
+		mount -ur "$_ENGV_RW" 2>/dev/null || true
 		say "  GEM screen installed from the card's built file: $ENGDEFS/cluster-map.esd"
 		say "  (previous screen kept as cluster-map.esd.prev)"
 	else
