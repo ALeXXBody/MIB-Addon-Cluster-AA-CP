@@ -158,13 +158,17 @@ fi
 # zero sightings), so a switch left ON there is armed but idle. Definitive
 # only when a hook log exists and carries no 0x8001 line at all.
 AA_IDLE=0
+HOOKLOG_SEEN=0
 _HL="${GAL_HOOK_LOG:-/tmp/gal_dualscreen.log}"
 for _hl in "$_HL" "$_HL.prev"; do
     [ -r "$_hl" ] || continue
+    HOOKLOG_SEEN=1
     if grep -q "0x8001" "$_hl" 2>/dev/null; then AA_IDLE=0; break; fi
     AA_IDLE=1
 done
 unset _hl _HL
+# No hook log at all (gal never ran: no phone session this boot) is not
+# "live" and not "idle" -- it is unknown. Say exactly that.
 # keep map + ETA card: settings keys only (no live files).
 KM=`ckey GAL_KEEP_MAP` || KM=""
 EC=`ckey GAL_SECONDARY_UI_CONFIG_HEX` || EC=""
@@ -177,7 +181,9 @@ if [ "$VERBOSE" = 1 ]; then
     # for the wheel).
     echo "Features (setting -> when it lands):"
     if [ "$R" = 1 ]; then
-        if [ "$AA_IDLE" = 1 ]; then echo "  Cluster remote: ON (idle: no wheel reports)"; else echo "  Cluster remote: ON (live)"; fi
+        if [ "$HOOKLOG_SEEN" = 0 ]; then echo "  Cluster remote: ON (no session yet)";
+        elif [ "$AA_IDLE" = 1 ]; then echo "  Cluster remote: ON (idle: no wheel reports)";
+        else echo "  Cluster remote: ON (live)"; fi
     else
         echo "  Cluster remote: off"
     fi
@@ -207,12 +213,16 @@ if [ "$VERBOSE" = 1 ]; then
         case "$ICV" in ''|'40,40,127,127') echo "  Card clear: off" ;; *) echo "  Card clear: armed (next session)" ;; esac
     fi
     if [ "$CM" = 1 ]; then
-        if [ "$AA_IDLE" = 1 ]; then echo "  Cluster menu: ON (idle: no wheel reports)"; else echo "  Cluster menu: ON (live)"; fi
+        if [ "$HOOKLOG_SEEN" = 0 ]; then echo "  Cluster menu: ON (no session yet)";
+        elif [ "$AA_IDLE" = 1 ]; then echo "  Cluster menu: ON (idle: no wheel reports)";
+        else echo "  Cluster menu: ON (live)"; fi
     else
         echo "  Cluster menu: off"
     fi
     if [ "$TT" = 1 ]; then
-        if [ "$AA_IDLE" = 1 ]; then echo "  AA tap trace: ON (idle: no wheel reports)"; else echo "  AA tap trace: ON (live)"; fi
+        if [ "$HOOKLOG_SEEN" = 0 ]; then echo "  AA tap trace: ON (no session yet)";
+        elif [ "$AA_IDLE" = 1 ]; then echo "  AA tap trace: ON (idle: no wheel reports)";
+        else echo "  AA tap trace: ON (live)"; fi
     else
         echo "  AA tap trace: off"
     fi

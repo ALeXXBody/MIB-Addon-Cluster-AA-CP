@@ -4,12 +4,15 @@
 # wheel_listen reads the HMI's own DSI tracer stream (telnet 1798 live,
 # bluepirat 20991 buffered). The tracer is off by default on this unit
 # (owner diag: neither port listens). This switch turns the appenders on
-# in the HMI's own traceConfig.properties and NOTHING else:
+# in the HMI's own traceConfig.properties and enables the keypanel scope
+# the wheel needs -- and NOTHING else:
 #   - the file is backed up to .orig ONCE (revert restores it byte-equal);
 #   - only the file's OWN use.appender key is extended with the two
-#     documented appenders (telnet,bluepirat). No class-scope lines are
-#     invented: if the key is absent the switch refuses and prints the
-#     file verbatim into the diag bundle instead.
+#     documented appenders (telnet,bluepirat);
+#   - only the file's OWN keypanel scope line is enabled: the unit's file
+#     carries "#org.dsi.ifc.keypanel.DSIKeyPanel=small|full" commented
+#     out, so this flips exactly that line to =full (owner diag
+#     proven -- no syntax invented).
 # A reboot (power button ~10 s) restarts the HMI and opens the ports.
 #
 #     wheel_tracer.sh on|off
@@ -110,16 +113,25 @@ if [ ! -r "$CFG.orig" ]; then
     echo "Backed up: $CFG.orig"
 fi
 # Extend the file's OWN use.appender line (last value wins on a duplicate,
-# so rewrite the single line instead of appending a second one). awk with
-# ~ and sub is unit-proven (enable_hook.sh counts env entries this way).
-awk '/^use\.appender=/ { app=$0; next } { print } END {
-    if (app !~ /telnet/) app = app ",telnet"
-    if (app !~ /bluepirat/) app = app ",bluepirat"
-    sub("=,", "="); print app }' "$CFG" > "$CFG_W.new" 2>/dev/null &&
+# so rewrite the single line instead of appending a second one), and
+# enable the keypanel scope the wheel needs. The scope key is NOT
+# invented: the unit's own file carries it commented out
+# (#org.dsi.ifc.keypanel.DSIKeyPanel=small|full), so this flips exactly
+# that line to full and drops its small twin. awk with ~ and sub is
+# unit-proven (enable_hook.sh counts env entries this way).
+awk '/^use\.appender=/ { app=$0; next }
+     /^#?org\.dsi\.ifc\.keypanel\.DSIKeyPanel=/ { have=1; next }
+     { print }
+     END {
+         if (app !~ /telnet/) app = app ",telnet"
+         if (app !~ /bluepirat/) app = app ",bluepirat"
+         sub("=,", "="); print app
+         print "org.dsi.ifc.keypanel.DSIKeyPanel=full" }' "$CFG" > "$CFG_W.new" 2>/dev/null &&
 mv "$CFG_W.new" "$CFG" 2>/dev/null || {
     echo "Could not extend use.appender in $CFG. Nothing changed."
     rm -f "$CFG_W.new"; exit 1; }
 echo "Appenders now: `grep '^use\.appender=' "$CFG" 2>/dev/null | tail -1`"
+echo "Key scope now: `grep '^org\.dsi\.ifc\.keypanel\.DSIKeyPanel=' "$CFG" 2>/dev/null | tail -1`"
 echo "dsitracer_activated by ClusterMap wheel tracer switch" > "$MARK" 2>/dev/null || true
 sync
 echo "Wheel tracer: ON (reboot now: power button ~10 s)."

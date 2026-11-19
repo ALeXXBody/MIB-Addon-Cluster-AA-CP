@@ -20,9 +20,10 @@ PKG = "/fs/sda0/mod/cluster_aa"
 SW = f"{PKG}/greenmenu"
 
 LISTENER_STUB = "#!/bin/sh\nexec sleep 20\n"
-TRACER_CONF = ("# HMI tracer config (staged)\n"
-               "use.appender=client\n"
-               "org.dsi.ifc.keypanel=all\n")
+TRACER_CONF = ("#activate.extension=ctrl,DSIKeyPanelEx\n"
+               "#org.dsi.ifc.keypanel.DSIKeyPanel=small\n"
+               "#org.dsi.ifc.keypanel.DSIKeyPanel=full\n"
+               "use.appender=client\n")
 
 
 def _stage(car, card_conf=None):
@@ -113,6 +114,10 @@ def test_tracer_on_extends_appender_and_off_restores(car):
     assert cfg.read_text().count("use.appender=") == 1, \
         "the appender line is rewritten, never duplicated"
     assert "telnet" in cfg.read_text() and "bluepirat" in cfg.read_text()
+    assert "org.dsi.ifc.keypanel.DSIKeyPanel=full\n" in cfg.read_text(), \
+        "the unit's own commented scope line is flipped to full"
+    assert "#org.dsi.ifc.keypanel" not in cfg.read_text(), \
+        "no commented keypanel twin may survive (last-wins would be a guess)"
     assert (cfg.parent / "traceConfig.properties.orig").read_text() == TRACER_CONF
     assert (cfg.parent / "dsitracer_activated").exists()
 
@@ -216,9 +221,9 @@ def test_status_lists_every_family_compactly(car):
     (rt / "gal_idr_pump").write_text("25\n")
     p = _run(car, f"{SW}/status.sh", expect_rc=0)
     for line in ("Features (setting -> when it lands):",
-                 "Cluster remote: ON (live)",
+                 "Cluster remote: ON (no session yet)",
                  "Wheel control: OFF",
-                 "Cluster menu: ON (live)",
+                 "Cluster menu: ON (no session yet)",
                  "Hi-res: ON (next session)",
                  "Pump: 25s (live)"):
         assert line in p.stdout, f"{line!r} missing:\n{p.stdout}"

@@ -1972,3 +1972,17 @@ Removed their rows (scripts + verbs stay for diagnosis); the wheel
 screen is now Wheel control ON/OFF only. Status marks the trio idle
 when the hook log provably lacks 0x8001, live if one ever appears.
 120/120 green.
+
+---
+
+## Round 70 — v0.7.31: the tracer's real fault, from the owner's file
+
+Owner diag (v0.7.28, no session) finally showed the config itself:
+use.appender=client,telnet,bluepirat ON -- but every scope line
+commented out, so the tracer streams nothing. The exact key syntax
+came from that file (#org.dsi.ifc.keypanel.DSIKeyPanel=small|full),
+so the tracer switch now flips precisely that line to =full (small
+twin dropped, no duplicates, .orig revert intact) instead of refusing.
+Also fixed: the same diag proved gal never ran (phone disconnected),
+so the AA-path Status rows claimed "(live)" with no session -- they
+now say "(no session yet)" unless a hook log exists. 120/120 green.
