@@ -2067,3 +2067,18 @@ cleanup, uninstall rc). The owner must run uninstall + virgin on the car
 and send a fresh diag before this release is called fixed. Phone
 recognition after uninstall is the good baseline; nothing here reintroduces
 the preload when the unit is meant to be stock.
+
+---
+
+## Round 74 — v0.7.35: uninstall must open its OWN writable app window
+
+Asked "did you fix all the issues?" — re-check found one more real gap in
+v0.7.34: `disable_hook.sh` remounts the app read-only before `uninstall.sh`
+starts its engdefs loop, and `uninstall.sh` itself never called any
+`mount -uw` / app ladder. Its write probe therefore failed on the owner's
+unit and the menu screen survived every uninstall (exactly the diag).
+Fix: uninstall sources `scripts/lib_app_mount.sh`, opens the window with
+`app_mount_rw` plus the engdefs-target fallback, names the view, and
+remounts read-only on exit. New sim test fails on v0.7.34 and passes here.
+Car proof: STILL UNVERIFIED. Phone-break component and wheel remote are
+still unresolved — no claim that everything is fixed.

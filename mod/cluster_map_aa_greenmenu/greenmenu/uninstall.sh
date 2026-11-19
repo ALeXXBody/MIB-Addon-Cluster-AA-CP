@@ -1,5 +1,19 @@
 #!/bin/sh
-. "`dirname "$0"`/common.sh"
+HERE=`dirname "$0"`
+. "$HERE/common.sh"
+# The view/remount ladder lives in scripts/. common.sh does not source it,
+# and a GEM press MUST open a writable app window of its own: disable_hook
+# (the previous step) deliberately remounts the app partition read-only
+# again before this process starts. Without this, the engdefs probe below
+# always fails on the owner's MHI2 (local spelling refused, root refused)
+# and the menu screen survives every uninstall.
+if [ -r "$PKG/scripts/lib_app_mount.sh" ]; then
+    . "$PKG/scripts/lib_app_mount.sh"
+elif [ -r "$HERE/../scripts/lib_app_mount.sh" ]; then
+    . "$HERE/../scripts/lib_app_mount.sh"
+elif [ -r "$HERE/lib_app_mount.sh" ]; then
+    . "$HERE/lib_app_mount.sh"
+fi
 # View-aware unit paths: the same file can live under several spellings of
 # the app/system partitions depending on which node the console runs on
 # (MHI2 prints /net/mmx.mibhigh.net/... — the FQDN QNET view). Pick the
@@ -37,9 +51,22 @@ if [ -f $HOOK_DIR/eso/hmi/lsd/.aacluster_tbt_added ]; then
 fi
 # The menu screen the update copied. Its files stay on the card, and a
 # COLLECT.txt update brings it back for Save logs. Removal needs a WRITE,
-# so probe writability through the same spelling being used.
+# so open a window HERE: the disable_hook process above remounted the app
+# read-only before this script got control. Probe the real target
+# (engdefs), not just the preload folder, which is gone on a stock-ish unit.
+APP_OK=0
+if app_mount_rw || app_mount_rw_at "eso/hmi/engdefs"; then
+    APP_OK=1
+    echo "$APP_LADDER_OK"
+    trap 'app_mount_finish' 0 1 2 15
+else
+    echo "Cannot open a writable app view - the menu screen cannot be removed." >&2
+    echo "$APP_LADDER_ERRORS" >&2
+    RC=1
+fi
 ENGDEFS_REMOVED=0
 for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/app; do
+    [ "$APP_OK" = 1 ] || break
     _edefs="$_v/eso/hmi/engdefs"
     [ -f "$_edefs/cluster-map.esd" ] || continue
     # write-probe (this unit REFUSES mkdir; file writes beside it work)

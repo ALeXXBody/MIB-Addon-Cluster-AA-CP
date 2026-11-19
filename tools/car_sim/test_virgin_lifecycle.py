@@ -134,6 +134,36 @@ def test_uninstall_cleanup_uses_the_writable_qnet_view(car):
         f"cleanup never named the view it used:\n{p.stdout}"
 
 
+def test_uninstall_opens_its_own_writable_window_for_the_screen(car):
+    """disable_hook remounts the app read-only before uninstall's engdefs
+    loop runs. Without its own ladder the screen can never be removed on
+    the owner's unit, even though the supervisor config was restored."""
+    _stage(car)
+    stock = '{\n "children": { "gal": { "envs": [] } }\n}\n'
+    live = ('{\n "children": { "gal": { "envs":['
+            '"LD_PRELOAD=/eso/lib/gal_dualscreen/libgal_hook.so"'
+            '] } }\n}\n')
+    for v in SYS_VIEWS:
+        car.stage(v, SYS_CFG, live)
+        car.stage(v, SYS_CFG + ".gal-dualscreen.original", stock)
+    fq = pathlib.Path(APP_VIEWS[1])
+    for v in APP_VIEWS:
+        car.stage(v, "eso/hmi/engdefs/cluster-map.esd", "screen ClusterMap\n")
+    # block the probe on every view except the only one mount -uw accepts
+    for v in (APP_VIEWS[0], APP_VIEWS[2], APP_VIEWS[3]):
+        pathlib.Path(v, "eso/hmi/engdefs/.clustermap_probe").mkdir(
+            parents=True, exist_ok=True)
+
+    p, text, diag = _press(car, "uninstall")
+    assert "app: read-write via" in text, \
+        f"uninstall never opened a writable app window:\n{text}\n{p.stdout}"
+    assert "mmx.mibhigh.net" in text, \
+        f"uninstall did not use the QNET view:\n{text}"
+    assert not (fq / "eso/hmi/engdefs/cluster-map.esd").exists(), \
+        f"the menu screen survived uninstall:\n{text}"
+    assert "Removed the menu screen" in text, text
+
+
 def test_uninstall_does_not_report_done_when_the_restore_failed(car):
     """The old `exit 0` made a failed restore print FAILED and still tell
     the GEM verdict DONE."""
