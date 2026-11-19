@@ -1999,3 +1999,23 @@ matching pairs stay silent (sim-pinned both ways). (2) Process change:
 release notes carry Car proof status -- UNVERIFIED until an owner
 diag proves the fixed behavior, no more "fixed" on gate-green alone.
 121/121 green.
+
+---
+
+## Round 72 — v0.7.33: ROOT CAUSE of the install no-op
+
+Owner demanded the root cause, not another diag label. Found it in the
+owner's own §12: `/fs/sda0/mod/cluster_aa/greenmenu/install.sh[87]: cannot
+create .../install.log: Read-only file system`, then
+`CLUSTERMAP_INSTALL_FAILED (code 1)`. v0.7.29 added
+`sh enable_hook.sh >"$PKG/install.log" 2>&1` -- the shell fails the
+redirect on the read-only FAT card and THEREFORE NEVER EXECUTES
+enable_hook.sh. Every install since v0.7.29 has been a silent no-op;
+that is why the card said .30 while the unit still ran the .28 hook,
+why no install.log existed, and why /tmp/clustermap_last_paths was
+absent. Fix: transcript goes to /tmp/clustermap_install.log (RAM);
+diag §10b reads it, and the false "fresh boot" verdict (that marker
+is written by INSTALL, not boot) is corrected. New sim test uses a
+read-only card root and FAILS with the old code -- the exact shape
+that slipped past 120 writable-card tests. 122/122 green.
+Car proof: UNVERIFIED (owner round pending).

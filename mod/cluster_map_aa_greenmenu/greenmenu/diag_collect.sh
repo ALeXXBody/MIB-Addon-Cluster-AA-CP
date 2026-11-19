@@ -371,14 +371,21 @@ else
         present) put "VERDICT: the last install ran in THIS boot session -- the unit has"
                  put "NOT been rebooted since. Reboot now (power button ~10 s), connect the"
                  put "phone, start Android Auto, then Save logs again." ;;
-        absent)  case "$_PRELOAD" in
-                     YES*) put "VERDICT: this boot is fresh (the marker above is wiped at every"
-                           put "boot) and the hook STILL never started. Prime suspect: gal cannot"
-                           put "resolve the preload path on its own node -- section 4b above shows"
-                           put "which unit views carry the hook binary and which do not. Send this"
-                           put "file." ;;
-                     *) put "VERDICT: the hook is not armed; run /mod/custom.sh once, then reboot." ;;
-                 esac ;;
+        # CORRECTION (v0.7.32): this marker is written by enable_hook.sh
+        # at INSTALL time, NOT at boot. Its absence never proved a fresh
+        # boot -- it also means "no install has run in this boot session",
+        # which is exactly what the v0.7.29 read-only-card install bug
+        # produced. The old text sent owners chasing a phantom QNET path.
+        absent)  if [ -r "$PKG/../last_install_paths.txt" ] || [ -r /tmp/clustermap_install.log ]; then
+                     put "VERDICT: install ran but the hook never started; read section 10b"
+                     put "(the install transcript) and section 12 (the full run log) for the"
+                     put "exact refusal. Connect the phone after a reboot if install was OK."
+                 else
+                     put "VERDICT: no install has run in this boot session (the marker is"
+                     put "written by install, not by boot). Check section 12: a line saying"
+                     put "'cannot create .../install.log: Read-only file system' means the"
+                     put "v0.7.29-31 bug hit and enable_hook.sh never ran at all."
+                 fi ;;
     esac
 fi
 put "-- log folders --"
@@ -511,11 +518,16 @@ section "10 install home record"
 # 10b. THE INSTALL TRANSCRIPT (what enable_hook actually did: tracer
 # lines, staging, refusals). Without it every install-time question is
 # a guess.
-if [ -r "$PKG/install.log" ]; then
-    put "-- install.log (last install transcript, all lines) --"
+# v0.7.32: the live transcript lives in RAM. The card is read-only FAT
+# and a redirect there made enable_hook.sh never run at all (v0.7.29 bug).
+if [ -r /tmp/clustermap_install.log ]; then
+    put "-- install.log (last install transcript, from RAM; card is read-only) --"
+    cat /tmp/clustermap_install.log >> "$TMP" 2>/dev/null
+elif [ -r "$PKG/install.log" ]; then
+    put "-- install.log (legacy card copy, v0.7.29-31) --"
     cat "$PKG/install.log" >> "$TMP" 2>/dev/null
 else
-    put "install.log = (absent: this card never ran install.sh v0.7.29+)"
+    put "install.log = (absent: no install has run on this boot)"
 fi
 
 # ---- 11. last run summary (appended by custom.sh / menus.sh)

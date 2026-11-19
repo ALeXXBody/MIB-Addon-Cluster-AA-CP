@@ -73,9 +73,18 @@ if train_supported; then
     # tracer auto-enable lines and every refusal land here, and Save
     # logs picks this file up -- a later diag never has to guess what
     # the install did. Printed as well, so the console story is unchanged.
-    sh "$PKG/enable_hook.sh" >"$PKG/install.log" 2>&1
+    # ROOT CAUSE (v0.7.29..v0.7.31): the transcript was redirected to
+    # $PKG/install.log on the SD card, which is read-only FAT during GEM
+    # installs. The shell failed the redirect and therefore NEVER RAN
+    # enable_hook.sh at all -- every install reported
+    # "cannot create .../install.log: Read-only file system" + code 1, and
+    # the staged hook stayed at whatever an older install left behind.
+    # /tmp is RAM and writable on every boot (enable_hook.sh relies on the
+    # same fact); diag section 10b reads this path.
+    INSTALL_LOG=/tmp/clustermap_install.log
+    sh "$PKG/enable_hook.sh" >"$INSTALL_LOG" 2>&1
     RC=$?
-    cat "$PKG/install.log" 2>/dev/null
+    cat "$INSTALL_LOG" 2>/dev/null
     echo
     if [ $RC -eq 0 ]; then
         echo "CLUSTERMAP_INSTALL_OK"
