@@ -1986,3 +1986,16 @@ twin dropped, no duplicates, .orig revert intact) instead of refusing.
 Also fixed: the same diag proved gal never ran (phone disconnected),
 so the AA-path Status rows claimed "(live)" with no session -- they
 now say "(no session yet)" unless a hook log exists. 120/120 green.
+
+---
+
+## Round 71 — v0.7.32: the diag names a stale staged hook, releases labeled
+
+Owner: sim tests scratch the surface; releases must earn "fixed".
+Two changes: (1) §4b now prints VERDICT: STAGED HOOK IS STALE with the
+view when a unit copy's sha1 differs from the card -- the exact trap
+that wasted the v0.7.30 round (card .30, staged .28, nothing said so);
+matching pairs stay silent (sim-pinned both ways). (2) Process change:
+release notes carry Car proof status -- UNVERIFIED until an owner
+diag proves the fixed behavior, no more "fixed" on gate-green alone.
+121/121 green.

@@ -204,6 +204,25 @@ for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/ap
         fi
     done
 done
+# STALE verdict: the unit RUNS whatever is staged, not what's on the card.
+# A card update without a following install leaves the old hook live --
+# exactly the trap that wasted a round (card v0.7.30, staged v0.7.28).
+# sha1sum exists on the unit (section 2 uses it); without it, no verdict.
+if command -v sha1sum >/dev/null 2>&1 && [ -r "$_SO_CARD" ]; then
+    _SO_CARD_H=`sha1sum "$_SO_CARD" 2>/dev/null | awk '{print $1}'` || _SO_CARD_H=""
+    if [ -n "$_SO_CARD_H" ]; then
+        for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+            _uf="$_v/eso/lib/gal_dualscreen/libgal_hook.so"
+            [ -r "$_uf" ] || continue
+            _SO_U_H=`sha1sum "$_uf" 2>/dev/null | awk '{print $1}'` || _SO_U_H=""
+            if [ -n "$_SO_U_H" ] && [ "$_SO_U_H" != "$_SO_CARD_H" ]; then
+                put "VERDICT: STAGED HOOK IS STALE on $_v (unit sha1 differs from card) -- run install, then reboot"
+            fi
+        done
+        unset _uf _SO_U_H
+    fi
+    unset _SO_CARD_H
+fi
 
 # ---- 5. arm state
 section "5 arm state"

@@ -130,3 +130,27 @@ def test_no_payload_on_card_still_leaves_a_diag(car):
     assert diag.exists(), f"no diag bundle when the card payload is missing\n{out}"
     txt = diag.read_text()
     assert "payload" in txt and "not" in txt, txt
+
+
+def test_diag_flags_a_stale_staged_hook(car):
+    """The trap that wasted a round: card v0.7.30, staged v0.7.28, and no
+    line in the bundle said so. A matching pair stays silent; a unit copy
+    whose sha1 differs from the card gets a VERDICT naming the view."""
+    _stage(car, armed=True)
+    car.run(["sh", CUSTOM], expect_rc=0)
+    # full bundle, fresh: matching pair stays silent
+    car.run(["sh", f"{PKG}/greenmenu/diag_collect.sh"], expect_rc=0)
+    txt = pathlib.Path("/tmp/clustermap_diag/diag.txt").read_text()
+    assert "STAGED HOOK IS STALE" not in txt, txt
+    stale = None
+    for v in APP_VIEWS:
+        p = pathlib.Path(v, "eso/lib/gal_dualscreen/libgal_hook.so")
+        if p.exists():
+            stale = p
+            break
+    assert stale is not None, "the armed install did not stage the hook"
+    stale.write_bytes(b"stale-hook-bytes-from-an-older-card")
+    car.run(["sh", f"{PKG}/greenmenu/diag_collect.sh"], expect_rc=0)
+    txt = pathlib.Path("/tmp/clustermap_diag/diag.txt").read_text()
+    assert "VERDICT: STAGED HOOK IS STALE" in txt, txt
+    assert "run install, then reboot" in txt, txt
