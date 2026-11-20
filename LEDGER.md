@@ -2124,3 +2124,31 @@ new FQDN-lsd test (`Missing /mnt/app/eso/hmi/lsd/lsd.sh`) and leaves
 `.prev` behind (`STILL PRESENT`-class: `.prev survived uninstall`).
 Car proof: UNVERIFIED. Phone-break component + wheel remote still have
 no live car proof and are not claimed fixed.
+
+---
+
+## Round 76 — v0.7.37: the "Missing recovery copies" wall + the lsd blind spot
+
+Owner's v0.7.36 diag: last op (uninstall) actually SUCCEEDED and the unit
+is stock-clean (no .so, no preload, screen gone, tracer reverted, unit
+player is not ours: 1611592 vs shipped 1614580). But the diag cannot show
+the reported virgin/reinstall failures: their logs died with /tmp (reboot)
+or with virgin's own cm_menu scrub. Two real defects found by reading the
+code paths those failures must have taken:
+
+1. disable_hook demanded recovery backups BEFORE checking whether the
+   live config even references the hook. Stage-only era / wiped /tmp +
+   clean config = "Missing both recovery copies" with nothing broken,
+   and uninstall/virgin could never get past it. Now fail-closed ONLY
+   when the config carries the hook; otherwise it says "nothing to
+   restore" and continues to app + lsd cleanup. Restore messages are
+   gated the same way (no more "restored" when nothing ran).
+2. The diag never inspected lsd.sh, and virgin never triggered the lsd
+   revert unless a hook was detected -- a patched start-up script with
+   markers but no hook reported CLEAN. Now: diag §6d reports both jar
+   lines + our markers per view (lines without markers are reported,
+   never touched); virgin runs the standard restore for markers too.
+
+Tests: marker-only state without backups now reaches VIRGIN CLEAN (old
+code died on backups); hook-in-config without backups still refuses and
+virgin stops before scrubbing (fail-closed kept). Car proof UNVERIFIED.

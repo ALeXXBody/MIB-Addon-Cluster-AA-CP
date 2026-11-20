@@ -285,6 +285,35 @@ else
     put "(no live screen file to dump)"
 fi
 
+# 6d. THE JAVA START-UP SCRIPT (lsd.sh): which of the two jars this project
+# touches is loaded, and which markers say who put them there. The diag
+# never inspected this file, so a lingering NavActiveIgnore line (or a
+# removed turn-by-turn line) was invisible while it changes centre-screen
+# behaviour. Lines without our markers are NOT ours to touch -- they are
+# reported, never edited.
+section "6d Java start-up script (lsd.sh) state"
+for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+    _lsd="$_v/eso/hmi/lsd/lsd.sh"
+    [ -f "$_lsd" ] || continue
+    put "-- $_lsd --"
+    if grep -q 'Xbootclasspath/p:[^"]*NavActiveIgnore\.jar' "$_lsd" 2>/dev/null; then
+        put "  NavActiveIgnore.jar: LOADED (line present)"
+    else
+        put "  NavActiveIgnore.jar: not loaded"
+    fi
+    if grep -q 'Xbootclasspath/p:[^"]*VCAndroidAuto\.jar' "$_lsd" 2>/dev/null; then
+        put "  VCAndroidAuto.jar: LOADED (line present)"
+    else
+        put "  VCAndroidAuto.jar: not loaded"
+    fi
+    for _mk in .aacluster_tbt_removed .aacluster_tbt_added .aacluster_navignore_added; do
+        if [ -f "$_v/eso/hmi/lsd/$_mk" ]; then
+            put "  marker: $_mk present (ours)"
+        fi
+    done
+done
+unset _v _lsd _mk
+
 # ---- 7. installed settings (the fine-tune facts)
 section "7 installed settings (the file the hook actually loads)"
 _ACTCONF=""

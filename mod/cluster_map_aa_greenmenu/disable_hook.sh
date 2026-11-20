@@ -104,15 +104,36 @@ finish()
 
 trap finish 0 1 2 15
 
-[ -r "$ORIGINAL" ] || [ -r "$PERSISTENT_BACKUP" ] || {
-    echo "Missing both recovery copies: $ORIGINAL and $PERSISTENT_BACKUP" >&2
-    exit 1
-}
-[ -x "$JSONLINT" ] || {
-    echo "Required firmware validator is missing: $JSONLINT" >&2
-    exit 1
-}
+# Fail-closed ONLY when there is something to restore. A unit whose
+# supervisor config carries no hook line (stage-only era, already
+# uninstalled, backups wiped with /tmp) needs no restore: demanding
+# recovery copies there turned every later uninstall/virgin into
+# "Missing both recovery copies" with nothing actually broken. The
+# config check below decides; the restore block honors it.
+_NEED_RESTORE=0
+for _sv in $SYS_VIEWS; do
+    if [ -r "$_sv/etc/eso/production/smartphone_integrator.json" ] && \
+       grep -q 'libgal_hook.so' "$_sv/etc/eso/production/smartphone_integrator.json" 2>/dev/null; then
+        _NEED_RESTORE=1; break
+    fi
+done
+unset _sv
+if [ "$_NEED_RESTORE" = 1 ]; then
+    [ -r "$ORIGINAL" ] || [ -r "$PERSISTENT_BACKUP" ] || {
+        echo "Missing both recovery copies: $ORIGINAL and $PERSISTENT_BACKUP" >&2
+        echo "The live config still references the hook, so it cannot be" >&2
+        echo "restored safely. rescue_revert.sh on the card is the backstop." >&2
+        exit 1
+    }
+    [ -x "$JSONLINT" ] || {
+        echo "Required firmware validator is missing: $JSONLINT" >&2
+        exit 1
+    }
+else
+    echo "Supervisor config carries no hook line: nothing to restore."
+fi
 
+if [ "$_NEED_RESTORE" = 1 ]; then
 # Prefer the same-filesystem recovery copy. Fall back to SD only if it is
 # absent, and never restore a file that still contains our preload entry.
 RESTORE_SOURCE=$PERSISTENT_BACKUP
@@ -154,6 +175,7 @@ mv "$SYSTEM_TEMP" "$TARGET_CONFIG" || {
 }
 SYSTEM_TEMP=
 carplay_pf_close
+fi # _NEED_RESTORE (config already hook-free: restore block skipped)
 
 # Track whether the route restore actually happened. These are
 # best-effort by design (the config restore above is the part that
@@ -168,6 +190,7 @@ carplay_pf_close
 # during a real recovery, which is the worst time to find out.
 # Confirmed by VcMOSTRenderMqb's stream player (dc 70 3 / sc 4 70,
 # restoring with dc 70 33 / sc 4 70) and by on-car notes.
+if [ "$_NEED_RESTORE" = 1 ]; then
 VC_ROUTE_RESTORED=0
 if [ -x /eso/bin/apps/dmdt ]; then
     if (cd /eso && IPL_CONFIG_DIR=/etc/eso/production ./bin/apps/dmdt dc 70 33) &&
@@ -188,6 +211,7 @@ else
     echo "    cd /eso && IPL_CONFIG_DIR=/etc/eso/production ./bin/apps/dmdt sc 4 70" >&2
 fi
 echo "  restored from: $RESTORE_SOURCE"
+fi # _NEED_RESTORE (no restore ran: no restore to report)
 
 # Best-effort cleanup of the preload copy enable_hook.sh placed under
 # /mnt/app/eso/lib. The critical restore above is already complete and

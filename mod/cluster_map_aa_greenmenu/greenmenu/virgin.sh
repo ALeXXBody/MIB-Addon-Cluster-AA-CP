@@ -39,6 +39,64 @@ note() { echo "$1"; }
 hit()  { echo "  STILL PRESENT: $1 ($2)"; STILL=1; }
 gone() { echo "  clean: $1 ($2)"; }
 
+# ---- step 0: OWNER RULE - copy irreplaceable files to the SD card ----
+# Nothing irreplaceable leaves the unit without a verified card copy
+# first (the stock player sidecar, the supervisor-config recovery copies,
+# the tracer .orig files, the previous screen). disable_hook below removes
+# the sidecar after restoring it, so the copy happens BEFORE step 1 and
+# only reads. Removal in step 2 verifies the card copy first; a card that
+# refuses the write loses nothing: the unit file is KEPT and reported.
+VIRGIN_BACKUP=""
+for _c in /fs/sda0 /fs/sdb0 /net/mmx/fs/sda0 /net/mmx/fs/sdb0 \
+           /net/mmx.mibhigh.net/fs/sda0 /net/mmx.mibhigh.net/fs/sdb0; do
+    if [ -d "$_c/mod/cluster_aa" ]; then _VB="$_c/mod/cluster_aa/virgin-backup";
+    elif [ -d "$_c/mod/cluster_map_aa_greenmenu" ]; then _VB="$_c/mod/cluster_map_aa_greenmenu/virgin-backup";
+    else continue; fi
+    if [ -d "$_VB" ] || mkdir "$_VB" 2>/dev/null; then
+        if ( : > "$_VB/.clustermap_write_probe" ) 2>/dev/null; then
+            rm -f "$_VB/.clustermap_write_probe" 2>/dev/null
+            VIRGIN_BACKUP="$_VB"; break
+        fi
+    fi
+done
+unset _c _VB
+if [ -n "$VIRGIN_BACKUP" ]; then
+    note "Card backup folder: $VIRGIN_BACKUP"
+else
+    note "Card backup: no writable card view (irreplaceable files stay on the unit)."
+fi
+_vb_n=0
+# vb_copy SRC DSTNAME : best-effort verified copy (size readback; the unit
+# has no cmp). Records success so step 2 removes only backed-up files.
+vb_copy() {
+    [ -f "$1" ] || return 1
+    [ -n "$VIRGIN_BACKUP" ] || return 1
+    _bs=`wc -c < "$1" 2>/dev/null | sed 's/ //g'`
+    [ -n "$_bs" ] || return 1
+    cat "$1" > "$VIRGIN_BACKUP/$2" 2>/dev/null || return 1
+    _bd=`wc -c < "$VIRGIN_BACKUP/$2" 2>/dev/null | sed 's/ //g'`
+    [ "$_bd" = "$_bs" ] || { rm -f "$VIRGIN_BACKUP/$2" 2>/dev/null; return 1; }
+    _vb_n=`expr $_vb_n + 1`
+    return 0
+}
+_vb_tag() { echo "$1" | sed 's|^/||; s|/|_|g'; }
+for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+    [ -d "$_v" ] || continue
+    _t=`_vb_tag "$_v"`
+    vb_copy "$_v/navigation/stream-player.aacluster-original" "stream-player.aacluster-original.$_t" &&         note "  card-backed: $_v/navigation/stream-player.aacluster-original"
+    vb_copy "$_v/eso/hmi/engdefs/cluster-map.esd.prev" "cluster-map.esd.prev.$_t" &&         note "  card-backed: $_v/eso/hmi/engdefs/cluster-map.esd.prev"
+    vb_copy "$_v/eso/hmi/lsd/traceConfig.properties.orig" "traceConfig.properties.orig.lsd.$_t" &&         note "  card-backed: $_v/eso/hmi/lsd/traceConfig.properties.orig"
+    vb_copy "$_v/eso/hmi/traceConfig.properties.orig" "traceConfig.properties.orig.top.$_t" &&         note "  card-backed: $_v/eso/hmi/traceConfig.properties.orig"
+done
+for _v in /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
+    [ -d "$_v/etc/eso/production" ] || continue
+    _t=`_vb_tag "$_v"`
+    vb_copy "$_v/etc/eso/production/smartphone_integrator.json.gal-dualscreen.original" \
+            "smartphone_integrator.json.gal-dualscreen.original.$_t" &&         note "  card-backed: $_v/etc/eso/production/smartphone_integrator.json.gal-dualscreen.original"
+done
+unset _v _t
+note "Card backup: $_vb_n file(s) verified on the card."
+
 # ---- step 1: the normal uninstall path (restores the config) ------------
 _NEED_DISABLE=0
 for _v in /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
@@ -50,6 +108,19 @@ done
 for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
     [ -d "$_v/eso/lib/gal_dualscreen" ] && { _NEED_DISABLE=1; break; }
 done
+# Java markers without any hook: a stage-only era (or a hand-deleted
+# preload dir) leaves lsd.sh patched + marker files behind while the
+# hook checks above stay silent. disable_hook owns the lsd revert, so it
+# must run for markers too -- otherwise virgin reports CLEAN with the
+# centre screen's start-up script still patched.
+for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
+    if [ -f "$_v/eso/hmi/lsd/.aacluster_tbt_removed" ] || \
+       [ -f "$_v/eso/hmi/lsd/.aacluster_tbt_added" ] || \
+       [ -f "$_v/eso/hmi/lsd/.aacluster_navignore_added" ]; then
+        _NEED_DISABLE=1; break
+    fi
+done
+unset _v
 if [ "$_NEED_DISABLE" = 1 ]; then
     echo "Virgin unit: running the standard restore first..."
     if ! sh "$PKG/disable_hook.sh"; then
@@ -77,6 +148,22 @@ trap 'app_mount_finish; if [ "$SYS_OK" = 1 ]; then mount -ur "$SYSTEM_RW" 2>/dev
 [ "$APP_OK" = 1 ] && echo "$APP_LADDER_OK"
 [ "$SYS_OK" = 1 ] && echo "$SYSTEM_LADDER_OK"
 
+# backup_rm PATH which DSTNAME : remove an irreplaceable file only
+# after its card copy verified in step 0. No card copy (read-only card,
+# copy failed) or no rw window: the file is KEPT and named.
+backup_rm() {
+    if [ ! -e "$1" ] && [ ! -f "$1" ]; then gone "$1" "already absent"; return 0; fi
+    if [ -z "$VIRGIN_BACKUP" ] || [ ! -f "$VIRGIN_BACKUP/$3" ]; then
+        hit "$1" "kept on unit: no verified card backup (card read-only?)"; return 1
+    fi
+    if [ "$2" = app ] && [ "$APP_OK" != 1 ]; then hit "$1" "app partition read-only, could not remove"; return 1; fi
+    if [ "$2" = sys ] && [ "$SYS_OK" != 1 ]; then hit "$1" "system partition read-only, could not remove"; return 1; fi
+    if rm -f "$1" 2>/dev/null && [ ! -e "$1" ]; then
+        note "  removed (card-backed): $1"; return 0
+    fi
+    hit "$1" "remove refused"; return 1
+}
+
 scrub_file() {
     # scrub_file PATH : remove one unit file when a rw window exists.
     if [ ! -e "$1" ] && [ ! -f "$1" ]; then gone "$1" "already absent"; return 0; fi
@@ -89,15 +176,16 @@ scrub_file() {
 }
 
 scrub_own_backup() {
-    # $1 = a .orig backup, $2 = the restored live file. The wheel tracer
-    # leaves a byte-equal .orig after uninstall restored the config, so that
-    # copy is ours and may go. A DIFFERENT .orig is not ours to delete: name
-    # it instead of guessing (owner rule - never touch another mod's file).
+    # $1 = a .orig backup, $2 = the restored live file, $3 = card backup
+    # name from step 0. The wheel tracer leaves a byte-equal .orig after
+    # uninstall restored the config, so that copy is ours and may go --
+    # but only with its verified card copy (owner rule: copy first to SD).
+    # A DIFFERENT .orig is not ours to delete: name it instead of guessing.
     [ -f "$1" ] || { gone "$1" "already absent"; return 0; }
     _a=`cksum "$1" 2>/dev/null | awk '{print $1, $2}'`
     _b=`cksum "$2" 2>/dev/null | awk '{print $1, $2}'`
     if [ -n "$_a" ] && [ "$_a" = "$_b" ]; then
-        scrub_file "$1" app
+        backup_rm "$1" app "$3"
     else
         hit "$1" "backup differs from the live config - left alone (not proven ours)"
     fi
@@ -106,7 +194,7 @@ scrub_own_backup() {
 echo "-- supervisor recovery copies (safety nets, unreferenced) --"
 for _v in /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
     [ -d "$_v/etc/eso/production" ] || continue
-    scrub_file "$_v/etc/eso/production/smartphone_integrator.json.gal-dualscreen.original" sys
+    _t=`echo "$_v" | sed 's|^/||; s|/|_|g'`; backup_rm "$_v/etc/eso/production/smartphone_integrator.json.gal-dualscreen.original" sys "smartphone_integrator.json.gal-dualscreen.original.$_t"
 done
 
 echo "-- hook payload remnants on the app partition --"
@@ -124,16 +212,19 @@ for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/ap
     fi
     scrub_file "$_v/eso/lib/libdmdt_flush.so" app
     scrub_file "$_v/root/mibr-carplay111-safearea.conf" app
-    scrub_file "$_v/navigation/stream-player.aacluster-original" app
+    _t=`echo "$_v" | sed 's|^/||; s|/|_|g'`; backup_rm "$_v/navigation/stream-player.aacluster-original" app "stream-player.aacluster-original.$_t"
     scrub_file "$_v/eso/hmi/lsd/.aacluster_tbt_removed" app
     scrub_file "$_v/eso/hmi/lsd/.aacluster_tbt_added" app
     scrub_file "$_v/eso/hmi/lsd/.aacluster_navignore_added" app
     scrub_file "$_v/eso/hmi/lsd/dsitracer_activated" app
     scrub_file "$_v/eso/hmi/dsitracer_activated" app
+    _t=`echo "$_v" | sed 's|^/||; s|/|_|g'`
     scrub_own_backup "$_v/eso/hmi/lsd/traceConfig.properties.orig" \
-                     "$_v/eso/hmi/lsd/traceConfig.properties"
+                     "$_v/eso/hmi/lsd/traceConfig.properties" \
+                     "traceConfig.properties.orig.lsd.$_t"
     scrub_own_backup "$_v/eso/hmi/traceConfig.properties.orig" \
-                     "$_v/eso/hmi/traceConfig.properties"
+                     "$_v/eso/hmi/traceConfig.properties" \
+                     "traceConfig.properties.orig.top.$_t"
     # jars only when OUR marker said we put them there; another mod's
     # jars are not ours to delete.
     if [ -f "$_v/eso/hmi/lsd/jars/NavActiveIgnore.jar" ]; then
@@ -157,7 +248,7 @@ for _v in /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app /mnt/ap
     else
         gone "$_e/cluster-map.esd" "already absent"
     fi
-    scrub_file "$_e/cluster-map.esd.prev" app
+    _t=`echo "$_v" | sed 's|^/||; s|/|_|g'`; backup_rm "$_e/cluster-map.esd.prev" app "cluster-map.esd.prev.$_t"
 done
 
 echo "-- card-root shadow settings (moved aside on the card, never deleted) --"

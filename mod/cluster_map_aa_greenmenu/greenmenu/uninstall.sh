@@ -24,13 +24,18 @@ for _v in /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/r
     [ -r "$_v/etc/eso/production/smartphone_integrator.json" ] && { CONFIG=$_v/etc/eso/production/smartphone_integrator.json; break; }
 done
 [ -n "$CONFIG" ] || CONFIG=/mnt/system/etc/eso/production/smartphone_integrator.json
+CONFIG_HOOKED=0
+for _v in /mnt/system /net/mmx.mibhigh.net/mnt/system /net/mmx/mnt/system /net/rcc/mnt/system; do
+    _c="$_v/etc/eso/production/smartphone_integrator.json"
+    if [ -r "$_c" ] && grep -q 'libgal_hook.so' "$_c" 2>/dev/null; then CONFIG_HOOKED=1; break; fi
+done
 HOOK_DIR=""
 for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
     [ -d "$_v/eso/lib/gal_dualscreen" ] && { HOOK_DIR=$_v; break; }
 done
 [ -n "$HOOK_DIR" ] || HOOK_DIR=/mnt/app
 RC=0
-if grep -q 'libgal_hook.so' "$CONFIG" 2>/dev/null || [ -d $HOOK_DIR/eso/lib/gal_dualscreen ]; then
+if [ "$CONFIG_HOOKED" = 1 ] || [ -d $HOOK_DIR/eso/lib/gal_dualscreen ]; then
     sh "$PKG/disable_hook.sh"
     RC=$?
 else
