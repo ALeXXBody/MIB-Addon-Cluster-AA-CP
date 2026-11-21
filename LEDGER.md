@@ -2152,3 +2152,20 @@ code paths those failures must have taken:
 Tests: marker-only state without backups now reaches VIRGIN CLEAN (old
 code died on backups); hook-in-config without backups still refuses and
 virgin stops before scrubbing (fail-closed kept). Car proof UNVERIFIED.
+
+---
+
+## Round 78 — v0.7.38: install can never run on a clean unit (owner photos)
+
+Owner's GEM photos of v0.7.37: every remount rc=0, yet "every form
+failed" + CLUSTERMAP_INSTALL_FAILED. Root cause in app_probe_view: on a
+clean unit (virgin/uninstall removed it) the gal_dualscreen folder does
+not exist yet, so the probe fell through to the view ROOT -- which this
+unit always refuses -- and declared every view unwritable. Install could
+only ever succeed when the folder already existed: chicken-and-egg.
+Fix: a missing target no longer fails the probe; it is created
+best-effort and probed inside, else the guaranteed vendor dir eso/lib
+on the same view is probed. Genuinely read-only views still refuse at
+every level. New sim test (clean unit, root refused) FAILS on the old
+code with the owner's exact INSTALL_FAILED and passes on the fix.
+Car proof: UNVERIFIED.

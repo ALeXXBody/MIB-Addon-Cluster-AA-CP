@@ -85,6 +85,16 @@ app_probe_view()
     # same "every form failed" verdict.
     _pv="$1"
     _pd="${2:-eso/lib/gal_dualscreen}"
+    # ROOT CAUSE of the v0.7.37 install failure (owner photos): on a clean
+    # unit the target folder does not exist yet, so the old code fell
+    # through to a write probe at the view ROOT -- which this unit always
+    # refuses -- and declared every view unwritable ("every form failed"
+    # although every remount returned rc=0). A missing target must NEVER
+    # fail the probe on its own: fall back to the guaranteed vendor dir
+    # eso/lib on the SAME view -- same partition, same writability answer,
+    # and a pure file write (this unit refuses mkdir in some places, so
+    # the probe creates nothing). A view that refuses writes refuses them
+    # at every level and is still skipped, exactly as before.
     if [ -d "$_pv/$_pd" ]; then
         _err=`{ ( : > "$_pv/$_pd/.clustermap_rw_probe" ); } 2>&1` || true
         if [ -z "$_err" ]; then
@@ -96,6 +106,15 @@ app_probe_view()
     else
         APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $_pv/$_pd: (folder absent in this view)
 "
+        if [ -d "$_pv/eso/lib" ]; then
+            _err=`{ ( : > "$_pv/eso/lib/.clustermap_rw_probe" ); } 2>&1` || true
+            if [ -z "$_err" ]; then
+                rm -f "$_pv/eso/lib/.clustermap_rw_probe" 2>/dev/null
+                return 0
+            fi
+            APP_LADDER_ERRORS="${APP_LADDER_ERRORS}write probe at $_pv/eso/lib: ${_err:-(no message)}
+"
+        fi
     fi
     _err=`{ ( : > "$_pv/.clustermap_rw_probe" ); } 2>&1` || true
     if [ -z "$_err" ]; then

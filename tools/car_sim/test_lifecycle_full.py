@@ -70,6 +70,25 @@ def test_armed_install_then_uninstall_then_virgin_is_clean(car):
         "stale install transcript survived virgin"
 
 
+def test_install_on_clean_unit_without_preload_dir(car):
+    """v0.7.37 install failure (owner photos: every remount rc=0, yet
+    'every form failed'). On a clean unit the gal_dualscreen folder does
+    not exist yet; the old probe fell through to the view ROOT, which this
+    unit refuses, and declared every view unwritable. The install must
+    succeed by probing the created target instead."""
+    _stage(car, armed=True)
+    # the car shape: writes at the view root refuse, subdirectories work;
+    # no gal_dualscreen dir staged anywhere on purpose (clean unit).
+    for v in APP_VIEWS:
+        if pathlib.Path(v).exists():
+            car.make_root_read_only(v)
+    p, text = _press(car, "install")
+    assert "CLUSTERMAP_INSTALL_OK" in text, \
+        f"install failed on a clean unit:\n{text}"
+    assert p.returncode == 0
+    assert "without its own reason" not in text
+
+
 def test_install_reports_failure_with_nonzero_rc(car):
     """enable_hook fails (no validator) -> install.sh must exit non-zero,
     not mask it with exit 0."""
