@@ -71,6 +71,7 @@ if [ -r "$CONF" ]; then
     case "$PC" in ''|0) ;; *) add "pump" ;; esac
     HC=`ckey GAL_SECONDARY_HIRESEN` || HC=""
     [ "$HC" = 1 ] && add "hires"
+    [ "$HC" = 2 ] && add "hires"
     CMC=`ckey GAL_CLUSTER_MENU` || CMC=""
     [ "$CMC" = 1 ] && add "clustermenu"
     TTC=`ckey GAL_REMOTE_TRACE` || TTC=""
@@ -226,7 +227,9 @@ if [ "$VERBOSE" = 1 ]; then
     else
         echo "  AA tap trace: off"
     fi
-    if [ "$H" = 1 ] || [ "$HE" = 1 ]; then echo "  Hi-res: ON (next session)"; else echo "  Hi-res: off"; fi
+    if [ "$H" = 2 ] || [ "$HE" = 2 ]; then echo "  Hi-res: 720p-only (next session)";
+    elif [ "$H" = 1 ] || [ "$HE" = 1 ]; then echo "  Hi-res: ON (next session)";
+    else echo "  Hi-res: off"; fi
     case "$P" in
         ''|0) echo "  Pump: off" ;;
         *) if [ "$PLIVE" = 1 ]; then echo "  Pump: ${P}s (live)"; else echo "  Pump: ${P}s (next session)"; fi ;;

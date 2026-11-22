@@ -972,38 +972,47 @@ static int build_secondary_sink(void *primary, void *controller)
      * the configured margins, configured DPI, decoder depth 3 and square
      * pixels.
      */
-    /* Pass decoder_depth=3 for phone MediaCodec 3-frame pipelining */
-    add_configuration(g_secondary_sink,
-        VIDEO_CODEC_RESOLUTION_800_480, (int)config->fps,
-        (int)config->margin_width, (int)config->margin_height,
-        (int)config->dpi, 3, (int)config->pixel_aspect_ratio_e4);
-    /* Hi-res trial: ADD the phone's higher cluster resolution beside the
-     * 800x480 one. ADDITION, not replacement - the phone picks from the
-     * vector (and a phone that rejects enum 2 still has the historical
-     * entry, so the map keeps working). One line in gal_dualscreen.conf
-     * selects it: GAL_SECONDARY_HIRESEN=1 (landed at the next gal start
-     * by the conf loader; OFF is byte-identical to the old behaviour).
-     *
-     * The delivered stream then carries 1280x720-coded frames; the DPU
-     * surface stays the window (our player samples whatever arrives and
-     * scales it once, down instead of up - sharper). Insets scale to the
-     * coded frame here (1280/800 = 1.6 width, 720/480 = 1.5 height,
-     * clamped), so the safe area keeps its on-screen meaning. */
+    /* Hi-res mode parse BEFORE the base entry. CAR FACT (owner diag
+     * v0.7.41): in ADD mode the phone saw both entries (count=2) and
+     * STILL streamed 800x480 - it picks the base config. Value 2 is
+     * therefore REPLACE: the 800x480 entry is NOT offered, so the phone
+     * has no fallback and must stream 720p. Risk is real and stated on
+     * the menu: a phone that refuses enum 2 sends no video at all; the
+     * revert is one menu press (Hi-res OFF), next session. Value 1 keeps
+     * the historical ADD behaviour. OFF stays byte-identical. */
     {
         const char *hires = getenv("GAL_SECONDARY_HIRESEN");
-        int hires_set = (hires != NULL && hires[0] == '1' && hires[1] == '\0');
-        /* The menu's live Hi-res row writes /tmp/gal_hires ("1"/"0"):
+        int hires_mode = 0;
+        if (hires != NULL && (hires[0] == '1' || hires[0] == '2') &&
+            hires[1] == '\0')
+            hires_mode = hires[0] - '0';
+        /* The menu's live Hi-res row writes /tmp/gal_hires (bare integer):
          * this build runs per phone session, so a menu change lands at
          * the next session exactly (no gal restart needed). */
-        if (!hires_set) {
+        if (!hires_mode) {
             FILE *hf = fopen("/tmp/gal_hires", "r");
             if (hf != NULL) {
                 int hv = -1;
-                if (fscanf(hf, "%d", &hv) == 1) hires_set = (hv == 1);
+                if (fscanf(hf, "%d", &hv) == 1 && (hv == 1 || hv == 2))
+                    hires_mode = hv;
                 fclose(hf);
             }
         }
-        if (hires_set) {
+        if (hires_mode != 2) {
+            /* Pass decoder_depth=3 for phone MediaCodec 3-frame pipelining */
+            add_configuration(g_secondary_sink,
+                VIDEO_CODEC_RESOLUTION_800_480, (int)config->fps,
+                (int)config->margin_width, (int)config->margin_height,
+                (int)config->dpi, 3, (int)config->pixel_aspect_ratio_e4);
+        }
+        /* Hi-res trial: ADD (1) the phone's higher cluster resolution
+         * beside the 800x480 one, or REPLACE (2) it. The delivered stream
+         * then carries 1280x720-coded frames; the DPU surface stays the
+         * window (our player samples whatever arrives and scales it once,
+         * down instead of up - sharper). Insets scale to the coded frame
+         * here (1280/800 = 1.6 width, 720/480 = 1.5 height, clamped), so
+         * the safe area keeps its on-screen meaning. */
+        if (hires_mode) {
             gal_secondary_config scaled = *config;
             scaled.margin_width = 0u;
             scaled.margin_height = 0u;
@@ -1040,7 +1049,8 @@ static int build_secondary_sink(void *primary, void *controller)
                     gal_hook_logf("event=secondary.hires result=insets_skipped reason=720p_entry_not_found vec=0x%08x vconf=%p",
                                   (unsigned)hires_vec, hires_vconf);
                 }
-                gal_hook_logf("event=secondary.hires result=declared 1280x720 fps=%u insets=%u,%u,%u,%u base=%u,base,%u,%u,%u",
+                gal_hook_logf("event=secondary.hires result=declared mode=%s 1280x720 fps=%u insets=%u,%u,%u,%u base=%u,base,%u,%u,%u",
+                              hires_mode == 2 ? "replace" : "add",
                               (unsigned)config->fps,
                               scaled.insets_top, scaled.insets_bottom,
                               scaled.insets_left, scaled.insets_right,
@@ -1073,8 +1083,9 @@ static int build_secondary_sink(void *primary, void *controller)
         (void)resolve_symbol("_ZN9VideoSink25getNumberOfConfigurationsEv",
                              (void **)&g_config_count);
         if (g_config_count != NULL) advertised = g_config_count(g_secondary_sink);
-        gal_hook_logf("event=secondary.config_advertised count=%u expected=1 result=%s",
-                      advertised, advertised == 1u ? "ok" : "UNEXPECTED");
+        gal_hook_logf("event=secondary.config_advertised count=%u expected=1-2 result=%s",
+                      advertised,
+                      (advertised >= 1u && advertised <= 2u) ? "ok" : "UNEXPECTED");
     }
 
     /*

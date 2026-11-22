@@ -295,6 +295,56 @@ static int wl_connect(const char *host, int port)
     return fd;
 }
 
+/* ---------------------------------------------------------------------------
+ * omonob CarPlayClusterControls wire (GPL-3.0 jar shipped unmodified in
+ * thirdparty/, installed beside the HMI's own jars). Its bootclasspath-
+ * patched DSIKeyPanelDispatcher forwards the MFW keys to a worker that
+ * sends PLAIN-ASCII UDP datagrams on 127.0.0.1, ports 7032/7033. The only
+ * three payloads command() can produce are "canvas-zoom-in",
+ * "canvas-zoom-out" and "canvas-noop" (map-previous/next are deliberately
+ * mapped to noop in that jar). A datagram therefore proves the jar is
+ * installed and the HMI restarted with it - no tracer ports needed.
+ * Every datagram is logged to the wheel log; zoom commands act, the rest
+ * is recorded for later mapping (rotary/OK reach this wire only in a
+ * future jar revision). */
+static int wl_udp_fds[2] = { -1, -1 };
+static const int wl_udp_ports[2] = { 7032, 7033 };
+
+static int wl_udp_bind(int port)
+{
+    struct sockaddr_in addr;
+    int fd;
+    int one = 1;
+
+    fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0)
+        return -1;
+    (void)setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one);
+    memset(&addr, 0, sizeof addr);
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons((unsigned short)port);
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    if (bind(fd, (struct sockaddr *)&addr, sizeof addr) != 0) {
+        close(fd);
+        return -1;
+    }
+    return fd;
+}
+
+/* Returns +1/-1 for a zoom command, or WL_NONE. *iskey logs every
+ * datagram, including the noop ones (they prove the path is live). */
+static int wl_parse_command(const char *cmd, int *iskey)
+{
+    *iskey = 1;
+    if (cmd == NULL || cmd[0] == '\0')
+        return WL_NONE;
+    if (strcmp(cmd, "canvas-zoom-in") == 0)
+        return 1;
+    if (strcmp(cmd, "canvas-zoom-out") == 0)
+        return -1;
+    return WL_NONE;
+}
+
 static long wl_file_size(const char *path)
 {
     FILE *f = fopen(path, "rb");
@@ -408,6 +458,27 @@ int main(int argc, char *argv[])
     }
 
     fprintf(stderr, "wheel_listen: starting (host=%s zoom=%s)\n", host, wl_zoom_path());
+    /* omonob jar path: bind the two dispatcher datagram ports BEFORE the
+     * tracer loop. Binding never fails on a live unit (RAM sockets); the
+     * fds simply stay quiet until the jar is installed and the HMI
+     * restarted with it. GAL_WHEEL_UDP=0 opts out (tracer-only runs). */
+    {
+        const char *udpenv = getenv("GAL_WHEEL_UDP");
+        int u;
+        if (udpenv == NULL || strcmp(udpenv, "0") != 0) {
+            for (u = 0; u < 2; ++u) {
+                wl_udp_fds[u] = wl_udp_bind(wl_udp_ports[u]);
+                if (wl_udp_fds[u] >= 0)
+                    fprintf(stderr, "wheel_listen: udp listening on 127.0.0.1:%d\n",
+                            wl_udp_ports[u]);
+                else
+                    fprintf(stderr, "wheel_listen: udp bind %d failed (%s)\n",
+                            wl_udp_ports[u], strerror(errno));
+            }
+        } else {
+            fprintf(stderr, "wheel_listen: udp datagram path disabled (GAL_WHEEL_UDP=0)\n");
+        }
+    }
     for (;;) {
         int fd = -1;
         for (i = 0; i < nports && fd < 0; ++i) {
@@ -416,16 +487,124 @@ int main(int argc, char *argv[])
             if (fd >= 0)
                 fprintf(stderr, "wheel_listen: connected to %s:%d\n", host, ports[i]);
         }
-        if (fd < 0) {
+        if (fd < 0 && wl_udp_fds[0] < 0 && wl_udp_fds[1] < 0) {
             fprintf(stderr, "wheel_listen: no tracer endpoint reachable; retry in 10s\n");
             sleep(10);
             continue;
         }
+        if (fd < 0) {
+            /* Datagram-only operation: the jar path is live without any
+             * tracer port. Wait for datagrams; the connect attempts below
+             * resume only after this process restarts. */
+            for (;;) {
+                char dgram[256];
+                fd_set rs;
+                int u;
+                int maxfd = -1;
+                ssize_t r;
+                FD_ZERO(&rs);
+                for (u = 0; u < 2; ++u) {
+                    if (wl_udp_fds[u] < 0)
+                        continue;
+                    FD_SET(wl_udp_fds[u], &rs);
+                    if (wl_udp_fds[u] > maxfd)
+                        maxfd = wl_udp_fds[u];
+                }
+                if (select(maxfd + 1, &rs, NULL, NULL, NULL) <= 0)
+                    continue;
+                for (u = 0; u < 2; ++u) {
+                    int iskey = 0;
+                    int act;
+                    if (wl_udp_fds[u] < 0 || !FD_ISSET(wl_udp_fds[u], &rs))
+                        continue;
+                    r = recvfrom(wl_udp_fds[u], dgram, sizeof dgram - 1, 0,
+                                 NULL, NULL);
+                    if (r <= 0)
+                        continue;
+                    while (r > 0 && (dgram[r - 1] == '\n' || dgram[r - 1] == '\r'))
+                        --r;
+                    dgram[r] = 0;
+                    act = wl_parse_command(dgram, &iskey);
+                    if (iskey)
+                        wl_log_key(wl_keylog_path(), dgram, rename, fopen,
+                                   wl_file_size);
+                    if (act == 1 || act == -1) {
+                        char zbuf[32];
+                        cur = wl_current_zoom(wl_zoom_path(), fopen);
+                        cur = wl_clamp(cur + (act > 0 ? WL_STEP : -WL_STEP));
+                        snprintf(zbuf, sizeof zbuf, "%.2f\n", (double)cur);
+                        if (wl_write_file(wl_zoom_path(), zbuf, fopen, rename, remove) == 0)
+                            fprintf(stderr, "wheel_listen: udp zoom %.2f (dir %+d)\n",
+                                    (double)cur, act);
+                        else
+                            fprintf(stderr, "wheel_listen: udp zoom write failed\n");
+                    } else {
+                        fprintf(stderr, "wheel_listen: udp command logged (no action bound)\n");
+                    }
+                }
+            }
+        }
         used = 0;
         for (;;) {
+            /* Tracer connected: wait on the stream AND the datagram ports
+             * together, so the jar path keeps working whenever the tracer
+             * exists too. */
             char buf[1024];
-            ssize_t r = recv(fd, buf, sizeof buf, 0);
+            ssize_t r;
             ssize_t k;
+            fd_set rs;
+            int maxfd = fd;
+            int u;
+            struct timeval tv;
+            int rc;
+            FD_ZERO(&rs);
+            FD_SET(fd, &rs);
+            for (u = 0; u < 2; ++u) {
+                if (wl_udp_fds[u] < 0)
+                    continue;
+                FD_SET(wl_udp_fds[u], &rs);
+                if (wl_udp_fds[u] > maxfd)
+                    maxfd = wl_udp_fds[u];
+            }
+            tv.tv_sec = 1;
+            tv.tv_usec = 0;
+            rc = select(maxfd + 1, &rs, NULL, NULL, &tv);
+            if (rc <= 0)
+                continue;
+            for (u = 0; u < 2; ++u) {
+                int iskey = 0;
+                int act;
+                char dgram[256];
+                if (wl_udp_fds[u] < 0 || !FD_ISSET(wl_udp_fds[u], &rs))
+                    continue;
+                r = recvfrom(wl_udp_fds[u], dgram, sizeof dgram - 1, 0,
+                             NULL, NULL);
+                if (r <= 0)
+                    continue;
+                while (r > 0 && (dgram[r - 1] == '\n' || dgram[r - 1] == '\r'))
+                    --r;
+                dgram[r] = 0;
+                act = wl_parse_command(dgram, &iskey);
+                if (iskey)
+                    wl_log_key(wl_keylog_path(), dgram, rename, fopen,
+                               wl_file_size);
+                if (act == 1 || act == -1) {
+                    char zbuf[32];
+                    cur = wl_current_zoom(wl_zoom_path(), fopen);
+                    cur = wl_clamp(cur + (act > 0 ? WL_STEP : -WL_STEP));
+                    snprintf(zbuf, sizeof zbuf, "%.2f\n", (double)cur);
+                    if (wl_write_file(wl_zoom_path(), zbuf, fopen, rename, remove) == 0)
+                        fprintf(stderr, "wheel_listen: udp zoom %.2f (dir %+d)\n",
+                                (double)cur, act);
+                    else
+                        fprintf(stderr, "wheel_listen: udp zoom write failed\n");
+                } else {
+                    fprintf(stderr, "wheel_listen: udp command logged (no action bound)\n");
+                }
+            }
+            if (!FD_ISSET(fd, &rs))
+                continue;
+            r = recv(fd, buf, sizeof buf, 0);
             if (r <= 0)
                 break;
             for (k = 0; k < r; ++k) {

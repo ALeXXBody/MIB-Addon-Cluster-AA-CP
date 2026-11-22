@@ -2238,3 +2238,37 @@ same class as the keypanel scope line; position preserved), reports
 OFF still restores the .orig byte-equal. Tracer test extended (flipped
 line + no commented twin + byte-equal restore). Hook rebuilt natively,
 stamped v0.7.41. Car proof: UNVERIFIED - owner reboot pending.
+
+---
+
+## Round 83 — v0.7.43: the wheel gets its REAL path (research-driven)
+
+Owner demanded a broad research sweep, not three repos. Delivered across
+aasdk (AA protocol definitions), openauto (working AA head unit), AARE
+and mretallack/androidauto (phone-side), M.I.B. wiki/BAP, mib2-toolbox
+family, Hackaday MIB2 RE, and the omonob/e-golf hardware family. Results:
+
+* AA wire facts (aasdk): cluster input = KeyEvent{keycode,down} +
+  RelativeEvent{keycode, delta}; our hook already declares keycodes 23
+  (DPAD_CENTER) and 65536 (ROTARY_CONTROLLER) - the phone opens that
+  channel every session (owner diag).
+* Capture paths triaged: 0x8001 dead (8 sessions), tracer ports dead
+  (production HMI, owner diag), CAN/BAP not reachable from MMX userspace
+  (RCC/M-core domain), Java dispatcher patch WORKS on this hardware
+  family (e-golf repo car-tested on the same VWG13 train; omonob jar
+  verified in bytecode: bootclasspath-replaced DSIKeyPanelDispatcher,
+  passthrough to the HMI's own listeners preserved, plain-ASCII UDP
+  datagrams "canvas-zoom-in/out/noop" on 127.0.0.1:7032/7033).
+* Shipped: omonob's CarPlayClusterControls.jar unmodified (GPL-3.0,
+  credited) installed by Wheel control ON via the proven lsd_jar
+  mechanism with our marker; wheel_listen rebuilt with a datagram mode
+  (binds 7032+7033, zoom commands act, every datagram logged); tracer
+  path stays alongside. wheel_control resolves the card payload (the
+  sim caught a missing PKG before the car could).
+* HI-RES: replace mode (GAL_SECONDARY_HIRESEN=2) offers ONLY 1280x720 -
+  the owner diag proved ADD mode leaves the phone streaming 800x480.
+* Next (v0.7.44): our own GPL dispatcher jar (JDK8 -target 1.4 = the
+  HMI J9's class version, confirmed major 48) forwarding ALL keys +
+  encoder, mapped to the hook's inject path (GAL_INPUT_INJECT via the
+  conf loader; wire format already matches aasdk exactly).
+Car proof: UNVERIFIED.

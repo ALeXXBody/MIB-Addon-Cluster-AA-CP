@@ -119,6 +119,10 @@ script
     label   "Hi-res ON (next session)"
 
 script
+    value   sys 1 0x0100 "@GREENMENU@gem/hiresen_replace.sh"
+    label   "Hi-res 720p ONLY (next session)"
+
+script
     value   sys 1 0x0100 "@GREENMENU@gem/hiresen_off.sh"
     label   "Hi-res OFF"
 

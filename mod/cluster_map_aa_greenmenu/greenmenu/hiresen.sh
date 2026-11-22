@@ -11,11 +11,15 @@ else
 fi
 CONF_READ="$APP_MOUNT/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 case "$1" in
-    on|off) : ;;
-    *) echo "usage: $0 on|off" >&2; exit 2 ;;
+    on|off|replace) : ;;
+    *) echo "usage: $0 on|off|replace" >&2; exit 2 ;;
 esac
 
-WANT=$([ "$1" = on ] && echo 1 || echo 0)
+WANT=0
+case "$1" in
+    on)      WANT=1 ;;
+    replace) WANT=2 ;;
+esac
 # The hook reads /tmp/gal_hires as a BARE INTEGER (fscanf "%d"): writing
 # "GAL_SECONDARY_HIRESEN=1" here made the file unreadable and the switch
 # a no-op (v0.7.4 car round). The persisted key keeps its KEY=VALUE form;
@@ -30,7 +34,7 @@ PERSISTED=0
 # override in the same write and says so; re-apply the ETA card afterwards.
 OVER=""
 _ACTIVE_CONF=`conf_card_file` || _ACTIVE_CONF="$CONF_READ"
-if [ "$WANT" = 1 ]; then
+if [ "$WANT" != 0 ]; then
     grep -q "^GAL_SECONDARY_UI_CONFIG_HEX=" "$_ACTIVE_CONF" 2>/dev/null &&
         OVER="; removed the UI_CONFIG_HEX override (it blocks hi-res — re-apply the ETA card preset after)"
     conf_persist set "GAL_SECONDARY_HIRESEN=$WANT" "GAL_SECONDARY_UI_CONFIG_HEX=" && {
@@ -46,6 +50,12 @@ if [ "$WANT" = 1 ]; then
     echo "Hi-res trial: ON (LIVE ARMED)$OVER - the next phone session declares 1280x720"
     echo "beside 800x480. Re-plug the USB (or cycle the phone's AA) to apply."
     echo "If the map goes dark, press Hi-res OFF and reconnect."
+elif [ "$WANT" = 2 ]; then
+    echo "Hi-res REPLACE (LIVE ARMED)$OVER - the next phone session offers ONLY"
+    echo "1280x720: the phone has no 800x480 fallback left and must stream it."
+    echo "CAR FACT: in ADD mode the phone kept streaming 800x480, so replace is"
+    echo "the only way to actually get the sharper picture. If the map goes"
+    echo "dark, press Hi-res OFF and reconnect - one press back to stock."
 else
     echo "Hi-res trial: OFF (LIVE ARMED)$OVER - back to the shipped 800x480 at the next phone session."
 fi

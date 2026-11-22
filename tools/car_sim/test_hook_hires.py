@@ -38,3 +38,19 @@ def test_base_insets_path_unchanged():
     s = SRC.read_text()
     assert 'apply_video_config_insets(vconf, config, "build_sink")' in s
     assert 'apply_video_config_insets(vconf_array[0], gal_hook_config(), "discovery")' in s
+
+
+def test_hires_replace_mode_offers_only_720p():
+    """CAR FACT (owner diag v0.7.41): in ADD mode the phone saw both
+    entries and still streamed 800x480. REPLACE (value 2) must skip the
+    base add so the phone has no fallback; ADD (1) and OFF stay as they
+    were. The declared log names the mode."""
+    s = SRC.read_text()
+    i = s.find("int hires_mode = 0;")
+    assert i > 0, "the mode parse is gone"
+    block = s[i:i + 9000]
+    assert "if (hires_mode != 2) {" in block, "replace must skip the base entry"
+    assert "hires[0] == '2'" in s or "'2'" in block, "value 2 must be parsed"
+    assert 'hires_mode == 2 ? "replace" : "add"' in block, "the log must name the mode"
+    # the live file may carry 2 as well
+    assert "hv == 1 || hv == 2" in block
