@@ -2187,3 +2187,36 @@ hard named failure. Proof: new mount-call-order test - the old child
 emits ['uw','ur'] under the flag (fails), the fixed child emits ['uw']
 alone; the standalone menu switch still closes its own window. 139 tests
 green. Car proof: UNVERIFIED.
+
+---
+
+## Round 80 — v0.7.40: HI-RES ON killed AA (memory corruption, owner A/B)
+
+Owner A/B: HI-RES ON -> AA dead entirely; OFF -> works. The hires path
+called apply_video_config_insets() on the SINK itself. The worker stores
+viewing_distance at +0x40 -- which on a VideoSink is the
+allowed-configuration VECTOR pointer (set_video_config_ui_insets reads
+it there) -- so the sink's config list was replaced by the value 700 and
+the phone got no usable configuration. Fix: resolve the freshly added
+1280x720 VideoConfig through the same lookup the base path uses, VERIFY
+its resolution enum, apply insets only on a verified entry; a failed
+lookup logs insets_skipped instead of corrupting. Static contract test
+added (never-the-sink / enum-guard / logged skip). Hook rebuilt natively
+(LXC: no containers; BUILD_LOCALLY.md path) with the same flags and
+export check, stamped v0.7.40, manifest OK. Car proof: UNVERIFIED -
+owner must repeat the A/B on the car.
+
+---
+
+## Round 81 — v0.7.40 additions: ETA-card pose truth + readable settings diag
+
+Owner cluster photo (v0.7.39): the AA map AND the full ETA card are LIVE
+on the cockpit - the install path finally completed end to end. The pose
+complaint decodes from the mechanism: the UiConfig insets are a HINT the
+phone may override (60px top strip truncated the card to direction-only;
+with bottom free the phone kept its side rail with the full ETA).
+Additions: ETA card BOTTOM WIDE (76px, the existing broad_top twin, same
+field syntax - nothing invented) as a GEM entry; diag section 7 now
+requires an ACTUAL read (this unit's /mnt/app passes -r but refuses
+reads, which hid the live hex) and falls through to the FQDN view.
+Car proof: UNVERIFIED.

@@ -80,10 +80,17 @@ done
 [ -n "$CFG" ] || CFG="$SYSVIEW/etc/eso/production/smartphone_integrator.json"
 CONF=""
 for _v in /mnt/app /net/mmx.mibhigh.net/mnt/app /net/mmx/mnt/app /net/rcc/mnt/app; do
-    if [ -r "$_v/eso/lib/gal_dualscreen/gal_dualscreen.conf" ]; then
+    # ROOT CAUSE (owner diag v0.7.39: "(not readable: /mnt/app/...conf)"):
+    # on this unit the local /mnt/app spelling PASSES the -r test but the
+    # read itself fails, so the diag could never show the settings file -
+    # including the ETA-pose hex. Require an ACTUAL read, not just -r,
+    # and fall through to the FQDN view which reads fine.
+    _confread=`cat "$_v/eso/lib/gal_dualscreen/gal_dualscreen.conf" 2>/dev/null`
+    if [ -n "$_confread" ]; then
         CONF="$_v/eso/lib/gal_dualscreen/gal_dualscreen.conf"; break
     fi
 done
+unset _v _confread
 [ -n "$CONF" ] || CONF="$APPVIEW/eso/lib/gal_dualscreen/gal_dualscreen.conf"
 
 put() { echo "$1" >> "$TMP"; }
@@ -316,13 +323,17 @@ unset _v _lsd _mk
 
 # ---- 7. installed settings (the fine-tune facts)
 section "7 installed settings (the file the hook actually loads)"
+# Same root cause as the CONF chooser above: -r lies on the local spelling.
+# The card-root file the hook would load first also needs a real read.
 _ACTCONF=""
 for _c in /fs/sdb0/gal_dualscreen.conf /fs/sda0/gal_dualscreen.conf \
           /net/mmx/fs/sdb0/gal_dualscreen.conf /net/mmx/fs/sda0/gal_dualscreen.conf \
           /net/mmx.mibhigh.net/fs/sdb0/gal_dualscreen.conf \
           /net/mmx.mibhigh.net/fs/sda0/gal_dualscreen.conf; do
-    if [ -r "$_c" ]; then _ACTCONF="$_c"; break; fi
+    _actread=`cat "$_c" 2>/dev/null`
+    if [ -n "$_actread" ]; then _ACTCONF="$_c"; break; fi
 done
+unset _c _actread
 put "card-root file: ${_ACTCONF:-none}"
 put "unit copy: $CONF"
 if [ -n "$_ACTCONF" ]; then

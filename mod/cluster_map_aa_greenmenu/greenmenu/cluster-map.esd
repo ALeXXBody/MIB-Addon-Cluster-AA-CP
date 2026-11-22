@@ -161,6 +161,10 @@ script
     label   "ETA card: BOTTOM"
 
 script
+    value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_broad_bottom.sh"
+    label   "ETA card: BOTTOM WIDE"
+
+script
     value   sys 1 0x0100 "/net/mmx/fs/sda0/mod/cluster_aa/greenmenu/gem/etacard_left.sh"
     label   "ETA card: LEFT"
 

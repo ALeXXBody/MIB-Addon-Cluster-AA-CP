@@ -161,6 +161,10 @@ script
     label   "ETA card: BOTTOM"
 
 script
+    value   sys 1 0x0100 "@GREENMENU@gem/etacard_broad_bottom.sh"
+    label   "ETA card: BOTTOM WIDE"
+
+script
     value   sys 1 0x0100 "@GREENMENU@gem/etacard_left.sh"
     label   "ETA card: LEFT"
 

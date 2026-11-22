@@ -8,9 +8,19 @@
 # extended to all four edges (the 800x480 frame of the AA stream):
 #   top    = 08 3c   (field 1 = 60) -> the shipped "top strip"
 #   bottom = 10 3c   (field 2 = 60) -> NEW: banner to the bottom strip
+#   broad_bottom = 10 4c (field 2 = 76) -> room for the FULL card at the
+#                    bottom (60px squeezed it to direction-only on the
+#                    owner's car; 76px is the existing broad_top twin)
 #   left   = 18 3c   (field 3 = 60) -> NEW: banner as a left column
 #   right  = 20 3c   (field 4 = 60) -> NEW: banner as a right column
 #   off    remove the hex line: the stock insets apply again
+#
+# CAR FACT (owner, cluster photo): the phone decides the final card
+# layout - the insets are a HINT, not a command. A 60px strip at the top
+# truncated the card to direction-only; with bottom free the phone kept
+# its side rail (which carries the full ETA). The broad variant gives
+# the phone more room on the asked edge; if it still refuses, OFF is the
+# layout that shows everything on this unit.
 #
 # Effect at the NEXT phone session (or unit reboot); nothing restarts.
 # The hex REPLACES the plain insets and the theme - the Position presets
@@ -30,9 +40,10 @@ case "$1" in
     bottom) HEX="5a041202103c"; POSE="a 60 px strip at the bottom of the frame is declared free" ;;
     left)   HEX="5a041202183c"; POSE="a 60 px column at the left is declared free" ;;
     right)  HEX="5a041202203c"; POSE="a 60 px column at the right is declared free" ;;
+    broad_bottom) HEX="5a041202104c"; POSE="a 76 px strip at the bottom is declared free (room for the full card)" ;;
     broad_top) HEX="5a041202084c"; POSE="the top strip is widened to 76 px" ;;
     off)    HEX=""; POSE="the standard layout (the hook's own insets apply)";;
-    *) echo "usage: $0 top|bottom|left|right|broad_top|off" >&2; exit 2 ;;
+    *) echo "usage: $0 top|bottom|broad_bottom|left|right|broad_top|off" >&2; exit 2 ;;
 esac
 
 if [ ! -r "$CONF_READ" ]; then

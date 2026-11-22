@@ -1013,11 +1013,33 @@ static int build_secondary_sink(void *primary, void *controller)
             scaled.insets_left = scaled_inset(config->insets_left, 24u);
             scaled.insets_right = scaled_inset(config->insets_right, 24u);
             if (config->ui_config_payload_len == 0u) {
+                void *hires_vconf = NULL;
+                uintptr_t hires_vec;
                 add_configuration(g_secondary_sink,
                     VIDEO_CODEC_RESOLUTION_1280_720, (int)config->fps,
                     0, 0, (int)config->dpi, 3, 10000u);
-                apply_video_config_insets(g_secondary_sink, &scaled,
-                                          "hires");
+                /* ROOT CAUSE (owner A/B, v0.7.39): this used to call
+                 * apply_video_config_insets on the SINK itself. The worker
+                 * stores viewing_distance at +0x40 -- which on a VideoSink
+                 * is the allowed-configuration VECTOR pointer (see
+                 * set_video_config_ui_insets) -- so the whole config list
+                 * was replaced by the value 700 and the phone got no
+                 * usable configuration: HI-RES ON, Android Auto dead at
+                 * the next session; OFF, everything back. Resolve the
+                 * freshly added 1280x720 VideoConfig through the same
+                 * lookup the base insets path uses, VERIFY its resolution
+                 * enum, and only then touch it. Any mismatch logs and
+                 * skips: the 800x480 entry stays valid either way. */
+                hires_vec = load_u32(g_secondary_sink, 0x40u);
+                if (hires_vec != 0u)
+                    hires_vconf = (void *)(uintptr_t)load_u32((void *)hires_vec, 4u);
+                if (hires_vconf != NULL &&
+                    load_u32(hires_vconf, 0x28u) == VIDEO_CODEC_RESOLUTION_1280_720) {
+                    apply_video_config_insets(hires_vconf, &scaled, "hires");
+                } else {
+                    gal_hook_logf("event=secondary.hires result=insets_skipped reason=720p_entry_not_found vec=0x%08x vconf=%p",
+                                  (unsigned)hires_vec, hires_vconf);
+                }
                 gal_hook_logf("event=secondary.hires result=declared 1280x720 fps=%u insets=%u,%u,%u,%u base=%u,base,%u,%u,%u",
                               (unsigned)config->fps,
                               scaled.insets_top, scaled.insets_bottom,
