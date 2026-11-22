@@ -2169,3 +2169,21 @@ on the same view is probed. Genuinely read-only views still refuse at
 every level. New sim test (clean unit, root refused) FAILS on the old
 code with the owner's exact INSTALL_FAILED and passes on the fix.
 Car proof: UNVERIFIED.
+
+---
+
+## Round 79 — v0.7.39: the tracer child closed the installer's window (owner diag)
+
+Owner diag v0.7.38 nailed the sequence: ladder opened the window (v0.7.38
+fix held, hook staged), then the auto-run wheel-tracer child remounted
+the app partition read-only on ITS exit (own app_mount_finish trap) while
+the installer still had writes pending: owner.conf.new, conf.new at 742,
+player-backup cp - all "Read-only file system". A second bug hid it: the
+settings-copy cp had `|| true`, so the console printed "Installed
+settings copy" for a file §7 showed never landed. Fixes: the child skips
+its read-only remount when CLUSTERMAP_PARENT_OWNS_MOUNT is set (exported
+by enable_hook strictly around the tracer call); the settings copy is a
+hard named failure. Proof: new mount-call-order test - the old child
+emits ['uw','ur'] under the flag (fails), the fixed child emits ['uw']
+alone; the standalone menu switch still closes its own window. 139 tests
+green. Car proof: UNVERIFIED.

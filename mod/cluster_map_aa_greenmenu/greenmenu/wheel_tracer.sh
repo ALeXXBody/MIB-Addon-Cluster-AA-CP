@@ -66,7 +66,7 @@ if [ "$WANT" = "off" ]; then
         fi
         echo "app: read-write via '$APP_LADDER_FORM'"
         APP_WRITABLE=1
-        trap app_mount_finish 0 1 2 15
+        trap 'if [ -z "${CLUSTERMAP_PARENT_OWNS_MOUNT:-}" ]; then app_mount_finish; fi' 0 1 2 15
         cp "$CFG.orig" "$CFG_W.new" 2>/dev/null &&
         mv "$CFG_W.new" "$CFG" 2>/dev/null || {
             echo "Could not restore $CFG from $CFG.orig. Nothing changed."
@@ -106,7 +106,7 @@ if ! app_mount_rw; then
 fi
 echo "app: read-write via '$APP_LADDER_FORM'"
 APP_WRITABLE=1
-trap app_mount_finish 0 1 2 15
+trap 'if [ -z "${CLUSTERMAP_PARENT_OWNS_MOUNT:-}" ]; then app_mount_finish; fi' 0 1 2 15
 if [ ! -r "$CFG.orig" ]; then
     cp "$CFG" "$CFG.orig" 2>/dev/null || {
         echo "Could not back up $CFG to .orig. Nothing changed."; exit 1; }

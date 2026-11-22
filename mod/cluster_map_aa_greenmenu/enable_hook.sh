@@ -536,6 +536,14 @@ fi
 # refused tracer changes nothing about the map, and Wheel control ON in
 # the menu repairs it. The child sets its own EXIT trap (own process).
 if [ -r "$CARD_ROOT/greenmenu/wheel_tracer.sh" ]; then
+    # ROOT CAUSE (owner photos, v0.7.38): this child remounted the app
+    # partition read-only on exit (its own EXIT trap), while THIS process
+    # still had writes pending: the settings edit at frame_write_conf and
+    # the stock-player backup both died with "Read-only file system" and
+    # the install failed. The parent owns the writable window here; the
+    # child must probe and write through it WITHOUT remounting either way.
+    CLUSTERMAP_PARENT_OWNS_MOUNT=1
+    export CLUSTERMAP_PARENT_OWNS_MOUNT
     _TRC=0
     sh "$CARD_ROOT/greenmenu/wheel_tracer.sh" on </dev/null >/tmp/clustermap_tracer_auto.log 2>&1 || _TRC=$?
     if [ "$_TRC" != 0 ] && [ "$_TRC" != 3 ]; then
@@ -545,6 +553,7 @@ if [ -r "$CARD_ROOT/greenmenu/wheel_tracer.sh" ]; then
     sed -n '1,6p' /tmp/clustermap_tracer_auto.log 2>/dev/null | sed 's/^/  tracer: /'
     rm -f /tmp/clustermap_tracer_auto.log 2>/dev/null || true
     unset _TRC
+    unset CLUSTERMAP_PARENT_OWNS_MOUNT
 fi
 
 TRAIN=unknown
@@ -603,9 +612,12 @@ if [ -r "$SRC_CONF" ]; then
             done > /tmp/clustermap_owner_prev.conf && KEEP_FROM="the previous settings copy"
         fi
     fi
-    cp "$SRC_CONF" "$CONF_COPY" 2>/dev/null || true
-    chmod 644 "$CONF_COPY" 2>/dev/null || true
-    echo "Installed settings copy: $CONF_COPY"
+    if cp "$SRC_CONF" "$CONF_COPY" 2>/dev/null && chmod 644 "$CONF_COPY" 2>/dev/null; then
+        echo "Installed settings copy: $CONF_COPY"
+    else
+        echo "Could not install the settings copy to $CONF_COPY (app partition writable?)" >&2
+        exit 1
+    fi
     if [ -n "$KEEP_FROM" ]; then
         KEPT=`keep_apply "$CONF_COPY" /tmp/clustermap_owner_prev.conf "$CONF_DEFAULT"` || {
             KEPT=; echo "WARNING: could not carry over your previous settings; using the card's as they are." >&2; }

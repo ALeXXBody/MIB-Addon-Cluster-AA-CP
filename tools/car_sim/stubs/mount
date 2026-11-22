@@ -21,6 +21,11 @@ if [ "$MODE" = uw ] && [ -n "$VIEW" ]; then
         *"|$VIEW|"*) exit 1 ;;
     esac
 fi
+# CB_MOUNT_LOG: append every remount as "<mode> <view>" so tests can pin
+# the remount ORDER (who opened a window, and who closed it).
+if [ -n "${CB_MOUNT_LOG:-}" ] && [ -n "$MODE" ]; then
+    echo "$MODE ${VIEW:-}" >> "$CB_MOUNT_LOG"
+fi
 if [ -n "$VIEW" ] || [ -n "$MODE" ]; then
     exit 0
 fi

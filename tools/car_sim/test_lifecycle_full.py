@@ -29,8 +29,9 @@ def _stage(car, armed=True):
     return dst
 
 
-def _press(car, verb):
-    p = car.run(["sh", f"{PKG}/greenmenu/menus.sh", verb], expect_rc=None)
+def _press(car, verb, env=None):
+    p = car.run(["sh", f"{PKG}/greenmenu/menus.sh", verb], env=env,
+                expect_rc=None)
     log = pathlib.Path(f"/tmp/cm_menu_{verb}.log")
     return p, (log.read_text() if log.exists() else "")
 
@@ -247,3 +248,48 @@ def test_virgin_keeps_irreplaceable_files_when_card_refuses(car):
     finally:
         blocker.unlink(missing_ok=True)
         _clean_card_backup()
+
+
+def test_tracer_child_must_not_close_the_installs_window(car):
+    """v0.7.38 owner photos: the tracer auto-enable child remounted the
+    app partition read-only on exit while the installer still had writes
+    pending ('cannot create gal_dualscreen.conf.new: Read-only file
+    system'). Contract, tested directly: under the installer flag the
+    child must not emit any read-only remount; standalone (menu switch)
+    it must still close its own window."""
+    _stage(car, armed=True)
+    for v in APP_VIEWS:
+        car.stage(v, "eso/hmi/lsd/traceConfig.properties", "use.appender=client\n")
+    tracer = f"{PKG}/greenmenu/wheel_tracer.sh"
+
+    under = "/tmp/mountcalls_under.log"
+    pathlib.Path(under).unlink(missing_ok=True)
+    p = car.run(["sh", tracer, "on"],
+                env={"CB_MOUNT_LOG": under,
+                     "CLUSTERMAP_PARENT_OWNS_MOUNT": "1"}, expect_rc=None)
+    assert "Wheel tracer: ON" in p.stdout, \
+        f"tracer child path not exercised:\n{p.stdout}\n{p.stderr}"
+    under_ops = [l.split()[0] for l in pathlib.Path(under).read_text().splitlines()
+                 if l.strip() and "mnt/app" in l]
+    assert "uw" in under_ops, f"child never opened a window:\n{under_ops}"
+    assert "ur" not in under_ops, \
+        f"child closed a window it does not own:\n{under_ops}"
+
+    alone = "/tmp/mountcalls_alone.log"
+    pathlib.Path(alone).unlink(missing_ok=True)
+    q = car.run(["sh", tracer, "off"],
+                env={"CB_MOUNT_LOG": alone}, expect_rc=None)
+    assert "Wheel tracer: OFF" in q.stdout, f"{q.stdout}\n{q.stderr}"
+    alone_ops = [l.split()[0] for l in pathlib.Path(alone).read_text().splitlines()
+                 if l.strip() and "mnt/app" in l]
+    assert "ur" in alone_ops, \
+        f"standalone switch must leave the partition read-only:\n{alone_ops}"
+
+def test_settings_copy_failure_is_not_masked():
+    src = (REPO / "mod/cluster_map_aa_greenmenu/enable_hook.sh").read_text()
+    i = src.find('cp "$SRC_CONF" "$CONF_COPY"')
+    assert i > 0, "settings copy line moved"
+    tail = src[i:i + 400]
+    assert "|| true" not in tail.split("fi")[0], \
+        f"the settings copy still swallows failures:\n{tail}"
+    assert "Could not install the settings copy" in tail
