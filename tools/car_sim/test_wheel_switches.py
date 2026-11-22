@@ -118,6 +118,15 @@ def test_tracer_on_extends_appender_and_off_restores(car):
         "the unit's own commented scope line is flipped to full"
     assert "#org.dsi.ifc.keypanel" not in cfg.read_text(), \
         "no commented keypanel twin may survive (last-wins would be a guess)"
+    # CAR PROOF (owner diag after 100+ reboots): the tracer ports stayed
+    # silent because activate.extension was still commented - the HMI
+    # only starts its tracer extension machinery (telnet/bluepirat
+    # endpoints) with that line active. Flip it IN PLACE (keep its
+    # position in the file).
+    assert "activate.extension=ctrl,DSIKeyPanelEx\n" in cfg.read_text(), \
+        f"the activation line must be uncommented:\n{cfg.read_text()}"
+    assert "\n#activate.extension" not in cfg.read_text(), \
+        "no commented activation twin may survive"
     assert (cfg.parent / "traceConfig.properties.orig").read_text() == TRACER_CONF
     assert (cfg.parent / "dsitracer_activated").exists()
 

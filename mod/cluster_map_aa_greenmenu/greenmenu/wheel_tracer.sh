@@ -121,17 +121,21 @@ fi
 # unit-proven (enable_hook.sh counts env entries this way).
 awk '/^use\.appender=/ { app=$0; next }
      /^#?org\.dsi\.ifc\.keypanel\.DSIKeyPanel=/ { have=1; next }
+     /^#activate\.extension=/ { print substr($0, 2); have_act=1; next }
+     /^activate\.extension=/ { have_act=1; print; next }
      { print }
      END {
          if (app !~ /telnet/) app = app ",telnet"
          if (app !~ /bluepirat/) app = app ",bluepirat"
          sub("=,", "="); print app
-         print "org.dsi.ifc.keypanel.DSIKeyPanel=full" }' "$CFG" > "$CFG_W.new" 2>/dev/null &&
+         print "org.dsi.ifc.keypanel.DSIKeyPanel=full"
+         if (!have_act) print "activate.extension=ctrl,DSIKeyPanelEx" }' "$CFG" > "$CFG_W.new" 2>/dev/null &&
 mv "$CFG_W.new" "$CFG" 2>/dev/null || {
     echo "Could not extend use.appender in $CFG. Nothing changed."
     rm -f "$CFG_W.new"; exit 1; }
 echo "Appenders now: `grep '^use\.appender=' "$CFG" 2>/dev/null | tail -1`"
 echo "Key scope now: `grep '^org\.dsi\.ifc\.keypanel\.DSIKeyPanel=' "$CFG" 2>/dev/null | tail -1`"
+echo "Activate now: `grep '^activate\.extension=' "$CFG" 2>/dev/null | tail -1`"
 echo "dsitracer_activated by ClusterMap wheel tracer switch" > "$MARK" 2>/dev/null || true
 sync
 echo "Wheel tracer: ON (reboot now: power button ~10 s)."

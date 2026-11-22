@@ -2220,3 +2220,21 @@ field syntax - nothing invented) as a GEM entry; diag section 7 now
 requires an ACTUAL read (this unit's /mnt/app passes -r but refuses
 reads, which hid the live hex) and falls through to the FQDN view.
 Car proof: UNVERIFIED.
+
+---
+
+## Round 82 — v0.7.41: the tracer never activated (owner: 100 reboots)
+
+Owner: "steering wheel is always asking for a reboot, even after 100
+reboots." The diag proved why: after Wheel tracer ON the unit's
+traceConfig still carried `#activate.extension=ctrl,DSIKeyPanelEx`
+COMMENTED. The appenders and the keypanel scope were enabled, but the
+HMI starts its tracer extension machinery (the telnet/bluepirat
+endpoints wheel_listen connects to) only when that activation line is
+uncommented - so no reboot could ever open the ports. Fix: the tracer
+switch now flips the activation line IN PLACE (the unit's own key,
+same class as the keypanel scope line; position preserved), reports
+"Activate now:", and adds it only when the file lacks it entirely.
+OFF still restores the .orig byte-equal. Tracer test extended (flipped
+line + no commented twin + byte-equal restore). Hook rebuilt natively,
+stamped v0.7.41. Car proof: UNVERIFIED - owner reboot pending.
